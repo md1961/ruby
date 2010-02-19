@@ -1,4 +1,4 @@
-#! /usr/bin/ruby
+#! /usr/bin/env ruby
 
 
 # Get an angle b/w short and long arms of a clock
