@@ -16,7 +16,7 @@ class RubyGrep
     @re = Regexp.compile(pattern, compile_option)
 
     @filenames = argv
-    check_file_existence
+    check_file_existence(@options[:r] || @filenames)
   end
 
   def grep
@@ -109,10 +109,8 @@ class RubyGrep
       opt_parser.parse!(argv)
     end
 
-    def check_file_existence
-      return if @options[:r]
-
-      @filenames.each do |filename|
+    def check_file_existence(filenames)
+      filenames.each do |filename|
         unless File.exist?(filename)
           STDERR.puts "Cannot find file '#{filename}'"
           exit
