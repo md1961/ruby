@@ -39,13 +39,15 @@ class RubyGrep
 
       @filenames.each do |filename|
         count = 0
+        lineno = 0
         File.open(filename, 'r').each do |line|
           matched, is_over_multi_lines = match(line, multi_lines)
+          lineno += 1
 
           if matched
             count += 1
             multi_lines = Array.new
-            finishes_file = print_matched(matched, filename, is_over_multi_lines)
+            finishes_file = print_matched(matched, filename, lineno, is_over_multi_lines)
             break if finishes_file
           end
         end
@@ -87,12 +89,13 @@ class RubyGrep
       return nil
     end
 
-    def print_matched(matched, filename, is_over_multi_lines)
+    def print_matched(matched, filename, lineno, is_over_multi_lines)
       if @options[:l]
         puts filename
         return true
       elsif ! @options[:c]
-        print "#{filename}: " if @filenames.size > 1
+        line_number = @options[:n] ? ":#{lineno}" : ""
+        print "#{filename}#{line_number}: " if @filenames.size > 1
         prefix, postfix = is_over_multi_lines ? ["[multi]>>\n", "\n<<[multi]"] : ["", ""]
         puts "#{prefix}#{matched}#{postfix}"
         return false
@@ -105,6 +108,7 @@ class RubyGrep
       opt_parser.on("-c", "--count"                ) { |v| @options[:c] = true }
       opt_parser.on("-l", "--files-with-matches"   ) { |v| @options[:l] = true }
       opt_parser.on("-m", "--multi-lines"          ) { |v| @options[:m] = true }
+      opt_parser.on("-n", "--line-number"          ) { |v| @options[:n] = true }
       opt_parser.on("-r", "--recursive DIR"        ) { |v| @options[:r] = v }
       opt_parser.parse!(argv)
     end
