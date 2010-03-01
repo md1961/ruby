@@ -10,7 +10,7 @@ class RubyGrep
   def initialize(argv)
     compile_option = 0
     prepare_options(argv)
-    # compile_option = ?
+    compile_option |= Regexp::IGNORECASE if @options[:i]
 
     pattern = argv.shift
     @re = Regexp.compile(pattern, compile_option)
@@ -106,6 +106,7 @@ class RubyGrep
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
       opt_parser.on("-c", "--count"                ) { |v| @options[:c] = true }
+      opt_parser.on("-i", "--ignore-case"          ) { |v| @options[:i] = true }
       opt_parser.on("-l", "--files-with-matches"   ) { |v| @options[:l] = true }
       opt_parser.on("-m", "--multi-lines"          ) { |v| @options[:m] = true }
       opt_parser.on("-n", "--line-number"          ) { |v| @options[:n] = true }
