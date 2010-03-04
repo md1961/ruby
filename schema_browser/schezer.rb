@@ -20,10 +20,17 @@ class Schezer
 
   def get_table_names
     sql = "SHOW TABLES"
-    result = @conn.query(sql)
+    result = get_query_result(sql)
     names = Array.new
     result.each do |name| names << name end
     return names
+  end
+
+  def get_raw_table_schema(name)
+    sql = "SHOW CREATE TABLE #{name}"
+    result = get_query_result(sql)
+    schema = result.fetch_hash['Create Table']
+    return schema
   end
 
   def to_s
@@ -33,6 +40,10 @@ class Schezer
   end
 
   private
+
+    def get_query_result(sql)
+      return @conn.query(sql)
+    end
 
     def configure(filename, name)
       exit_with_usage("Specify DB_config_filename") unless filename
@@ -86,7 +97,7 @@ end
 if __FILE__ == $0
   schezer = Schezer.new(ARGV)
 
-  puts "[TABLE names]\n#{schezer.get_table_names.inspect}"
+  puts schezer.get_raw_table_schema('reserve')
 end
 
 #[EOF]
