@@ -15,6 +15,15 @@ class Schezer
     config_filename = argv.shift
     configure(config_filename, @config_name)
     exit_with_msg("Cannot read necessary configuration\n#{self.to_s}") unless configuration_suffices?
+    @conn = Mysql.new(@host, @username, @password, @database)
+  end
+
+  def get_table_names
+    sql = "SHOW TABLES"
+    result = @conn.query(sql)
+    names = Array.new
+    result.each do |name| names << name end
+    return names
   end
 
   def to_s
@@ -77,7 +86,7 @@ end
 if __FILE__ == $0
   schezer = Schezer.new(ARGV)
 
-  puts schezer
+  puts "[TABLE names]\n#{schezer.get_table_names.inspect}"
 end
 
 #[EOF]
