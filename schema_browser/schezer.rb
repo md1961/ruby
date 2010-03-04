@@ -5,6 +5,45 @@ require 'yaml'
 require 'optparse'
 
 
+class CannotGetTableNameException < Exception
+end
+
+class TableSchema
+  attr_reader :name, :primary_key, :unique_keys, :foreign_keys, :indexes
+  attr_reader :engine, :default_charset, :comment
+
+  def parse_raw_schema(lines)
+    @name = nil
+    lines.each do |line|
+      next if /^\s*$/ =~ line
+      parse_raw_line(line)
+
+
+      break if @name
+
+
+    end
+  end
+
+  private
+
+    def parse_raw_line(line)
+      @name = get_table_name_at_top(line) unless @name
+    end
+
+    def get_table_name_at_top(line)
+      re = /^\s*CREATE TABLE `(\w+)` \(\s*$/
+      m = Regexp.compile(re).match(line)
+      raise CannotGetTableNameException unless m
+      return m[1]
+    end
+end
+
+class ColumnSchema
+  attr_reader :name, :type, :not_null, :default, :auto_increment, :comment
+end
+
+
 class Schezer
 
   # config_filename: YAML 形式のデータベース接続情報を含んだファイルのファイル名。
@@ -19,6 +58,34 @@ class Schezer
 
     @conn = Mysql.new(@host, @username, @password, @database)
     get_query_result("SET NAMES #{@encoding}")
+
+    @argv = argv
+  end
+
+  def execute
+    command = @argv.shift
+    return unless command
+
+    case command
+    when 'raw'
+      table_name = @argv.shift
+      puts get_raw_table_schema(table_name)
+    when 'table'
+      table_name = @argv.shift
+      ts = parse_table_schema(table_name)
+
+      puts "Table name = '#{ts.name}'"
+
+    else
+      exit_with_msg("Unknown command '#{command}'")
+    end
+  end
+
+  def parse_table_schema(name)
+    raw_schema = get_raw_table_schema(name)
+    ts = TableSchema.new
+    ts.parse_raw_schema(raw_schema.split("\n"))
+    return ts
   end
 
   def get_table_names
@@ -95,7 +162,7 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-e", "--environment=VAL") { |v| @config_name = v }
+      opt_parser.on("-e", "--environment=VAL" ) { |v| @config_name = v }
       opt_parser.parse!(argv)
     end
 end
@@ -104,8 +171,9 @@ end
 if __FILE__ == $0
   schezer = Schezer.new(ARGV)
 
-  puts schezer.get_raw_table_schema('add_direct_prod_comment')
+  schezer.execute
 end
+
 
 #[EOF]
 
