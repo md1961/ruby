@@ -1,0 +1,23 @@
+development:
+  adapter: mysql
+  database: resman2_development
+  username: resman
+  password: pst9rur0
+  host: pluto
+  encoding: utf8
+
+production:
+  adapter: mysql
+  database: resman2
+  username: resman
+  password: pst9rur0
+  host: pluto
+  encoding: utf8
+
+test:
+  adapter: mysql
+  database: resman2_test
+  username: resman
+  password: pst9rur0
+  host: pluto
+  encoding: utf8
