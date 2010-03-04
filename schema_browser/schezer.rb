@@ -12,10 +12,13 @@ class Schezer
   # config_name:     接続情報の名称。Rails の環境名にあたる
   def initialize(argv)
     prepare_options(argv)
+
     config_filename = argv.shift
     configure(config_filename, @config_name)
     exit_with_msg("Cannot read necessary configuration\n#{self.to_s}") unless configuration_suffices?
+
     @conn = Mysql.new(@host, @username, @password, @database)
+    get_query_result("SET NAMES #{@encoding}")
   end
 
   def get_table_names
@@ -28,7 +31,11 @@ class Schezer
 
   def get_raw_table_schema(name)
     sql = "SHOW CREATE TABLE #{name}"
-    result = get_query_result(sql)
+    begin
+      result = get_query_result(sql)
+    rescue
+      exit_with_msg("Failed to get schema for TABLE '#{name}'")
+    end
     schema = result.fetch_hash['Create Table']
     return schema
   end
@@ -97,7 +104,7 @@ end
 if __FILE__ == $0
   schezer = Schezer.new(ARGV)
 
-  puts schezer.get_raw_table_schema('reserve')
+  puts schezer.get_raw_table_schema('add_direct_prod_comment')
 end
 
 #[EOF]
