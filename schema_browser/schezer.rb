@@ -9,26 +9,33 @@ class CannotGetTableNameException < Exception
 end
 
 class TableSchema
-  attr_reader :name, :primary_key, :unique_keys, :foreign_keys, :indexes
+  attr_reader :name, :columns, :primary_key, :unique_keys, :foreign_keys, :indexes
   attr_reader :engine, :default_charset, :comment
 
   def parse_raw_schema(lines)
     @name = nil
+    @columns = Array.new
     lines.each do |line|
       next if /^\s*$/ =~ line
       parse_raw_line(line)
-
-
-      break if @name
-
-
     end
+  end
+
+  def to_s
+    columns = @columns.join("\n")
+    #columns = @columns.map { |column| column.to_s }.join("\n")
+    return "TABLE `#{@name}`\n#{columns}"
   end
 
   private
 
     def parse_raw_line(line)
-      @name = get_table_name_at_top(line) unless @name
+      if @name.nil?
+        @name = get_table_name_at_top(line)
+      else
+        column_schema = get_column_schema(line)
+        @columns << column_schema if column_schema
+      end
     end
 
     def get_table_name_at_top(line)
@@ -37,10 +44,29 @@ class TableSchema
       raise CannotGetTableNameException unless m
       return m[1]
     end
+
+    def get_column_schema(line)
+      re = /^\s*`(\w+)`\s+(.*?)\s*(?:COMMENT\s+'(.*)')?\s*,?\s*$/
+      m = Regexp.compile(re).match(line)
+      return nil unless m
+      name       = m[1]
+      definition = m[2]
+      comment    = m[3]
+      return ColumnSchema.new(name, comment)
+    end
 end
 
 class ColumnSchema
   attr_reader :name, :type, :not_null, :default, :auto_increment, :comment
+
+  def initialize(name, comment)
+    @name    = name
+    @comment = comment
+  end
+
+  def to_s
+    return "`#{@name}` (#{@comment})"
+  end
 end
 
 
@@ -74,7 +100,7 @@ class Schezer
       table_name = @argv.shift
       ts = parse_table_schema(table_name)
 
-      puts "Table name = '#{ts.name}'"
+      puts ts
 
     else
       exit_with_msg("Unknown command '#{command}'")
@@ -155,7 +181,7 @@ class Schezer
     def exit_with_usage(msg=nil, exit_no=1)
       msg_list = Array.new
       msg_list << msg if msg
-      msg_list << "Usage: $0 DB_config_filename ...?"
+      msg_list << "Usage: #{$0} DB_config_filename ...?"
       exit_with_msg(msg_list.join("\n"), exit_no)
     end
 
