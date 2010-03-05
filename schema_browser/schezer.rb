@@ -11,13 +11,23 @@ end
 class UnsupportedColumnDefinitionException < Exception
 end
 
+class DuplicatePrimaryKeyException < Exception
+end
+
 class TableSchema
-  attr_reader :name, :columns, :primary_key, :unique_keys, :foreign_keys, :indexes
+  attr_reader :name, :columns, :primary_key, :unique_keys, :foreign_keys, :keys
   attr_reader :engine, :default_charset, :comment
 
-  def parse_raw_schema(lines)
-    @name = nil
+  def initialize
+    @name    = nil
     @columns = Array.new
+    @primary_key  = Array.new
+    @unique_keys  = Array.new
+    @foreign_keys = Array.new
+    @keys         = Array.new
+  end
+
+  def parse_raw_schema(lines)
     lines.each do |line|
       next if /^\s*$/ =~ line
       parse_raw_line(line)
@@ -26,7 +36,9 @@ class TableSchema
 
   def to_s
     columns = @columns.join("\n")
-    return "TABLE `#{@name}`\n#{columns}"
+    primary_key = "primary key = `#{@primary_key.join('`,`')}`"
+    unique_keys = @unique_keys.join("\n")
+    return "TABLE `#{@name}`\n#{columns}\n#{primary_key}\n#{unique_keys}"
   end
 
   private
@@ -34,15 +46,37 @@ class TableSchema
     def parse_raw_line(line)
       if @name.nil?
         @name = get_table_name_at_top(line)
-      else
-        column_schema = ColumnSchema.parse(line)
-        @columns << column_schema if column_schema
+        return
+      end
+      column_schema = ColumnSchema.parse(line)
+      if column_schema
+        @columns << column_schema
+        return
+      end
+      if get_key(line)
+        return
       end
     end
 
+    RE_PK = /^\s*PRIMARY KEY\s+\(`(\w+)`\),?\s*$/
+
+    def get_key(line)
+      if m = Regexp.compile(RE_PK).match(line)
+        raise DuplicatePrimaryKeyException.new("#{@primary_key} and #{m[1]}") if @primary_key.size > 0
+        @primary_key = m[1].split(/`,\s*`/)
+        return true
+      end
+      if unique = UniqueKey.parse(line)
+        @unique_keys << unique
+        return true
+      end
+      return false
+    end
+
+    RE_TABLE_NAME = /^\s*CREATE TABLE `(\w+)` \(\s*$/
+
     def get_table_name_at_top(line)
-      re = /^\s*CREATE TABLE `(\w+)` \(\s*$/
-      m = Regexp.compile(re).match(line)
+      m = Regexp.compile(RE_TABLE_NAME).match(line)
       raise CannotGetTableNameException.new("in \"#{line}\"") unless m
       return m[1]
     end
@@ -51,9 +85,10 @@ end
 class ColumnSchema
   attr_reader :name, :type, :not_null, :default, :auto_increment, :comment
 
+  RE = /^\s*`(\w+)`\s+(.*?)\s*(?:COMMENT\s+'(.*)')?\s*,?\s*$/
+
   def self.parse(line)
-    re = /^\s*`(\w+)`\s+(.*?)\s*(?:COMMENT\s+'(.*)')?\s*,?\s*$/
-    m = Regexp.compile(re).match(line)
+    m = Regexp.compile(RE).match(line)
     return nil unless m
     name       = m[1]
     definition = m[2]
@@ -121,6 +156,29 @@ class ColumnSchema
       end
       return not_null, default, auto_increment
     end
+end
+
+class UniqueKey
+  attr_reader :name, :column_names
+
+  RE = /^\s*UNIQUE KEY\s+`(\w+)`\s+\(`([\w`, ]+)`\),?\s*$/
+
+  def self.parse(line)
+    m = Regexp.compile(RE).match(line)
+    return nil unless m
+    name = m[1]
+    column_names = m[2].split(/`,\s*`/)
+    return UniqueKey.new(name, column_names)
+  end
+
+  def initialize(name, column_names)
+    @name = name
+    @column_names = column_names
+  end
+
+  def to_s
+    return "unique key `#{name}` (`#{column_names.join('`,`')}`)"
+  end
 end
 
 
