@@ -23,7 +23,6 @@ class TableSchema
 
   def to_s
     columns = @columns.join("\n")
-    #columns = @columns.map { |column| column.to_s }.join("\n")
     return "TABLE `#{@name}`\n#{columns}"
   end
 
@@ -33,7 +32,7 @@ class TableSchema
       if @name.nil?
         @name = get_table_name_at_top(line)
       else
-        column_schema = get_column_schema(line)
+        column_schema = ColumnSchema.parse(line)
         @columns << column_schema if column_schema
       end
     end
@@ -44,29 +43,47 @@ class TableSchema
       raise CannotGetTableNameException unless m
       return m[1]
     end
-
-    def get_column_schema(line)
-      re = /^\s*`(\w+)`\s+(.*?)\s*(?:COMMENT\s+'(.*)')?\s*,?\s*$/
-      m = Regexp.compile(re).match(line)
-      return nil unless m
-      name       = m[1]
-      definition = m[2]
-      comment    = m[3]
-      return ColumnSchema.new(name, comment)
-    end
 end
 
 class ColumnSchema
   attr_reader :name, :type, :not_null, :default, :auto_increment, :comment
 
-  def initialize(name, comment)
+  def self.parse(line)
+    re = /^\s*`(\w+)`\s+(.*?)\s*(?:COMMENT\s+'(.*)')?\s*,?\s*$/
+    m = Regexp.compile(re).match(line)
+    return nil unless m
+    name       = m[1]
+    definition = m[2]
+    comment    = m[3]
+    return ColumnSchema.new(name, definition, comment)
+  end
+
+  def initialize(name, definition, comment)
     @name    = name
     @comment = comment
+    parse_definition(definition)
   end
 
   def to_s
-    return "`#{@name}` (#{@comment})"
+    return "`#{@name}`[#{@type}] (#{@comment})"
   end
+
+  private
+
+    TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill)
+
+    def parse_definition(definition)
+      terms = definition.split
+      @type = get_type(terms)
+    end
+
+    def get_type(terms)
+      type_elements = Array.new
+      begin
+        type_elements << terms.shift
+      end while terms.size > 0 && TERMS_TO_SUPPLEMENT_TYPE.include?(terms[0])
+      return type_elements.join(' ')
+    end
 end
 
 
@@ -188,7 +205,7 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-e", "--environment=VAL" ) { |v| @config_name = v }
+      opt_parser.on("-e", "--environment=VALUE" ) { |v| @config_name = v }
       opt_parser.parse!(argv)
     end
 end
