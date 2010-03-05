@@ -8,6 +8,9 @@ require 'optparse'
 class CannotGetTableNameException < Exception
 end
 
+class UnsupportedColumnDefinitionException < Exception
+end
+
 class TableSchema
   attr_reader :name, :columns, :primary_key, :unique_keys, :foreign_keys, :indexes
   attr_reader :engine, :default_charset, :comment
@@ -40,7 +43,7 @@ class TableSchema
     def get_table_name_at_top(line)
       re = /^\s*CREATE TABLE `(\w+)` \(\s*$/
       m = Regexp.compile(re).match(line)
-      raise CannotGetTableNameException unless m
+      raise CannotGetTableNameException.new("in \"#{line}\"") unless m
       return m[1]
     end
 end
@@ -65,17 +68,28 @@ class ColumnSchema
   end
 
   def to_s
-    return "`#{@name}`[#{@type}] (#{@comment})"
+    ar_str = Array.new
+    ar_str << "`#{@name}`:#{@type}"
+    ar_str << "not_null" if @not_null
+    ar_str << "default=#{@default}" if @default
+    ar_str << "auto_increment" if @auto_increment
+    ar_str << "[#{@comment}]"
+    return ar_str.join(' ')
   end
 
   private
 
-    TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill)
-
     def parse_definition(definition)
       terms = definition.split
       @type = get_type(terms)
+      begin
+        @not_null, @default, @auto_increment = get_null_default_and_auto_increment(terms)
+      rescue UnsupportedColumnDefinitionException => evar
+        raise UnsupportedColumnDefinitionException.new(evar.message + " in \"#{definition}\"")
+      end
     end
+
+    TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill binary ascii unicode)
 
     def get_type(terms)
       type_elements = Array.new
@@ -83,6 +97,29 @@ class ColumnSchema
         type_elements << terms.shift
       end while terms.size > 0 && TERMS_TO_SUPPLEMENT_TYPE.include?(terms[0])
       return type_elements.join(' ')
+    end
+
+    #  [NOT NULL | NULL] [DEFAULT default_value] [AUTO_INCREMENT]
+    def get_null_default_and_auto_increment(terms)
+      not_null = false
+      default = nil
+      auto_increment = false
+      while terms.size > 0
+        if terms[0] == 'NOT' && terms[1] == 'NULL'
+          not_null = true
+          terms.shift; terms.shift
+        elsif terms[0] == 'default'
+          default = terms[1]
+          terms.shift; terms.shift
+        elsif terms[0] == 'auto_increment'
+          auto_increment = true
+          terms.shift
+        else
+          str_terms = terms.join(' ')
+          raise UnsupportedColumnDefinitionException.new("Cannot handle \"#{str_terms}\"")
+        end
+      end
+      return not_null, default, auto_increment
     end
 end
 
@@ -143,7 +180,7 @@ class Schezer
     sql = "SHOW CREATE TABLE #{name}"
     begin
       result = get_query_result(sql)
-    rescue
+    rescue CannotGetTableNameException => evar
       exit_with_msg("Failed to get schema for TABLE '#{name}'")
     end
     schema = result.fetch_hash['Create Table']
