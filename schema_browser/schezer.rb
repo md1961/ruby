@@ -19,11 +19,11 @@ end
 
 class TableSchema
   attr_reader :name, :columns, :primary_key, :unique_keys, :foreign_keys, :keys
-  attr_reader :engine, :auto_increment, :default_charset, :comment
+  attr_reader :engine, :auto_increment, :default_charset, :max_rows, :comment
 
   def initialize
-    @name    = nil
-    @columns = Array.new
+    @name         = nil
+    @columns      = Array.new
     @primary_key  = Array.new
     @unique_keys  = Array.new
     @foreign_keys = Array.new
@@ -52,6 +52,7 @@ class TableSchema
     end
     schemas << "engine=#{@engine || '(n/a)'}"
     schemas << "default_charset=#{@default_charset || '(n/a)'}"
+    schemas << "max_rows=#{@max_rows || '(n/a)'}"
     schemas << "comment=#{@comment || '(n/a)'}"
     return schemas.join("\n")
   end
@@ -72,7 +73,7 @@ class TableSchema
       get_table_options(line)
     end
 
-    RE_PK = /^\s*PRIMARY KEY\s+\(`(\w+)`\),?\s*$/
+    RE_PK = /^\s*PRIMARY KEY\s+\(`([\w`, ]+)`\),?\s*$/
 
     def get_key(line)
       if m = Regexp.compile(RE_PK).match(line)
@@ -80,8 +81,8 @@ class TableSchema
         @primary_key = m[1].split(/`,\s*`/)
         return true
       end
-      if unique = UniqueKey.parse(line)
-        @unique_keys << unique
+      if key = Key.parse(line)
+        (key.unique? ? @unique_keys : @keys) << key
         return true
       end
       if foreign = ForeignKey.parse(line)
@@ -99,7 +100,7 @@ class TableSchema
       return m[1]
     end
 
-    RE_TABLE_OPTIONS = /^\s*\)\s+ENGINE=(\w+)\s+AUTO_INCREMENT=(\d+)\s+DEFAULT CHARSET=(\w+)\s+COMMENT='(.+)'\s*$/
+    RE_TABLE_OPTIONS = /^\s*\)\s+ENGINE=(\w+)(?:\s+AUTO_INCREMENT=(\d+))?\s+DEFAULT CHARSET=(\w+)(?:\s+MAX_ROWS=(\d+))?(?:\s+COMMENT='(.+)')?\s*$/
 
     def get_table_options(line)
       m = Regexp.compile(RE_TABLE_OPTIONS).match(line)
@@ -107,7 +108,8 @@ class TableSchema
       @engine          = m[1]
       @auto_increment  = m[2]
       @default_charset = m[3]
-      @comment         = m[4]
+      @max_rows        = m[4]
+      @comment         = m[5]
     end
 end
 
@@ -145,6 +147,13 @@ class ColumnSchema
 
     def parse_definition(definition)
       terms = definition.split
+      # Process a type such as "set('a','b c','d e f')".
+      if terms[0][0, 4] == 'set(' && terms[0].index(')').nil?
+        begin
+          terms[0] += (term = terms.delete_at(1))
+        end until term.index(')')
+      end
+
       @type = get_type(terms)
       begin
         @not_null, @default, @auto_increment = get_null_default_and_auto_increment(terms)
@@ -164,6 +173,7 @@ class ColumnSchema
     end
 
     #  [NOT NULL | NULL] [DEFAULT default_value] [AUTO_INCREMENT]
+    # "set('cumulative','volumetic','decline','material balance','simulation','etc') default NULL"
     def get_null_default_and_auto_increment(terms)
       not_null = false
       default = nil
@@ -173,8 +183,13 @@ class ColumnSchema
           not_null = true
           terms.shift; terms.shift
         elsif terms[0] == 'default'
-          default = terms[1]
-          terms.shift; terms.shift
+          terms.shift
+          default = terms.shift
+          if /^'[^']+$/ =~ default # unclosed quotation
+            begin
+              default += ' ' + (term = terms.shift)
+            end until term.index("'")
+          end
         elsif terms[0] == 'auto_increment'
           auto_increment = true
           terms.shift
@@ -187,22 +202,28 @@ class ColumnSchema
     end
 end
 
-class UniqueKey
+class Key
   attr_reader :name, :column_names
 
-  RE = /^\s*UNIQUE KEY\s+`(\w+)`\s+\(`([\w`, ]+)`\),?\s*$/
+  RE = /^\s*(UNIQUE )?KEY\s+`(\w+)`\s+\(`([\w`, ]+)`\),?\s*$/
 
   def self.parse(line)
     m = Regexp.compile(RE).match(line)
     return nil unless m
-    name = m[1]
-    column_names = m[2].split(/`,\s*`/)
-    return UniqueKey.new(name, column_names)
+    is_unique = m[1] && /UNIQUE +/ =~ m[1]
+    name = m[2]
+    column_names = m[3].split(/`,\s*`/)
+    return Key.new(name, column_names, is_unique)
   end
 
-  def initialize(name, column_names)
+  def initialize(name, column_names, is_unique)
     @name = name
     @column_names = column_names
+    @is_unique = is_unique
+  end
+
+  def unique?
+    return @is_unique
   end
 
   def to_s
@@ -216,7 +237,7 @@ class ForeignKey
   DEFAULT_ON_UPDATE = "RESTRICT"
   DEFAULT_ON_DELETE = "RESTRICT"
 
-  RE = /^\s*CONSTRAINT\s+`(\w+)`\s+FOREIGN KEY\s+\(`(\w+)`\)\s+REFERENCES\s+`(\w+)`\s+\(`(\w+)`\)(?:\s+ON DELETE (\w+))?(?:\s+ON UPDATE (\w+))?\s*$,?\s*/
+  RE = /^\s*CONSTRAINT\s+`(\w+)`\s+FOREIGN KEY\s+\(`(\w+)`\)\s+REFERENCES\s+`(\w+)`\s+\(`(\w+)`\)(?:\s+ON DELETE ([\w ]+))?(?:\s+ON UPDATE ([\w ]+))?\s*,?\s*$/
 
   def self.parse(line)
     m = Regexp.compile(RE).match(line)
@@ -266,6 +287,14 @@ class Schezer
     @argv = argv
   end
 
+  COMMAND_HELPS = {
+    :raw   => "raw (table_name|all): Output raw table schema (all for all tables)",
+    :table => "table (table_name|all): Output parsed table schema (all for all tables)",
+    :all   => "all: Output all the table names",
+  }
+
+  JOINT_TABLE_OUTPUTS = "\n#{'=' * 10}\n"
+
   def execute
     command = @argv.shift
     unless command
@@ -273,23 +302,37 @@ class Schezer
       return
     end
 
-    case command
-    when 'raw'
-      table_name = @argv.shift
-      puts get_raw_table_schema(table_name)
-    when 'table'
-      table_name = @argv.shift
-      ts = parse_table_schema(table_name)
-      puts ts
-    when 'all'
+    next_arg = @argv.shift
+    table_names = next_arg == 'all' ? get_table_names : [next_arg]
+
+    case command.intern
+    when :raw
+      outs = Array.new
+      table_names.each do |table_name|
+        raw_schema = get_raw_table_schema(table_name)
+        next unless raw_schema
+        outs << raw_schema
+      end
+      puts outs.join(JOINT_TABLE_OUTPUTS)
+    when :table
+      outs = Array.new
+      table_names.each do |table_name|
+        schema = parse_table_schema(table_name)
+        next unless schema
+        outs << schema
+      end
+      puts outs.join(JOINT_TABLE_OUTPUTS)
+    when :all
       puts get_table_names.join(' ')
     else
       exit_with_msg("Unknown command '#{command}'")
     end
   end
 
+  # Return nil if VIEW
   def parse_table_schema(name)
     raw_schema = get_raw_table_schema(name)
+    return nil unless raw_schema
     ts = TableSchema.new
     ts.parse_raw_schema(raw_schema.split("\n"))
     return ts
@@ -303,6 +346,7 @@ class Schezer
     return names
   end
 
+  # Return nil if VIEW
   def get_raw_table_schema(name)
     sql = "SHOW CREATE TABLE #{name}"
     begin
