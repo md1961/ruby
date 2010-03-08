@@ -3,6 +3,7 @@
 require 'mysql'
 require 'yaml'
 require 'optparse'
+require 'rexml/document'
 
 
 class CannotGetTableNameException < Exception
@@ -55,6 +56,15 @@ class TableSchema
     schemas << "max_rows=#{@max_rows || '(n/a)'}"
     schemas << "comment=#{@comment || '(n/a)'}"
     return schemas.join("\n")
+  end
+
+  ROOT_ELEMENT_NAME = 'table'
+
+  def to_xml
+    root_element = REXML::Element.new(ROOT_ELEMENT_NAME)
+    root_element.add_attribute('name', @name)
+
+    return root_element
   end
 
   private
@@ -290,7 +300,8 @@ class Schezer
   COMMAND_HELPS = {
     :raw   => "raw (table_name|all): Output raw table schema (all for all tables)",
     :table => "table (table_name|all): Output parsed table schema (all for all tables)",
-    :all   => "all: Output all the table names",
+    :names => "names: Output all the table names",
+    :xml   => "xml (table_name|all): Output schema in XML (all for all tables)",
   }
 
   JOINT_TABLE_OUTPUTS = "\n#{'=' * 10}\n"
@@ -306,24 +317,30 @@ class Schezer
     table_names = next_arg == 'all' ? get_table_names : [next_arg]
 
     case command.intern
-    when :raw
+    when :raw, :table
       outs = Array.new
       table_names.each do |table_name|
-        raw_schema = get_raw_table_schema(table_name)
-        next unless raw_schema
-        outs << raw_schema
-      end
-      puts outs.join(JOINT_TABLE_OUTPUTS)
-    when :table
-      outs = Array.new
-      table_names.each do |table_name|
-        schema = parse_table_schema(table_name)
+        if command.intern == :raw
+          schema = get_raw_table_schema(table_name)
+        else
+          schema = parse_table_schema(table_name)
+        end
         next unless schema
         outs << schema
       end
       puts outs.join(JOINT_TABLE_OUTPUTS)
-    when :all
+    when :names
       puts get_table_names.join(' ')
+    when :xml
+      xml_doc = to_xml
+      root_element = xml_doc.root
+      table_names.each do |table_name|
+        schema = parse_table_schema(table_name)
+        next unless schema
+        root_element.add_element(schema.to_xml)
+      end
+      xml_doc.write($stderr, 1)
+      puts
     else
       exit_with_msg("Unknown command '#{command}'")
     end
@@ -365,6 +382,20 @@ class Schezer
   end
 
   private
+
+    ROOT_ELEMENT_NAME = 'table_schema'
+
+    def to_xml
+      xml_doc = REXML::Document.new
+      xml_doc.add(REXML::XMLDecl.new(version="1.0", encoding="utf-8"))
+
+      root_element = REXML::Element.new(ROOT_ELEMENT_NAME)
+      root_element.add_attribute('host', @host)
+      root_element.add_attribute('database', @database)
+      xml_doc.add_element(root_element)
+
+      return xml_doc
+    end
 
     def get_query_result(sql)
       return @conn.query(sql)
@@ -413,8 +444,8 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-f", "--config_file=VALUE" ) { |v| @config_filename = v }
-      opt_parser.on("-e", "--environment=VALUE" ) { |v| @config_name     = v }
+      opt_parser.on("-f", "--config_file=VALUE") { |v| @config_filename = v }
+      opt_parser.on("-e", "--environment=VALUE") { |v| @config_name     = v }
       opt_parser.parse!(argv)
     end
 end
