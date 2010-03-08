@@ -288,6 +288,8 @@ class Schezer
   def initialize(argv)
     prepare_options(argv)
 
+    exit_with_help if argv.empty?
+
     configure(@config_filename, @config_name)
     exit_with_msg("Cannot read necessary configuration\n#{self.to_s}") unless configuration_suffices?
 
@@ -297,12 +299,12 @@ class Schezer
     @argv = argv
   end
 
-  COMMAND_HELPS = {
-    :raw   => "raw (table_name|all): Output raw table schema (all for all tables)",
-    :table => "table (table_name|all): Output parsed table schema (all for all tables)",
-    :names => "names: Output all the table names",
-    :xml   => "xml (table_name|all): Output schema in XML (all for all tables)",
-  }
+  COMMAND_HELPS = [
+    "raw (table_name|all): Output raw table schema (all for all tables)",
+    "table (table_name|all): Output parsed table schema (all for all tables)",
+    "names: Output all the table names",
+    "xml (table_name|all): Output schema in XML (all for all tables)",
+  ]
 
   JOINT_TABLE_OUTPUTS = "\n#{'=' * 10}\n"
 
@@ -429,6 +431,19 @@ class Schezer
       return true
     end
 
+    COMMAND_OPTIONS_AND_SUBCOMMAND = "-f DB_config_filename -e environment command [table_name|all]"
+
+    def exit_with_help
+      puts "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
+      puts "command is one of the followings:"
+      indent = ' ' * 2
+      COMMAND_HELPS.each do |explanation|
+        puts sprintf("%s%s\n", indent, explanation)
+      end
+
+      exit(0)
+    end
+
     def exit_with_msg(msg=nil, exit_no=1)
       STDERR.puts msg if msg
       exit(exit_no)
@@ -437,7 +452,7 @@ class Schezer
     def exit_with_usage(msg=nil, exit_no=1)
       msg_list = Array.new
       msg_list << msg if msg
-      msg_list << "Usage: #{$0} DB_config_filename ...?"
+      msg_list << "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
       exit_with_msg(msg_list.join("\n"), exit_no)
     end
 
