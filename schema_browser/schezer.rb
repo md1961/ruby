@@ -1,4 +1,4 @@
-#! /bin/env ruby
+#! /usr/bin/env ruby
 
 require 'mysql'
 require 'yaml'
@@ -190,8 +190,7 @@ class Schezer
   def initialize(argv)
     prepare_options(argv)
 
-    config_filename = argv.shift
-    configure(config_filename, @config_name)
+    configure(@config_filename, @config_name)
     exit_with_msg("Cannot read necessary configuration\n#{self.to_s}") unless configuration_suffices?
 
     @conn = Mysql.new(@host, @username, @password, @database)
@@ -211,9 +210,9 @@ class Schezer
     when 'table'
       table_name = @argv.shift
       ts = parse_table_schema(table_name)
-
       puts ts
-
+    when 'all'
+      puts get_table_names.join(' ')
     else
       exit_with_msg("Unknown command '#{command}'")
     end
@@ -300,7 +299,8 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-e", "--environment=VALUE" ) { |v| @config_name = v }
+      opt_parser.on("-e", "--environment=VALUE" ) { |v| @config_name     = v }
+      opt_parser.on("-f", "--config_file=VALUE" ) { |v| @config_filename = v }
       opt_parser.parse!(argv)
     end
 end
