@@ -35,10 +35,19 @@ class TableSchema
   end
 
   def to_s
-    columns = @columns.join("\n")
-    primary_key = "primary key = `#{@primary_key.join('`,`')}`"
-    unique_keys = @unique_keys.join("\n")
-    return "TABLE `#{@name}`\n#{columns}\n#{primary_key}\n#{unique_keys}"
+    schemas = Array.new
+    schemas << "TABLE `#{@name}`"
+    @columns.each do |column|
+      schemas << column.to_s
+    end
+    schemas << "primary key = `#{@primary_key.join('`,`')}`" if primary_key
+    @unique_keys.each do |unique|
+      schemas << unique.to_s
+    end
+    @foreign_keys.each do |foreign|
+      schemas << foreign.to_s
+    end
+    return schemas.join("\n")
   end
 
   private
@@ -68,6 +77,10 @@ class TableSchema
       end
       if unique = UniqueKey.parse(line)
         @unique_keys << unique
+        return true
+      end
+      if foreign = ForeignKey.parse(line)
+        @foreign_keys << foreign
         return true
       end
       return false
@@ -178,6 +191,44 @@ class UniqueKey
 
   def to_s
     return "unique key `#{name}` (`#{column_names.join('`,`')}`)"
+  end
+end
+
+class ForeignKey
+  attr_reader :name, :column_name, :ref_table_name, :ref_column_name, :on_update, :on_delete
+
+  DEFAULT_ON_UPDATE = "RESTRICT"
+  DEFAULT_ON_DELETE = "RESTRICT"
+
+  #         CONSTRAINT   `$    `   FOREIGN KEY    (`$    ` )   REFERENCES   `$    `    (`$    ` ) ON UPDATE CASCADE
+  RE = /^\s*CONSTRAINT\s+`(\w+)`\s+FOREIGN KEY\s+\(`(\w+)`\)\s+REFERENCES\s+`(\w+)`\s+\(`(\w+)`\)(?:\s+ON DELETE (\w+))?(?:\s+ON UPDATE (\w+))?\s*$,?\s*/
+
+  def self.parse(line)
+    m = Regexp.compile(RE).match(line)
+    return nil unless m
+    name = m[1]
+    column_name = m[2]
+    ref_table_name = m[3]
+    ref_column_name = m[4]
+    on_delete = m[5]
+    on_update = m[6]
+    on_delete = DEFAULT_ON_DELETE unless on_delete
+    on_update = DEFAULT_ON_UPDATE unless on_update
+    return ForeignKey.new(name, column_name, ref_table_name, ref_column_name, on_delete, on_update)
+  end
+
+  def initialize(name, column_name, ref_table_name, ref_column_name, on_delete, on_update)
+    @name = name
+    @column_name = column_name
+    @ref_table_name = ref_table_name
+    @ref_column_name = ref_column_name
+    @on_delete = on_delete
+    @on_update = on_update
+  end
+
+  def to_s
+    return "foreign key `#{@name}` (`#{@columns}`) refs `#{@ref_table_name}` (`#{@ref_column_name}`)\n" \
+         + "    on update #{@on_update} on delete #{@on_delete}"
   end
 end
 
