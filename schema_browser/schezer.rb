@@ -8,6 +8,9 @@ require 'optparse'
 class CannotGetTableNameException < Exception
 end
 
+class CannotGetTableOptionsException < Exception
+end
+
 class UnsupportedColumnDefinitionException < Exception
 end
 
@@ -16,7 +19,7 @@ end
 
 class TableSchema
   attr_reader :name, :columns, :primary_key, :unique_keys, :foreign_keys, :keys
-  attr_reader :engine, :default_charset, :comment
+  attr_reader :engine, :auto_increment, :default_charset, :comment
 
   def initialize
     @name    = nil
@@ -47,6 +50,9 @@ class TableSchema
     @foreign_keys.each do |foreign|
       schemas << foreign.to_s
     end
+    schemas << "engine=#{@engine || '(n/a)'}"
+    schemas << "default_charset=#{@default_charset || '(n/a)'}"
+    schemas << "comment=#{@comment || '(n/a)'}"
     return schemas.join("\n")
   end
 
@@ -62,9 +68,8 @@ class TableSchema
         @columns << column_schema
         return
       end
-      if get_key(line)
-        return
-      end
+      return if get_key(line)
+      get_table_options(line)
     end
 
     RE_PK = /^\s*PRIMARY KEY\s+\(`(\w+)`\),?\s*$/
@@ -92,6 +97,17 @@ class TableSchema
       m = Regexp.compile(RE_TABLE_NAME).match(line)
       raise CannotGetTableNameException.new("in \"#{line}\"") unless m
       return m[1]
+    end
+
+    RE_TABLE_OPTIONS = /^\s*\)\s+ENGINE=(\w+)\s+AUTO_INCREMENT=(\d+)\s+DEFAULT CHARSET=(\w+)\s+COMMENT='(.+)'\s*$/
+
+    def get_table_options(line)
+      m = Regexp.compile(RE_TABLE_OPTIONS).match(line)
+      raise CannotGetTableOptionsException.new("in \"#{line}\"") unless m
+      @engine          = m[1]
+      @auto_increment  = m[2]
+      @default_charset = m[3]
+      @comment         = m[4]
     end
 end
 
@@ -200,7 +216,6 @@ class ForeignKey
   DEFAULT_ON_UPDATE = "RESTRICT"
   DEFAULT_ON_DELETE = "RESTRICT"
 
-  #         CONSTRAINT   `$    `   FOREIGN KEY    (`$    ` )   REFERENCES   `$    `    (`$    ` ) ON UPDATE CASCADE
   RE = /^\s*CONSTRAINT\s+`(\w+)`\s+FOREIGN KEY\s+\(`(\w+)`\)\s+REFERENCES\s+`(\w+)`\s+\(`(\w+)`\)(?:\s+ON DELETE (\w+))?(?:\s+ON UPDATE (\w+))?\s*$,?\s*/
 
   def self.parse(line)
@@ -236,7 +251,8 @@ end
 class Schezer
 
   # config_filename: YAML 形式のデータベース接続情報を含んだファイルのファイル名。
-  #                  形式は Rails の config/database.yml と同等
+  #                  形式は Rails の config/database.yml と同等。
+  #                  次の config_name が指定されなかった場合は YAMLファイルの最上層を探す
   # config_name:     接続情報の名称。Rails の環境名にあたる
   def initialize(argv)
     prepare_options(argv)
@@ -252,7 +268,10 @@ class Schezer
 
   def execute
     command = @argv.shift
-    return unless command
+    unless command
+      STDERR.puts "No command specified"
+      return
+    end
 
     case command
     when 'raw'
@@ -350,8 +369,8 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-e", "--environment=VALUE" ) { |v| @config_name     = v }
       opt_parser.on("-f", "--config_file=VALUE" ) { |v| @config_filename = v }
+      opt_parser.on("-e", "--environment=VALUE" ) { |v| @config_name     = v }
       opt_parser.parse!(argv)
     end
 end
