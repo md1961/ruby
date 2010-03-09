@@ -67,26 +67,16 @@ class TableSchema
     root_element.add_attribute('name', @name)
 
     @columns.each do |column|
-      element_column = REXML::Element.new('column')
-      element_column.add_attribute('name', column.name)
-      element_column.add_attribute('primary_key', column.primary_key?)
-      element_column.add_attribute('not_null', column.not_null?)
-      element_column.add_attribute('auto_increment', column.auto_increment?)
+      root_element << column.to_xml
+    end
 
-      element = REXML::Element.new('type')
-      element.add_text(column.type)
-      element_column << element
+    @unique_keys.each do |key|
+      root_element << key.to_xml
+    end
 
-      element = REXML::Element.new('default')
-      element.add_text(column.default)
-      element_column << element
 
-      element = REXML::Element.new('comment')
-      cdata = REXML::CData.new(column.comment || "")
-      element.add(cdata)
-      element_column << element
-
-      root_element.add(element_column)
+    @keys.each do |key|
+      root_element << key.to_xml
     end
 
     return root_element
@@ -201,6 +191,29 @@ class ColumnSchema
     return ar_str.join(' ')
   end
 
+  def to_xml
+    element_column = REXML::Element.new('column')
+    element_column.add_attribute('name', @name)
+    element_column.add_attribute('primary_key', @is_primary_key)
+    element_column.add_attribute('not_null', @not_null)
+    element_column.add_attribute('auto_increment', @auto_increment)
+
+    element = REXML::Element.new('type')
+    element.add_text(@type)
+    element_column << element
+
+    element = REXML::Element.new('default')
+    element.add_text(@default)
+    element_column << element
+
+    element = REXML::Element.new('comment')
+    cdata = REXML::CData.new(@comment || "")
+    element.add(cdata)
+    element_column << element
+
+    return element_column
+  end
+
   private
 
     def parse_definition(definition)
@@ -268,7 +281,7 @@ class Key
   def self.parse(line)
     m = Regexp.compile(RE).match(line)
     return nil unless m
-    is_unique = m[1] && /UNIQUE +/ =~ m[1]
+    is_unique = m[1] && ! (/UNIQUE +/ =~ m[1]).nil?
     name = m[2]
     column_names = m[3].split(/`,\s*`/)
     return Key.new(name, column_names, is_unique)
@@ -284,8 +297,26 @@ class Key
     return @is_unique
   end
 
+  def key_name
+    return "#{@is_unique ? 'unique_' : ''}key"
+  end
+
   def to_s
-    return "unique key `#{name}` (`#{column_names.join('`,`')}`)"
+    return "#{key_name} `#{name}` (`#{column_names.join('`,`')}`)"
+  end
+
+  def to_xml
+    element_key = REXML::Element.new(key_name)
+    element_key.add_attribute('name', @name)
+    element_key.add_attribute('unique', @is_unique)
+
+    @column_names.each do |column_name|
+      element = REXML::Element.new('column_name')
+      element.add_text(column_name)
+      element_key << element
+    end
+
+    return element_key
   end
 end
 
