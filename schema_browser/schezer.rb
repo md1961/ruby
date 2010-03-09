@@ -20,7 +20,7 @@ end
 
 class TableSchema
   attr_reader :name, :columns, :primary_keys, :unique_keys, :foreign_keys, :keys
-  attr_reader :engine, :auto_increment, :default_charset, :max_rows, :comment
+  attr_reader :engine, :auto_increment, :default_charset, :collate, :max_rows, :comment
 
   DEFAULT_COLUMN_COMMENT_FOR_ID = "RDBMSが生成する一意のID番号"
 
@@ -58,6 +58,7 @@ class TableSchema
     end
     schemas << "engine=#{          @engine          || '(n/a)'}"
     schemas << "default_charset=#{ @default_charset || '(n/a)'}"
+    schemas << "collate=#{         @collate         || '(n/a)'}"
     schemas << "max_rows=#{        @max_rows        || '(n/a)'}"
     schemas << "comment=#{         @comment         || '(n/a)'}"
     return schemas.join("\n")
@@ -139,6 +140,7 @@ class TableSchema
       ^\s*\)\s+ENGINE=(\w+)
       (?:\s+AUTO_INCREMENT=(\d+))?
       (?:\s+DEFAULT\ CHARSET=(\w+))?
+      (?:\s+COLLATE=(\w+))?
       (?:\s+MAX_ROWS=(\d+))?
       (?:\s+COMMENT='(.+)')?\s*$
     !x
@@ -149,8 +151,9 @@ class TableSchema
       @engine          = m[1]
       @auto_increment  = m[2]
       @default_charset = m[3]
-      @max_rows        = m[4]
-      @comment         = m[5]
+      @collate         = m[4]
+      @max_rows        = m[5]
+      @comment         = m[6]
     end
 
     def add_table_options_as_xml(root_element)
@@ -162,6 +165,10 @@ class TableSchema
 
       element = REXML::Element.new('default_charset')
       element.add_text(@default_charset)
+      element_options << element
+
+      element = REXML::Element.new('collate')
+      element.add_text(@collate)
       element_options << element
 
       element = REXML::Element.new('max_rows')
@@ -276,7 +283,7 @@ class ColumnSchema
       end
     end
 
-    TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill binary ascii unicode)
+    TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill binary ascii unicode collate utf8_unicode_ci)
 
     def get_type(terms)
       type_elements = Array.new
