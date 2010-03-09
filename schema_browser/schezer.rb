@@ -70,13 +70,10 @@ class TableSchema
       root_element << column.to_xml
     end
 
-    @unique_keys.each do |key|
-      root_element << key.to_xml
-    end
-
-
-    @keys.each do |key|
-      root_element << key.to_xml
+    [@unique_keys, @foreign_keys, @keys].each do |keys|
+      keys.each do |key|
+        root_element << key.to_xml
+      end
     end
 
     return root_element
@@ -131,7 +128,13 @@ class TableSchema
       return m[1]
     end
 
-    RE_TABLE_OPTIONS = /^\s*\)\s+ENGINE=(\w+)(?:\s+AUTO_INCREMENT=(\d+))?\s+DEFAULT CHARSET=(\w+)(?:\s+MAX_ROWS=(\d+))?(?:\s+COMMENT='(.+)')?\s*$/
+    RE_TABLE_OPTIONS = %r!
+      ^\s*\)\s+ENGINE=(\w+)
+      (?:\s+AUTO_INCREMENT=(\d+))?
+      \s+DEFAULT\ CHARSET=(\w+)
+      (?:\s+MAX_ROWS=(\d+))?
+      (?:\s+COMMENT='(.+)')?\s*$
+    !x
 
     def get_table_options(line)
       m = Regexp.compile(RE_TABLE_OPTIONS).match(line)
@@ -355,6 +358,33 @@ class ForeignKey
     return "foreign key `#{@name}` (`#{@columns}`) refs `#{@ref_table_name}` (`#{@ref_column_name}`)\n" \
          + "    on update #{@on_update} on delete #{@on_delete}"
   end
+
+  def to_xml
+    element_key = REXML::Element.new('foreign_key')
+    element_key.add_attribute('name', @name)
+
+    element = REXML::Element.new('column_name')
+    element.add_text(@column_name)
+    element_key << element
+
+    element = REXML::Element.new('reference_table_name')
+    element.add_text(@ref_table_name)
+    element_key << element
+
+    element = REXML::Element.new('reference_column_name')
+    element.add_text(@ref_column_name)
+    element_key << element
+
+    element = REXML::Element.new('on_delete')
+    element.add_text(@on_delete)
+    element_key << element
+
+    element = REXML::Element.new('on_update')
+    element.add_text(@on_update)
+    element_key << element
+
+    return element_key
+  end
 end
 
 
@@ -420,7 +450,7 @@ class Schezer
         next unless schema
         root_element.add_element(schema.to_xml)
       end
-      xml_doc.write($stderr, 1)
+      xml_doc.write($stdout, 1)
       puts
     else
       exit_with_msg("Unknown command '#{command}'")
