@@ -19,13 +19,13 @@ class DuplicatePrimaryKeyException < Exception
 end
 
 class TableSchema
-  attr_reader :name, :columns, :primary_key, :unique_keys, :foreign_keys, :keys
+  attr_reader :name, :columns, :primary_keys, :unique_keys, :foreign_keys, :keys
   attr_reader :engine, :auto_increment, :default_charset, :max_rows, :comment
 
   def initialize
     @name         = nil
     @columns      = Array.new
-    @primary_key  = Array.new
+    @primary_keys = Array.new
     @unique_keys  = Array.new
     @foreign_keys = Array.new
     @keys         = Array.new
@@ -36,6 +36,8 @@ class TableSchema
       next if /^\s*$/ =~ line
       parse_raw_line(line)
     end
+
+    set_primary_keys_to_columns
   end
 
   def to_s
@@ -44,7 +46,7 @@ class TableSchema
     @columns.each do |column|
       schemas << column.to_s
     end
-    schemas << "primary key = `#{@primary_key.join('`,`')}`" if primary_key
+    schemas << "primary key = `#{@primary_keys.join('`,`')}`" if @primary_keys
     @unique_keys.each do |unique|
       schemas << unique.to_s
     end
@@ -63,6 +65,29 @@ class TableSchema
   def to_xml
     root_element = REXML::Element.new(ROOT_ELEMENT_NAME)
     root_element.add_attribute('name', @name)
+
+    @columns.each do |column|
+      element_column = REXML::Element.new('column')
+      element_column.add_attribute('name', column.name)
+      element_column.add_attribute('primary_key', column.primary_key?)
+      element_column.add_attribute('not_null', column.not_null?)
+      element_column.add_attribute('auto_increment', column.auto_increment?)
+
+      element = REXML::Element.new('type')
+      element.add_text(column.type)
+      element_column << element
+
+      element = REXML::Element.new('default')
+      element.add_text(column.default)
+      element_column << element
+
+      element = REXML::Element.new('comment')
+      cdata = REXML::CData.new(column.comment || "")
+      element.add(cdata)
+      element_column << element
+
+      root_element.add(element_column)
+    end
 
     return root_element
   end
@@ -87,8 +112,8 @@ class TableSchema
 
     def get_key(line)
       if m = Regexp.compile(RE_PK).match(line)
-        raise DuplicatePrimaryKeyException.new("#{@primary_key} and #{m[1]}") if @primary_key.size > 0
-        @primary_key = m[1].split(/`,\s*`/)
+        raise DuplicatePrimaryKeyException.new("#{@primary_keys} and #{m[1]}") if @primary_keys.size > 0
+        @primary_keys = m[1].split(/`,\s*`/)
         return true
       end
       if key = Key.parse(line)
@@ -100,6 +125,12 @@ class TableSchema
         return true
       end
       return false
+    end
+
+    def set_primary_keys_to_columns
+      @columns.each do |column|
+        column.is_primary_key = true if @primary_keys.include?(column.name)
+      end
     end
 
     RE_TABLE_NAME = /^\s*CREATE TABLE `(\w+)` \(\s*$/
@@ -124,7 +155,7 @@ class TableSchema
 end
 
 class ColumnSchema
-  attr_reader :name, :type, :not_null, :default, :auto_increment, :comment
+  attr_reader :name, :type, :default, :comment
 
   RE = /^\s*`(\w+)`\s+(.*?)\s*(?:COMMENT\s+'(.*)')?\s*,?\s*$/
 
@@ -141,6 +172,23 @@ class ColumnSchema
     @name    = name
     @comment = comment
     parse_definition(definition)
+    @is_primary_key = false
+  end
+
+  def not_null?
+    return @not_null
+  end
+
+  def auto_increment?
+    return @auto_increment
+  end
+
+  def primary_key?
+    return @is_primary_key
+  end
+
+  def is_primary_key=(value)
+    @is_primary_key = value
   end
 
   def to_s
