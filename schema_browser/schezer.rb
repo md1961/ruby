@@ -131,7 +131,7 @@ class TableSchema
     RE_TABLE_OPTIONS = %r!
       ^\s*\)\s+ENGINE=(\w+)
       (?:\s+AUTO_INCREMENT=(\d+))?
-      \s+DEFAULT\ CHARSET=(\w+)
+      (?:\s+DEFAULT\ CHARSET=(\w+))?
       (?:\s+MAX_ROWS=(\d+))?
       (?:\s+COMMENT='(.+)')?\s*$
     !x
@@ -150,7 +150,12 @@ end
 class ColumnSchema
   attr_reader :name, :type, :default, :comment
 
-  RE = /^\s*`(\w+)`\s+(.*?)\s*(?:COMMENT\s+'(.*)')?\s*,?\s*$/
+  RE = %r!
+    ^\s*`(\w+)`
+    \s+(.*?)
+    \s*(?:COMMENT\s+'(.*)')?
+    \s*,?\s*$
+  !x
 
   def self.parse(line)
     m = Regexp.compile(RE).match(line)
@@ -264,6 +269,9 @@ class ColumnSchema
               default += ' ' + (term = terms.shift)
             end until term.index("'")
           end
+          if /^'([^']+)'$/ =~ default # removed single quotations
+            default = $1
+          end
         elsif terms[0] == 'auto_increment'
           auto_increment = true
           terms.shift
@@ -279,7 +287,12 @@ end
 class Key
   attr_reader :name, :column_names
 
-  RE = /^\s*(UNIQUE )?KEY\s+`(\w+)`\s+\(`([\w`, ]+)`\),?\s*$/
+  RE = %r!
+    ^\s*(UNIQUE\ )?KEY
+    \s+`(\w+)`
+    \s+\(`([\w`,\ ]+)`\)
+    ,?\s*$
+  !x
 
   def self.parse(line)
     m = Regexp.compile(RE).match(line)
@@ -329,7 +342,14 @@ class ForeignKey
   DEFAULT_ON_UPDATE = "RESTRICT"
   DEFAULT_ON_DELETE = "RESTRICT"
 
-  RE = /^\s*CONSTRAINT\s+`(\w+)`\s+FOREIGN KEY\s+\(`(\w+)`\)\s+REFERENCES\s+`(\w+)`\s+\(`(\w+)`\)(?:\s+ON DELETE ([\w ]+))?(?:\s+ON UPDATE ([\w ]+))?\s*,?\s*$/
+  RE = %r!
+    ^\s*CONSTRAINT\s+`(\w+)`
+    \s+FOREIGN\ KEY\s+\(`(\w+)`\)
+    \s+REFERENCES\s+`(\w+)`\s+\(`(\w+)`\)
+    (?:\s+ON\ DELETE\ (\w+\ ?\w+))?
+    (?:\s+ON\ UPDATE\ (\w+\ ?\w+))?
+    \s*,?\s*$
+  !x
 
   def self.parse(line)
     m = Regexp.compile(RE).match(line)
@@ -443,47 +463,10 @@ class Schezer
     when :names
       puts get_table_names.join(' ')
     when :xml
-      xml_doc = to_xml
-      root_element = xml_doc.root
-      table_names.each do |table_name|
-        schema = parse_table_schema(table_name)
-        next unless schema
-        root_element.add_element(schema.to_xml)
-      end
-      xml_doc.write($stdout, 1)
-      puts
+      output_xml(table_names)
     else
       exit_with_msg("Unknown command '#{command}'")
     end
-  end
-
-  # Return nil if VIEW
-  def parse_table_schema(name)
-    raw_schema = get_raw_table_schema(name)
-    return nil unless raw_schema
-    ts = TableSchema.new
-    ts.parse_raw_schema(raw_schema.split("\n"))
-    return ts
-  end
-
-  def get_table_names
-    sql = "SHOW TABLES"
-    result = get_query_result(sql)
-    names = Array.new
-    result.each do |name| names << name end
-    return names
-  end
-
-  # Return nil if VIEW
-  def get_raw_table_schema(name)
-    sql = "SHOW CREATE TABLE #{name}"
-    begin
-      result = get_query_result(sql)
-    rescue CannotGetTableNameException => evar
-      exit_with_msg("Failed to get schema for TABLE '#{name}'")
-    end
-    schema = result.fetch_hash['Create Table']
-    return schema
   end
 
   def to_s
@@ -493,6 +476,47 @@ class Schezer
   end
 
   private
+
+    # Return nil if VIEW
+    def parse_table_schema(name)
+      raw_schema = get_raw_table_schema(name)
+      return nil unless raw_schema
+      ts = TableSchema.new
+      ts.parse_raw_schema(raw_schema.split("\n"))
+      return ts
+    end
+
+    def get_table_names
+      sql = "SHOW TABLES"
+      result = get_query_result(sql)
+      names = Array.new
+      result.each do |name| names << name end
+      return names
+    end
+
+    # Return nil if VIEW
+    def get_raw_table_schema(name)
+      sql = "SHOW CREATE TABLE #{name}"
+      begin
+        result = get_query_result(sql)
+      rescue CannotGetTableNameException => evar
+        exit_with_msg("Failed to get schema for TABLE '#{name}'")
+      end
+      schema = result.fetch_hash['Create Table']
+      return schema
+    end
+
+    def output_xml(table_names)
+      xml_doc = to_xml
+      root_element = xml_doc.root
+      table_names.each do |table_name|
+        schema = parse_table_schema(table_name)
+        next unless schema
+        root_element.add_element(schema.to_xml)
+      end
+      xml_doc.write($stdout, 1)
+      puts
+    end
 
     ROOT_ELEMENT_NAME = 'table_schema'
 
