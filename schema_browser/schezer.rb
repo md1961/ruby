@@ -464,9 +464,10 @@ class Schezer
   end
 
   COMMAND_HELPS = [
+    "names: Output all the table names",
+    "regexp: Output all the table names which match regular expression",
     "raw (table_name|all): Output raw table schema (all for all tables)",
     "table (table_name|all): Output parsed table schema (all for all tables)",
-    "names: Output all the table names",
     "xml (table_name|all): Output schema in XML (all for all tables)",
   ]
 
@@ -483,6 +484,17 @@ class Schezer
     table_names = next_arg == 'all' ? get_table_names : [next_arg]
 
     case command.intern
+    when :names
+      puts get_table_names.join(' ')
+    when :regexp
+      re = table_names[0]
+      names = Array.new
+      get_table_names.each do |name|
+        if /#{re}/ =~ name
+          names << name
+        end
+      end
+      puts names.size == 0 ? '(none)' : names.join(' ')
     when :raw, :table
       outs = Array.new
       table_names.each do |table_name|
@@ -495,8 +507,6 @@ class Schezer
         outs << schema
       end
       puts outs.join(JOINT_TABLE_OUTPUTS)
-    when :names
-      puts get_table_names.join(' ')
     when :xml
       output_xml(table_names)
     else
@@ -525,7 +535,7 @@ class Schezer
       sql = "SHOW TABLES"
       result = get_query_result(sql)
       names = Array.new
-      result.each do |name| names << name end
+      result.each do |name| names << name[0] end
       return names
     end
 
