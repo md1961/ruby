@@ -22,6 +22,8 @@ class TableSchema
   attr_reader :name, :columns, :primary_keys, :unique_keys, :foreign_keys, :keys
   attr_reader :engine, :auto_increment, :default_charset, :max_rows, :comment
 
+  DEFAULT_COLUMN_COMMENT_FOR_ID = "RDBMSが生成する一意のID番号"
+
   def initialize
     @name         = nil
     @columns      = Array.new
@@ -38,6 +40,7 @@ class TableSchema
     end
 
     set_primary_keys_to_columns
+    set_default_column_comment_for_id
   end
 
   def to_s
@@ -53,10 +56,10 @@ class TableSchema
     @foreign_keys.each do |foreign|
       schemas << foreign.to_s
     end
-    schemas << "engine=#{@engine || '(n/a)'}"
-    schemas << "default_charset=#{@default_charset || '(n/a)'}"
-    schemas << "max_rows=#{@max_rows || '(n/a)'}"
-    schemas << "comment=#{@comment || '(n/a)'}"
+    schemas << "engine=#{          @engine          || '(n/a)'}"
+    schemas << "default_charset=#{ @default_charset || '(n/a)'}"
+    schemas << "max_rows=#{        @max_rows        || '(n/a)'}"
+    schemas << "comment=#{         @comment         || '(n/a)'}"
     return schemas.join("\n")
   end
 
@@ -66,15 +69,13 @@ class TableSchema
     root_element = REXML::Element.new(ROOT_ELEMENT_NAME)
     root_element.add_attribute('name', @name)
 
-    @columns.each do |column|
-      root_element << column.to_xml
-    end
-
-    [@unique_keys, @foreign_keys, @keys].each do |keys|
-      keys.each do |key|
-        root_element << key.to_xml
+    [@columns, @unique_keys, @foreign_keys, @keys].each do |items|
+      items.each do |item|
+        root_element << item.to_xml
       end
     end
+
+    add_table_options_as_xml(root_element)
 
     return root_element
   end
@@ -120,6 +121,12 @@ class TableSchema
       end
     end
 
+    def set_default_column_comment_for_id
+      return if @primary_keys.size > 1
+      column = @columns.find { |column| column.name == @primary_keys[0] }
+      column.comment = DEFAULT_COLUMN_COMMENT_FOR_ID if column.comment_blank?
+    end
+
     RE_TABLE_NAME = /^\s*CREATE TABLE `(\w+)` \(\s*$/
 
     def get_table_name_at_top(line)
@@ -145,10 +152,34 @@ class TableSchema
       @max_rows        = m[4]
       @comment         = m[5]
     end
+
+    def add_table_options_as_xml(root_element)
+      element_options = REXML::Element.new('table_options')
+
+      element = REXML::Element.new('engine')
+      element.add_text(@engine)
+      element_options << element
+
+      element = REXML::Element.new('default_charset')
+      element.add_text(@default_charset)
+      element_options << element
+
+      element = REXML::Element.new('max_rows')
+      element.add_text(@max_rows)
+      element_options << element
+
+      element = REXML::Element.new('comment')
+      cdata = REXML::CData.new(@comment || "")
+      element.add(cdata)
+      element_options << element
+
+      root_element << element_options
+    end
 end
 
 class ColumnSchema
-  attr_reader :name, :type, :default, :comment
+  attr_reader :name, :type, :default
+  attr_accessor :comment
 
   RE = %r!
     ^\s*`(\w+)`
@@ -187,6 +218,10 @@ class ColumnSchema
 
   def is_primary_key=(value)
     @is_primary_key = value
+  end
+
+  def comment_blank?
+    return @comment.nil? || @comment.empty?
   end
 
   def to_s
