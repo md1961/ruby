@@ -558,6 +558,8 @@ class Schezer
       return schema
     end
 
+    XML_INDENT_WHEN_PRETTY = 2
+
     def output_xml(table_names)
       xml_doc = to_xml
       root_element = xml_doc.root
@@ -566,7 +568,8 @@ class Schezer
         next unless schema
         root_element.add_element(schema.to_xml)
       end
-      xml_doc.write($stdout, 1)
+      indent = @is_pretty ? XML_INDENT_WHEN_PRETTY / 2 : -1
+      xml_doc.write($stdout, indent)
       puts
     end
 
@@ -616,7 +619,7 @@ class Schezer
       return true
     end
 
-    COMMAND_OPTIONS_AND_SUBCOMMAND = "-f DB_config_filename -e environment command [table_name|all]"
+    COMMAND_OPTIONS_AND_SUBCOMMAND = "-f DB_config_filename -e environment [options] command [table_name|all]"
 
     def exit_with_help
       puts "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
@@ -646,6 +649,7 @@ class Schezer
       opt_parser = OptionParser.new
       opt_parser.on("-f", "--config_file=VALUE") { |v| @config_filename = v }
       opt_parser.on("-e", "--environment=VALUE") { |v| @config_name     = v }
+      opt_parser.on("--pretty"                 ) { |v| @is_pretty = true }
       opt_parser.parse!(argv)
     end
 end
