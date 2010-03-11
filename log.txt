@@ -1,0 +1,6 @@
+.gitignore
+- Removed 'log.txt'.
+schema_browser/schezer.rb
+(class TableSchema)
+- Added helper sort_foreign_keys_by_column_order() and modified
+  parse_raw_schema() to call it after parsing.

@@ -40,6 +40,7 @@ class TableSchema
     end
 
     set_primary_keys_to_columns
+    sort_foreign_keys_by_column_order
     set_default_column_comment_for_id
   end
 
@@ -120,6 +121,22 @@ class TableSchema
       @columns.each do |column|
         column.is_primary_key = true if @primary_keys.include?(column.name)
       end
+    end
+
+    def sort_foreign_keys_by_column_order
+      map_foreign_keys = Hash.new
+      @foreign_keys.each do |fkey|
+        map_foreign_keys[fkey.column_name] = fkey
+      end
+      foreign_key_column_names = map_foreign_keys.keys
+
+      sorted_keys = Array.new
+      @columns.each do |column|
+        if foreign_key_column_names.include?(column.name)
+          sorted_keys << map_foreign_keys[column.name]
+        end
+      end
+      @foreign_keys = sorted_keys
     end
 
     def set_default_column_comment_for_id
