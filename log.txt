@@ -1,11 +1,3 @@
 schema_browser/schezer.rb
-(class TableSchema)
-- Modified parse_raw_schema() and helper parse_raw_line() to receive
-  argument capitalizes_types.
-(class ColumnSchema)
-- Modified self.parse() and initialize() to receive argument capitalizes_types.
-- Modified helper parse_definition() to receive argument capitalizes_types
-  and do necessary procedure if true.
-(class Schezer)
-- Modified to receive option '--capitalizes_types', prepare @capitalizes_types,
-  and pass it to TableSchema#parse_raw_schema().
+- Fixed set_default_column_comment_for_id() to nil-check local column
+  and return without doing nothing if nil.

@@ -142,6 +142,7 @@ class TableSchema
     def set_default_column_comment_for_id
       return if @primary_keys.size > 1
       column = @columns.find { |column| column.name == @primary_keys[0] }
+      return if column.nil?
       column.comment = DEFAULT_COLUMN_COMMENT_FOR_ID if column.comment_blank?
     end
 
