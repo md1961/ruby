@@ -1,6 +1,11 @@
-.gitignore
-- Removed 'log.txt'.
 schema_browser/schezer.rb
 (class TableSchema)
-- Added helper sort_foreign_keys_by_column_order() and modified
-  parse_raw_schema() to call it after parsing.
+- Modified parse_raw_schema() and helper parse_raw_line() to receive
+  argument capitalizes_types.
+(class ColumnSchema)
+- Modified self.parse() and initialize() to receive argument capitalizes_types.
+- Modified helper parse_definition() to receive argument capitalizes_types
+  and do necessary procedure if true.
+(class Schezer)
+- Modified to receive option '--capitalizes_types', prepare @capitalizes_types,
+  and pass it to TableSchema#parse_raw_schema().

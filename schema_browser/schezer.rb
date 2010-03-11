@@ -33,10 +33,10 @@ class TableSchema
     @keys         = Array.new
   end
 
-  def parse_raw_schema(lines)
+  def parse_raw_schema(lines, capitalizes_types)
     lines.each do |line|
       next if /^\s*$/ =~ line
-      parse_raw_line(line)
+      parse_raw_line(line, capitalizes_types)
     end
 
     set_primary_keys_to_columns
@@ -84,12 +84,12 @@ class TableSchema
 
   private
 
-    def parse_raw_line(line)
+    def parse_raw_line(line, capitalizes_types)
       if @name.nil?
         @name = get_table_name_at_top(line)
         return
       end
-      column_schema = ColumnSchema.parse(line)
+      column_schema = ColumnSchema.parse(line, capitalizes_types)
       if column_schema
         @columns << column_schema
         return
@@ -212,19 +212,19 @@ class ColumnSchema
     \s*,?\s*$
   !x
 
-  def self.parse(line)
+  def self.parse(line, capitalizes_types)
     m = Regexp.compile(RE).match(line)
     return nil unless m
     name       = m[1]
     definition = m[2]
     comment    = m[3]
-    return ColumnSchema.new(name, definition, comment)
+    return ColumnSchema.new(name, definition, comment, capitalizes_types)
   end
 
-  def initialize(name, definition, comment)
+  def initialize(name, definition, comment, capitalizes_types)
     @name    = name
     @comment = comment
-    parse_definition(definition)
+    parse_definition(definition, capitalizes_types)
     @is_primary_key = false
   end
 
@@ -283,16 +283,21 @@ class ColumnSchema
 
   private
 
-    def parse_definition(definition)
+    def parse_definition(definition, capitalizes_types)
       terms = definition.split
-      # Process a type such as "set('a','b c','d e f')".
-      if terms[0][0, 4] == 'set(' && terms[0].index(')').nil?
+      is_type_set = /^set\(/i =~ terms[0]
+      if capitalizes_types
+        is_type_set ? terms[0][0, 3] = 'SET' : terms[0].upcase!
+      end
+      # Process a type such as "set('volumetic','material balance','d e f')".
+      if is_type_set && terms[0].index(')').nil?
         begin
           terms[0] += (term = terms.delete_at(1))
         end until term.index(')')
       end
 
-      @type = get_type(terms)
+      @type = get_type(terms, capitalizes_types)
+
       begin
         @not_null, @default, @auto_increment = get_null_default_and_auto_increment(terms)
       rescue UnsupportedColumnDefinitionException => evar
@@ -302,11 +307,15 @@ class ColumnSchema
 
     TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill binary ascii unicode collate utf8_unicode_ci)
 
-    def get_type(terms)
+    # Return the first term and the following terms included in TERMS_TO_SUPPLEMENT_TYPE, joined by ' '
+    def get_type(terms, capitalizes_types)
       type_elements = Array.new
-      begin
-        type_elements << terms.shift
-      end while terms.size > 0 && TERMS_TO_SUPPLEMENT_TYPE.include?(terms[0])
+      type_elements << terms.shift
+      while terms.size > 0 && TERMS_TO_SUPPLEMENT_TYPE.include?(terms[0])
+        term = terms.shift
+        term.upcase! if capitalizes_types
+        type_elements << term
+      end
       return type_elements.join(' ')
     end
 
@@ -474,6 +483,8 @@ class Schezer
   #                  次の config_name が指定されなかった場合は YAMLファイルの最上層を探す
   # config_name:     接続情報の名称。Rails の環境名にあたる
   def initialize(argv)
+    @is_pretty = false
+    @capitalizes_types = false
     prepare_options(argv)
 
     exit_with_help if argv.empty?
@@ -551,7 +562,7 @@ class Schezer
       raw_schema = get_raw_table_schema(name)
       return nil unless raw_schema
       ts = TableSchema.new
-      ts.parse_raw_schema(raw_schema.split("\n"))
+      ts.parse_raw_schema(raw_schema.split("\n"), @capitalizes_types)
       return ts
     end
 
@@ -666,7 +677,8 @@ class Schezer
       opt_parser = OptionParser.new
       opt_parser.on("-f", "--config_file=VALUE") { |v| @config_filename = v }
       opt_parser.on("-e", "--environment=VALUE") { |v| @config_name     = v }
-      opt_parser.on("--pretty"                 ) { |v| @is_pretty = true }
+      opt_parser.on("--pretty"                 ) { |v| @is_pretty         = true }
+      opt_parser.on("--capitalizes_types"      ) { |v| @capitalizes_types = true }
       opt_parser.parse!(argv)
     end
 end
