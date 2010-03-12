@@ -490,11 +490,8 @@ class Schezer
 
     exit_with_help if argv.empty?
 
-    configure(@config_filename, @config_name)
-    exit_with_msg("Cannot read necessary configuration\n#{self.to_s}") unless configuration_suffices?
-
-    @conn = Mysql.new(@host, @username, @password, @database)
-    get_query_result("SET NAMES #{@encoding}")
+    @conn = configure(@config_filename, @config_name)
+    exit_with_msg("Cannot read necessary configuration\n#{self.to_s}") unless @conn.configuration_suffices?
 
     @argv = argv
   end
@@ -569,7 +566,7 @@ class Schezer
 
     def get_table_names
       sql = "SHOW TABLES"
-      result = get_query_result(sql)
+      result = @conn.get_query_result(sql)
       names = Array.new
       result.each do |name| names << name[0] end
       return names
@@ -579,7 +576,7 @@ class Schezer
     def get_raw_table_schema(name)
       sql = "SHOW CREATE TABLE #{name}"
       begin
-        result = get_query_result(sql)
+        result = @conn.get_query_result(sql)
       rescue CannotGetTableNameException => evar
         exit_with_msg("Failed to get schema for TABLE '#{name}'")
       end
@@ -616,10 +613,6 @@ class Schezer
       return xml_doc
     end
 
-    def get_query_result(sql)
-      return @conn.query(sql)
-    end
-
     def configure(filename, name)
       exit_with_usage("Specify DB_config_filename") unless filename
       begin
@@ -630,25 +623,17 @@ class Schezer
 
       hash_conf = yaml
       hash_conf = hash_conf[name] if name
-      @host     = hash_conf['host']
-      @username = hash_conf['username']
-      @password = hash_conf['password']
-      @database = hash_conf['database']
-      @encoding = hash_conf['encoding']
+      return DBConnection.new(hash_conf)
     end
 
-    def configuration_suffices?
-      return non_empty_string?(@host, @username, @database)
-    end
-
-    def non_empty_string?(*args)
+    def self.non_empty_string?(*args)
       args.each do |x|
         return false if ! x.kind_of?(String) || x.length == 0
       end
       return true
     end
 
-    COMMAND_OPTIONS_AND_SUBCOMMAND = "-f DB_config_filename -e environment [options] command [table_name|all]"
+    COMMAND_OPTIONS_AND_SUBCOMMAND = "-f DB_config_filename -e environment -g environment_2 [options] command [table_name|all]"
 
     def exit_with_help
       puts "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
@@ -676,11 +661,40 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-f", "--config_file=VALUE") { |v| @config_filename = v }
-      opt_parser.on("-e", "--environment=VALUE") { |v| @config_name     = v }
-      opt_parser.on("--pretty"                 ) { |v| @is_pretty         = true }
-      opt_parser.on("--capitalizes_types"      ) { |v| @capitalizes_types = true }
+      opt_parser.on("-f", "--config_file=VALUE"  ) { |v| @config_filename = v }
+      opt_parser.on("-e", "--environment=VALUE"  ) { |v| @config_name     = v }
+      opt_parser.on("-g", "--environment_2=VALUE") { |v| @config_name_2   = v }
+      opt_parser.on("--pretty"                   ) { |v| @is_pretty         = true }
+      opt_parser.on("--capitalizes_types"        ) { |v| @capitalizes_types = true }
       opt_parser.parse!(argv)
+    end
+
+    class DBConnection
+      attr_reader :host, :username, :password, :database, :encoding
+
+      def initialize(hash_conf)
+        @host     = hash_conf['host']
+        @username = hash_conf['username']
+        @password = hash_conf['password']
+        @database = hash_conf['database']
+        @encoding = hash_conf['encoding']
+
+        connect
+      end
+
+        def connect
+          @conn = Mysql.new(@host, @username, @password, @database)
+          get_query_result("SET NAMES #{@encoding}")
+        end
+        private :connect
+
+      def configuration_suffices?
+        return Schezer.non_empty_string?(@host, @username, @database)
+      end
+
+      def get_query_result(sql)
+        return @conn.query(sql)
+      end
     end
 end
 
