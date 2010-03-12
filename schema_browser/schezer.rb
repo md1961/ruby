@@ -492,12 +492,12 @@ class Schezer
 
     @conn = configure(@config_filename, @config_name)
     unless @conn.configuration_suffices?
-      exit_with_msg("Cannot read necessary configuration from '#{config_name}'\n#{self.to_s}")
+      exit_with_msg("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
     end
 
     @conn2 = configure(@config_filename, @config_name_2)
-    if @conn2 && ! @conn2.configuration_suffices?
-      exit_with_msg("Cannot read necessary configuration from '#{config_name_2}'\n#{self.to_s}")
+    if (@config_name_2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
+      exit_with_msg("Cannot read necessary configuration from '#{@config_name_2}'\n#{self.to_s}")
     end
 
     @argv = argv
@@ -529,18 +529,26 @@ class Schezer
       if @conn2.nil?
         puts get_table_names(@conn).join(JOINT_TABLE_NAME_OUTPUTS)
       else
-        compare_table_names
+        names1 = get_table_names(@conn ).sort
+        names2 = get_table_names(@conn2).sort
+        compare_table_names_and_print(names1, names2)
       end
     when :regexp
-      re = table_names[0]
-      names = Array.new
-      get_table_names(@conn).each do |name|
-        if /#{re}/ =~ name
-          names << name
-        end
+      str_re = table_names[0]
+      if @conn2.nil?
+        names = get_table_names_with_regexp(@conn, str_re)
+        puts names.size == 0 ? '(none)' : names.join(JOINT_TABLE_NAME_OUTPUTS)
+      else
+        names1 = get_table_names_with_regexp(@conn , str_re).sort
+        names2 = get_table_names_with_regexp(@conn2, str_re).sort
+        compare_table_names_and_print(names1, names2)
       end
-      puts names.size == 0 ? '(none)' : names.join(JOINT_TABLE_NAME_OUTPUTS)
     when :raw, :table
+      if command.intern == :raw and @conn2
+        $stderr.puts "Cannot run command 'raw' with two environments"
+        return
+      end
+
       outs = Array.new
       table_names.each do |table_name|
         if command.intern == :raw
@@ -561,7 +569,7 @@ class Schezer
 
   def to_s
     return "host = #{@host}, username = #{@username}, " \
-         + "password = #{non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
+         + "password = #{Schezer.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
          + "encoding = #{@encoding}"
   end
 
@@ -584,6 +592,16 @@ class Schezer
       return names
     end
 
+    def get_table_names_with_regexp(conn, str_re)
+      names = Array.new
+      get_table_names(conn).each do |name|
+        if /#{str_re}/ =~ name
+          names << name
+        end
+      end
+      return names
+    end
+
     # Return nil if VIEW
     def get_raw_table_schema(name)
       sql = "SHOW CREATE TABLE #{name}"
@@ -596,9 +614,7 @@ class Schezer
       return schema
     end
 
-    def compare_table_names
-      names1 = get_table_names(@conn ).sort
-      names2 = get_table_names(@conn2).sort
+    def compare_table_names_and_print(names1, names2)
       names_only1 = names1 - names2
       names_only2 = names2 - names1
       names_both  = names1 - names_only1
@@ -652,6 +668,8 @@ class Schezer
 
       hash_conf = yaml
       hash_conf = hash_conf[name] if name
+      return nil unless hash_conf
+
       hash_conf['environment'] = name
       return DBConnection.new(hash_conf)
     end
