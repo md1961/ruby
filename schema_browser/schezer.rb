@@ -495,11 +495,9 @@ class Schezer
       exit_with_msg("Cannot read necessary configuration from '#{config_name}'\n#{self.to_s}")
     end
 
-    if @config_name_2
-      @conn2 = configure(@config_filename, @config_name_2)
-      unless @conn2.configuration_suffices?
-        exit_with_msg("Cannot read necessary configuration from '#{config_name_2}'\n#{self.to_s}")
-      end
+    @conn2 = configure(@config_filename, @config_name_2)
+    if @conn2 && ! @conn2.configuration_suffices?
+      exit_with_msg("Cannot read necessary configuration from '#{config_name_2}'\n#{self.to_s}")
     end
 
     @argv = argv
@@ -513,7 +511,8 @@ class Schezer
     "xml (table_name|all): Output schema in XML (all for all tables)",
   ]
 
-  JOINT_TABLE_OUTPUTS = "\n#{'=' * 10}\n"
+  JOINT_TABLE_NAME_OUTPUTS   = " "
+  JOINT_TABLE_SCHEMA_OUTPUTS = "\n#{'=' * 10}\n"
 
   def execute
     command = @argv.shift
@@ -527,7 +526,11 @@ class Schezer
 
     case command.intern
     when :names
-      puts get_table_names(@conn).join(' ')
+      if @conn2.nil?
+        puts get_table_names(@conn).join(JOINT_TABLE_NAME_OUTPUTS)
+      else
+        compare_table_names
+      end
     when :regexp
       re = table_names[0]
       names = Array.new
@@ -536,7 +539,7 @@ class Schezer
           names << name
         end
       end
-      puts names.size == 0 ? '(none)' : names.join(' ')
+      puts names.size == 0 ? '(none)' : names.join(JOINT_TABLE_NAME_OUTPUTS)
     when :raw, :table
       outs = Array.new
       table_names.each do |table_name|
@@ -548,7 +551,7 @@ class Schezer
         next unless schema
         outs << schema
       end
-      puts outs.join(JOINT_TABLE_OUTPUTS)
+      puts outs.join(JOINT_TABLE_SCHEMA_OUTPUTS)
     when :xml
       output_xml(table_names)
     else
@@ -593,6 +596,21 @@ class Schezer
       return schema
     end
 
+    def compare_table_names
+      names1 = get_table_names(@conn ).sort
+      names2 = get_table_names(@conn2).sort
+      names_only1 = names1 - names2
+      names_only2 = names2 - names1
+      names_both  = names1 - names_only1
+
+      puts "[Tables which appears only in '#{@conn .environment}' (Total of #{names_only1.size})]:"
+      puts names_only1.empty? ? "(none)" : names_only1.join(JOINT_TABLE_NAME_OUTPUTS)
+      puts "[Tables which appears only in '#{@conn2.environment}' (Total of #{names_only2.size})]:"
+      puts names_only2.empty? ? "(none)" : names_only2.join(JOINT_TABLE_NAME_OUTPUTS)
+      puts "[Tables which appears in both (Total of #{names_both.size})]:"
+      puts names_both .empty? ? "(none)" : names_both .join(JOINT_TABLE_NAME_OUTPUTS)
+    end
+
     XML_INDENT_WHEN_PRETTY = 2
 
     def output_xml(table_names)
@@ -623,6 +641,8 @@ class Schezer
     end
 
     def configure(filename, name)
+      return nil unless name
+
       exit_with_usage("Specify DB_config_filename") unless filename
       begin
         yaml = YAML.load_file(filename)
@@ -632,6 +652,7 @@ class Schezer
 
       hash_conf = yaml
       hash_conf = hash_conf[name] if name
+      hash_conf['environment'] = name
       return DBConnection.new(hash_conf)
     end
 
@@ -679,14 +700,15 @@ class Schezer
     end
 
     class DBConnection
-      attr_reader :host, :username, :password, :database, :encoding
+      attr_reader :host, :username, :password, :database, :encoding, :environment
 
       def initialize(hash_conf)
-        @host     = hash_conf['host']
-        @username = hash_conf['username']
-        @password = hash_conf['password']
-        @database = hash_conf['database']
-        @encoding = hash_conf['encoding']
+        @host        = hash_conf['host']
+        @username    = hash_conf['username']
+        @password    = hash_conf['password']
+        @database    = hash_conf['database']
+        @encoding    = hash_conf['encoding']
+        @environment = hash_conf['environment']
 
         connect
       end

@@ -1,6 +1,14 @@
-[2010-03-12 16:02 @pluto]
+[2010-03-12 16:52 @pluto]
 schema_browser/schezer.rb
 (class Schezer)
-- Modified to prepare @conn2 as well if @config_name_2 existed.
-- Modified helper get_table_names() to receive argument conn
-  (:DBConnection).
+- Renamed JOINT_TABLE_OUTPUTS to JOINT_TABLE_SCHEMA_OUTPUTS
+  and added JOINT_TABLE_NAME_OUTPUTS.
+- Modified execute() to call helper compare_table_names() when the
+  command was :names and @conn was not nil.
+- Added helper compare_table_names().
+- Modified helper configure() to return nil if name was nil.
+  Also modified to add argument name to hash_conf on the key of
+  'environment'.
+(class DBConnection)
+- Added attr_reader :environment.
+- Modified initialize() to prepare @environment from the argument.
