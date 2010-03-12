@@ -1,11 +1,3 @@
-[2010-03-12 17:16 @pluto]
+[2010-03-12 17:21 @pluto]
 schema_browser/schezer.rb
-(class Schezer)
-- Modified initialize() to exit if @config_name_2 && @conn2.nil? as well.
-- Modified helper compare_table_names_and_print() (former compare_table_names())
-  to receive table names as arguments instead of making them inside.
-- Made command 'regexp' to take two environments to compare.
-- Corrected command 'raw' not to allow two environments.
-- Fixed to_s() to call non_empty_string() with the class name.
-- Added helper get_table_names_with_regexp().
-- Fixed helper configure() to return nil if failed to get hash_conf.
+- Modified execute() to convert command to a Symbol before the case block.

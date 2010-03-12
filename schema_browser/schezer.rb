@@ -520,11 +520,12 @@ class Schezer
       STDERR.puts "No command specified"
       return
     end
+    command = command.intern
 
     next_arg = @argv.shift
     table_names = next_arg == 'all' ? get_table_names(@conn) : [next_arg]
 
-    case command.intern
+    case command
     when :names
       if @conn2.nil?
         puts get_table_names(@conn).join(JOINT_TABLE_NAME_OUTPUTS)
@@ -544,14 +545,14 @@ class Schezer
         compare_table_names_and_print(names1, names2)
       end
     when :raw, :table
-      if command.intern == :raw and @conn2
+      if command == :raw and @conn2
         $stderr.puts "Cannot run command 'raw' with two environments"
         return
       end
 
       outs = Array.new
       table_names.each do |table_name|
-        if command.intern == :raw
+        if command == :raw
           schema = get_raw_table_schema(table_name)
         else
           schema = parse_table_schema(table_name)
