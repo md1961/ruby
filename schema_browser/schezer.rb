@@ -491,7 +491,16 @@ class Schezer
     exit_with_help if argv.empty?
 
     @conn = configure(@config_filename, @config_name)
-    exit_with_msg("Cannot read necessary configuration\n#{self.to_s}") unless @conn.configuration_suffices?
+    unless @conn.configuration_suffices?
+      exit_with_msg("Cannot read necessary configuration from '#{config_name}'\n#{self.to_s}")
+    end
+
+    if @config_name_2
+      @conn2 = configure(@config_filename, @config_name_2)
+      unless @conn2.configuration_suffices?
+        exit_with_msg("Cannot read necessary configuration from '#{config_name_2}'\n#{self.to_s}")
+      end
+    end
 
     @argv = argv
   end
@@ -514,15 +523,15 @@ class Schezer
     end
 
     next_arg = @argv.shift
-    table_names = next_arg == 'all' ? get_table_names : [next_arg]
+    table_names = next_arg == 'all' ? get_table_names(@conn) : [next_arg]
 
     case command.intern
     when :names
-      puts get_table_names.join(' ')
+      puts get_table_names(@conn).join(' ')
     when :regexp
       re = table_names[0]
       names = Array.new
-      get_table_names.each do |name|
+      get_table_names(@conn).each do |name|
         if /#{re}/ =~ name
           names << name
         end
@@ -564,9 +573,9 @@ class Schezer
       return ts
     end
 
-    def get_table_names
+    def get_table_names(conn)
       sql = "SHOW TABLES"
-      result = @conn.get_query_result(sql)
+      result = conn.get_query_result(sql)
       names = Array.new
       result.each do |name| names << name[0] end
       return names

@@ -1,10 +1,6 @@
-[2010-03-12 15:37 @pluto]
+[2010-03-12 16:02 @pluto]
 schema_browser/schezer.rb
 (class Schezer)
-- Modified initialize() to prepare @conn as user-defined class DBConnection
-  instance.
-- Modified helper configure() to return DBConnection instance.
-- Added option '-g' to receive additional DB environment.
-(class DBConnection)
-- Newly created.
-- Took over get_query_result() and configuration_suffices?() from class Schezer.
+- Modified to prepare @conn2 as well if @config_name_2 existed.
+- Modified helper get_table_names() to receive argument conn
+  (:DBConnection).
