@@ -1,3 +1,5 @@
-[2010-03-12 17:21 @pluto]
+[2010-03-14 20:40 @macbook]
 schema_browser/schezer.rb
-- Modified execute() to convert command to a Symbol before the case block.
+(class Schezer)
+- Extracted helper output_schema() from "when :raw, :table"
+  in execute().

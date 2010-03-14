@@ -549,18 +549,7 @@ class Schezer
         $stderr.puts "Cannot run command 'raw' with two environments"
         return
       end
-
-      outs = Array.new
-      table_names.each do |table_name|
-        if command == :raw
-          schema = get_raw_table_schema(table_name)
-        else
-          schema = parse_table_schema(table_name)
-        end
-        next unless schema
-        outs << schema
-      end
-      puts outs.join(JOINT_TABLE_SCHEMA_OUTPUTS)
+      output_schema(table_names, command == :raw)
     when :xml
       output_xml(table_names)
     else
@@ -613,6 +602,20 @@ class Schezer
       end
       schema = result.fetch_hash['Create Table']
       return schema
+    end
+
+    def output_schema(table_names, is_raw)
+      outs = Array.new
+      table_names.each do |table_name|
+        if is_raw
+          schema = get_raw_table_schema(table_name)
+        else
+          schema = parse_table_schema(table_name)
+        end
+        next unless schema
+        outs << schema
+      end
+      puts outs.join(JOINT_TABLE_SCHEMA_OUTPUTS)
     end
 
     def compare_table_names_and_print(names1, names2)
@@ -682,7 +685,9 @@ class Schezer
       return true
     end
 
-    COMMAND_OPTIONS_AND_SUBCOMMAND = "-f DB_config_filename -e environment -g environment_2 [options] command [table_name|all]"
+    COMMAND_OPTIONS_AND_SUBCOMMAND = \
+          "-f DB_config_filename -e environment [-g environment_2] [options]" \
+        + " command [table_name|all]"
 
     def exit_with_help
       puts "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
