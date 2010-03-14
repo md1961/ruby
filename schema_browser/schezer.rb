@@ -549,7 +549,11 @@ class Schezer
         $stderr.puts "Cannot run command 'raw' with two environments"
         return
       end
-      output_schema(table_names, command == :raw)
+      if @conn2.nil?
+        output_schema(table_names, command == :raw)
+      else
+        #TODO
+      end
     when :xml
       output_xml(table_names)
     else

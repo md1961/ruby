@@ -1,5 +1,6 @@
-[2010-03-14 20:40 @macbook]
+[2010-03-14 23:17 @macbook]
+.vimrc
+- Added "filetype on", "filetype indent on", "filetype plugin on", etc.
 schema_browser/schezer.rb
 (class Schezer)
-- Extracted helper output_schema() from "when :raw, :table"
-  in execute().
+- Started on schema comparison codes.
