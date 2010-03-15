@@ -18,6 +18,24 @@ end
 class DuplicatePrimaryKeyException < Exception
 end
 
+class TableSchemaDifference
+  attr_reader :column_names_only1, :column_names_only2, :column_names_both
+
+  def initialize(schema1, schema2)
+    get_column_names_diff(schema1, schema2)
+  end
+
+  private
+
+    def get_column_names_diff(schema1, schema2)
+      column_names1 = schema1.columns.map { |column| column.name }
+      column_names2 = schema2.columns.map { |column| column.name }
+      @column_names_only1 = column_names1 - column_names2
+      @column_names_only2 = column_names2 - column_names1 
+      @column_names_both  = column_names1 - @column_names_only1
+    end
+end
+
 class TableSchema
   attr_reader :name, :columns, :primary_keys, :unique_keys, :foreign_keys, :keys
   attr_reader :engine, :auto_increment, :default_charset, :collate, :max_rows, :comment
@@ -42,6 +60,14 @@ class TableSchema
     set_primary_keys_to_columns
     sort_foreign_keys_by_column_order
     set_default_column_comment_for_id
+  end
+
+  def difference(other)
+    unless other.kind_of?(TableSchema)
+      raise ArgumentError.new("Argument other must be a TableSchemaDifference instance")
+    end
+
+    return TableSchemaDifference.new(self, other)
   end
 
   def to_s
@@ -524,6 +550,9 @@ class Schezer
 
     next_arg = @argv.shift
     table_names = next_arg == 'all' ? get_table_names(@conn) : [next_arg]
+    if @conn2
+      table_names2 = next_arg == 'all' ? get_table_names(@conn2) : [next_arg]
+    end
 
     case command
     when :names
@@ -551,9 +580,7 @@ class Schezer
         if command == :raw
           exit_with_msg("Cannot run command 'raw' with two environments")
         end
-        names1 = get_table_names(@conn ).sort
-        names2 = get_table_names(@conn2).sort
-        compare_table_schemas_and_print(names1, names2)
+        compare_table_schemas_and_print(table_names, table_names2)
       end
     when :xml
       output_xml(table_names)
@@ -624,28 +651,55 @@ class Schezer
     end
 
     def compare_table_names_and_print(names1, names2)
-      names_both = compare_table_names_and_print_differences(names1, names2)
+      names_both = compare_table_names(names1, names2, true)
 
       puts "[Tables which appears in both (Total of #{names_both.size})]:"
       puts names_both.empty? ? "(none)" : names_both.join(JOINT_TABLE_NAME_OUTPUTS)
     end
 
+    JOINT_COLUMN_NAME_OUTPUTS = " "
+
     def compare_table_schemas_and_print(names1, names2)
       outs = Array.new
-      names_both = compare_table_names_and_print_differences(names1, names2)
+      prints_difference = names1.size > 1 || names1 != names2
+      names_both = compare_table_names(names1, names2, prints_difference)
       names_both.each do |table_name|
+        schema1 = parse_table_schema(table_name, @conn )
+        schema2 = parse_table_schema(table_name, @conn2)
+        next if schema1.nil? || schema2.nil?
+
+        schema_diff = schema1.difference(schema2)
+        column_names_only1 = schema_diff.column_names_only1
+        column_names_only2 = schema_diff.column_names_only2
+        column_names_both  = schema_diff.column_names_both
+        next if ! @verbose && column_names_only1.empty? && column_names_only2.empty?
+
+        outs2 = Array.new
+        outs2 << "Table `#{table_name}`"
+        outs2 << "[Columns which appears only in '#{@conn .environment}' (Total of #{column_names_only1.size})]:"
+        outs2 << (column_names_only1.empty? ? "(none)" : column_names_only1.join(JOINT_COLUMN_NAME_OUTPUTS))
+        outs2 << "[Columns which appears only in '#{@conn2.environment}' (Total of #{column_names_only2.size})]:"
+        outs2 << (column_names_only2.empty? ? "(none)" : column_names_only2.join(JOINT_COLUMN_NAME_OUTPUTS))
+        outs2 << "[Columns which appears in both (Total of #{column_names_both.size})]:"
+        outs2 << (column_names_both .empty? ? "(none)" : column_names_both .join(JOINT_COLUMN_NAME_OUTPUTS))
+        outs << outs2.join("\n")
+        #TODO
       end
+
+      puts outs.join(JOINT_TABLE_SCHEMA_OUTPUTS)
     end
 
     # Also return an array of table names which appear in both the arguments.
-    def compare_table_names_and_print_differences(names1, names2)
+    def compare_table_names(names1, names2, prints_difference=false)
       names_only1 = names1 - names2
       names_only2 = names2 - names1
 
-      puts "[Tables which appears only in '#{@conn .environment}' (Total of #{names_only1.size})]:"
-      puts names_only1.empty? ? "(none)" : names_only1.join(JOINT_TABLE_NAME_OUTPUTS)
-      puts "[Tables which appears only in '#{@conn2.environment}' (Total of #{names_only2.size})]:"
-      puts names_only2.empty? ? "(none)" : names_only2.join(JOINT_TABLE_NAME_OUTPUTS)
+      if prints_difference
+        puts "[Tables which appears only in '#{@conn .environment}' (Total of #{names_only1.size})]:"
+        puts names_only1.empty? ? "(none)" : names_only1.join(JOINT_TABLE_NAME_OUTPUTS)
+        puts "[Tables which appears only in '#{@conn2.environment}' (Total of #{names_only2.size})]:"
+        puts names_only2.empty? ? "(none)" : names_only2.join(JOINT_TABLE_NAME_OUTPUTS)
+      end
 
       names_both = names1 - names_only1
       return names_both
@@ -738,6 +792,7 @@ class Schezer
       opt_parser.on("-f", "--config_file=VALUE"  ) { |v| @config_filename = v }
       opt_parser.on("-e", "--environment=VALUE"  ) { |v| @config_name     = v }
       opt_parser.on("-g", "--environment_2=VALUE") { |v| @config_name_2   = v }
+      opt_parser.on("-v", "--verbose"            ) { |v| @verbose           = true }
       opt_parser.on("--pretty"                   ) { |v| @is_pretty         = true }
       opt_parser.on("--capitalizes_types"        ) { |v| @capitalizes_types = true }
       opt_parser.parse!(argv)
