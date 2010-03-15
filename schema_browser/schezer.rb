@@ -41,6 +41,14 @@ class TableSchemaDifference
     return @schema1.primary_keys == @schema2.primary_keys
   end
 
+  def primary_keys1
+    return @schema1.primary_keys
+  end
+
+  def primary_keys2
+    return @schema2.primary_keys
+  end
+
   private
 
     def get_column_names_diff
@@ -690,19 +698,28 @@ class Schezer
         next if schema1.nil? || schema2.nil?
 
         schema_diff = schema1.difference(schema2)
-        next if ! @verbose && schema_diff.equals?
-
-        column_names_only1 = schema_diff.column_names_only1
-        column_names_only2 = schema_diff.column_names_only2
-        column_names_both  = schema_diff.column_names_both
 
         outs2 = Array.new
-        outs2 << "TABLE `#{table_name}`"
-        outs2.concat(to_s_array_to_display_names(column_names_only1, @conn .environment, 'columns'))
-        outs2.concat(to_s_array_to_display_names(column_names_only2, @conn2.environment, 'columns'))
-        outs2.concat(to_s_array_to_display_names(column_names_both , nil               , 'columns'))
-        outs << outs2.join("\n")
+
+        if ! schema_diff.column_names_equals? || @verbose
+          column_names_only1 = schema_diff.column_names_only1
+          column_names_only2 = schema_diff.column_names_only2
+          column_names_both  = schema_diff.column_names_both
+
+          outs2 << "TABLE `#{table_name}`"
+          outs2.concat(to_s_array_to_display_names(column_names_only1, @conn .environment, 'columns'))
+          outs2.concat(to_s_array_to_display_names(column_names_only2, @conn2.environment, 'columns'))
+          outs2.concat(to_s_array_to_display_names(column_names_both , nil               , 'columns'))
+        end
+
+        if ! schema_diff.primary_keys_equals? || @verbose
+          outs2 << "[Primary keys for '#{@conn .environment}']: (#{schema_diff.primary_keys1.join(', ')})"
+          outs2 << "[Primary keys for '#{@conn2.environment}']: (#{schema_diff.primary_keys2.join(', ')})"
+        end
+
         #TODO
+
+        outs << outs2.join("\n") unless outs2.empty?
       end
 
       puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS) unless outs.empty?

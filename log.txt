@@ -1,10 +1,7 @@
-[2010-03-15 16:15 @pluto]
+[2010-03-15 16:56 @pluto]
 schema_browser/schezer.rb
 (class TableSchemaDifference)
-- Modified initialize() to prepare @schema1 and @schema2.
-- Added equals?(), column_names_equals?() and primary_keys_equals?().
-- Altered helper get_column_names_diff() not to receive arguments.
+- Added primary_keys1() and primary_keys2().
 (class Schezer)
-- Corrected helper compare_table_schemas_and_print() to use
-  TableSchemaDifference#equals?() to judge if next the loop when
-  @verbose was false.
+- Modified helper compare_table_schemas_and_print() to output
+  primary keys differences.
