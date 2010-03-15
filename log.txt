@@ -1,15 +1,6 @@
-[2010-03-15 13:32 @pluto]
+[2010-03-15 15:38 @pluto]
 schema_browser/schezer.rb
-(class TableSchemaDifference)
-- Newly created.
-(class TableSchema)
-- Added difference().
 (class Schezer)
-- Modified execute() to prepare local table_names2.
-- Added JOINT_COLUMN_NAME_OUTPUTS.
-- Finished helper compare_table_schemas_and_print() for column names
-  comparison.
-- Modified helper compare_table_names() (former
-  compare_table_names_and_print_differences()) to receive additional
-  argument prints_difference and output no differences if false.
-- Modified the script to receive command option '-v' (verbose).
+- Added COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS, and modified execute()
+  to exit_with_msg() if the command was in it and @conn2 was non-nil.
+- Added helper to_s_array_to_display_names() to take over common codes.

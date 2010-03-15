@@ -537,8 +537,10 @@ class Schezer
     "xml (table_name|all): Output schema in XML (all for all tables)",
   ]
 
+  COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
+
   JOINT_TABLE_NAME_OUTPUTS   = " "
-  JOINT_TABLE_SCHEMA_OUTPUTS = "\n#{'=' * 10}\n"
+  SPLITTER_TABLE_SCHEMA_OUTPUTS = "#{'=' * 10}\n"
 
   def execute
     command = @argv.shift
@@ -550,7 +552,12 @@ class Schezer
 
     next_arg = @argv.shift
     table_names = next_arg == 'all' ? get_table_names(@conn) : [next_arg]
+
     if @conn2
+      if COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS.include?(command)
+        exit_with_msg("Cannot run command '#{command}' with two environments")
+      end
+
       table_names2 = next_arg == 'all' ? get_table_names(@conn2) : [next_arg]
     end
 
@@ -577,9 +584,6 @@ class Schezer
       if @conn2.nil?
         output_schema(table_names, command == :raw)
       else
-        if command == :raw
-          exit_with_msg("Cannot run command 'raw' with two environments")
-        end
         compare_table_schemas_and_print(table_names, table_names2)
       end
     when :xml
@@ -647,14 +651,14 @@ class Schezer
         next unless schema
         outs << schema
       end
-      puts outs.join(JOINT_TABLE_SCHEMA_OUTPUTS)
+      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS)
     end
 
     def compare_table_names_and_print(names1, names2)
       names_both = compare_table_names(names1, names2, true)
 
-      puts "[Tables which appears in both (Total of #{names_both.size})]:"
-      puts names_both.empty? ? "(none)" : names_both.join(JOINT_TABLE_NAME_OUTPUTS)
+      outs = to_s_array_to_display_names(names_both, nil, 'tables')
+      puts outs.join("\n") unless outs.empty?
     end
 
     JOINT_COLUMN_NAME_OUTPUTS = " "
@@ -663,6 +667,7 @@ class Schezer
       outs = Array.new
       prints_difference = names1.size > 1 || names1 != names2
       names_both = compare_table_names(names1, names2, prints_difference)
+      puts SPLITTER_TABLE_SCHEMA_OUTPUTS if prints_difference && ! names_both.empty?
       names_both.each do |table_name|
         schema1 = parse_table_schema(table_name, @conn )
         schema2 = parse_table_schema(table_name, @conn2)
@@ -676,17 +681,14 @@ class Schezer
 
         outs2 = Array.new
         outs2 << "Table `#{table_name}`"
-        outs2 << "[Columns which appears only in '#{@conn .environment}' (Total of #{column_names_only1.size})]:"
-        outs2 << (column_names_only1.empty? ? "(none)" : column_names_only1.join(JOINT_COLUMN_NAME_OUTPUTS))
-        outs2 << "[Columns which appears only in '#{@conn2.environment}' (Total of #{column_names_only2.size})]:"
-        outs2 << (column_names_only2.empty? ? "(none)" : column_names_only2.join(JOINT_COLUMN_NAME_OUTPUTS))
-        outs2 << "[Columns which appears in both (Total of #{column_names_both.size})]:"
-        outs2 << (column_names_both .empty? ? "(none)" : column_names_both .join(JOINT_COLUMN_NAME_OUTPUTS))
+        outs2.concat(to_s_array_to_display_names(column_names_only1, @conn .environment, 'columns'))
+        outs2.concat(to_s_array_to_display_names(column_names_only2, @conn2.environment, 'columns'))
+        outs2.concat(to_s_array_to_display_names(column_names_both , nil               , 'columns'))
         outs << outs2.join("\n")
         #TODO
       end
 
-      puts outs.join(JOINT_TABLE_SCHEMA_OUTPUTS)
+      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS) unless outs.empty?
     end
 
     # Also return an array of table names which appear in both the arguments.
@@ -695,14 +697,22 @@ class Schezer
       names_only2 = names2 - names1
 
       if prints_difference
-        puts "[Tables which appears only in '#{@conn .environment}' (Total of #{names_only1.size})]:"
-        puts names_only1.empty? ? "(none)" : names_only1.join(JOINT_TABLE_NAME_OUTPUTS)
-        puts "[Tables which appears only in '#{@conn2.environment}' (Total of #{names_only2.size})]:"
-        puts names_only2.empty? ? "(none)" : names_only2.join(JOINT_TABLE_NAME_OUTPUTS)
+        outs = Array.new
+        outs.concat(to_s_array_to_display_names(names_only1, @conn .environment, 'tables'))
+        outs.concat(to_s_array_to_display_names(names_only2, @conn2.environment, 'tables'))
+        puts outs.join("\n") unless outs.empty?
       end
 
       names_both = names1 - names_only1
       return names_both
+    end
+
+    def to_s_array_to_display_names(names, environment_name, subject_name)
+      where = environment_name ? "only in '#{environment_name}'" : "in both environments"
+      outs = Array.new
+      outs << "[#{subject_name.capitalize} which appears #{where} (Total of #{names.size})]:"
+      outs << (names.empty? ? "(none)" : names.join(JOINT_COLUMN_NAME_OUTPUTS))
+      return outs
     end
 
     XML_INDENT_WHEN_PRETTY = 2
