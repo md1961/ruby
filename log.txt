@@ -1,6 +1,10 @@
-[2010-03-15 15:38 @pluto]
+[2010-03-15 16:15 @pluto]
 schema_browser/schezer.rb
+(class TableSchemaDifference)
+- Modified initialize() to prepare @schema1 and @schema2.
+- Added equals?(), column_names_equals?() and primary_keys_equals?().
+- Altered helper get_column_names_diff() not to receive arguments.
 (class Schezer)
-- Added COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS, and modified execute()
-  to exit_with_msg() if the command was in it and @conn2 was non-nil.
-- Added helper to_s_array_to_display_names() to take over common codes.
+- Corrected helper compare_table_schemas_and_print() to use
+  TableSchemaDifference#equals?() to judge if next the loop when
+  @verbose was false.

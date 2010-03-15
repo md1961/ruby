@@ -22,14 +22,30 @@ class TableSchemaDifference
   attr_reader :column_names_only1, :column_names_only2, :column_names_both
 
   def initialize(schema1, schema2)
-    get_column_names_diff(schema1, schema2)
+    @schema1 = schema1
+    @schema2 = schema2
+
+    get_column_names_diff
+  end
+
+  #TODO: Unfinished yet
+  def equals?
+    return column_names_equals? && primary_keys_equals?
+  end
+
+  def column_names_equals?
+    return @column_names_only1.empty? && @column_names_only2.empty?
+  end
+
+  def primary_keys_equals?
+    return @schema1.primary_keys == @schema2.primary_keys
   end
 
   private
 
-    def get_column_names_diff(schema1, schema2)
-      column_names1 = schema1.columns.map { |column| column.name }
-      column_names2 = schema2.columns.map { |column| column.name }
+    def get_column_names_diff
+      column_names1 = @schema1.columns.map { |column| column.name }
+      column_names2 = @schema2.columns.map { |column| column.name }
       @column_names_only1 = column_names1 - column_names2
       @column_names_only2 = column_names2 - column_names1 
       @column_names_both  = column_names1 - @column_names_only1
@@ -674,13 +690,14 @@ class Schezer
         next if schema1.nil? || schema2.nil?
 
         schema_diff = schema1.difference(schema2)
+        next if ! @verbose && schema_diff.equals?
+
         column_names_only1 = schema_diff.column_names_only1
         column_names_only2 = schema_diff.column_names_only2
         column_names_both  = schema_diff.column_names_both
-        next if ! @verbose && column_names_only1.empty? && column_names_only2.empty?
 
         outs2 = Array.new
-        outs2 << "Table `#{table_name}`"
+        outs2 << "TABLE `#{table_name}`"
         outs2.concat(to_s_array_to_display_names(column_names_only1, @conn .environment, 'columns'))
         outs2.concat(to_s_array_to_display_names(column_names_only2, @conn2.environment, 'columns'))
         outs2.concat(to_s_array_to_display_names(column_names_both , nil               , 'columns'))
