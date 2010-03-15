@@ -1,6 +1,9 @@
-[2010-03-14 23:17 @macbook]
-.vimrc
-- Added "filetype on", "filetype indent on", "filetype plugin on", etc.
+[2010-03-15 10:57 @pluto]
 schema_browser/schezer.rb
 (class Schezer)
-- Started on schema comparison codes.
+- Modified execute() to handle command :table with non-nil @conn2.
+- Modified helper parse_table_schema() and get_raw_table_schema()
+  to receive additional argument conn and use it instead of @conn.
+- Extracted helper compare_table_names_and_print_differences() from
+  helper compare_table_names_and_print().
+- Started on helper compare_table_schemas_and_print().

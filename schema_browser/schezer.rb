@@ -517,7 +517,7 @@ class Schezer
   def execute
     command = @argv.shift
     unless command
-      STDERR.puts "No command specified"
+      $stderr.puts "No command specified"
       return
     end
     command = command.intern
@@ -545,14 +545,15 @@ class Schezer
         compare_table_names_and_print(names1, names2)
       end
     when :raw, :table
-      if command == :raw and @conn2
-        $stderr.puts "Cannot run command 'raw' with two environments"
-        return
-      end
       if @conn2.nil?
         output_schema(table_names, command == :raw)
       else
-        #TODO
+        if command == :raw
+          exit_with_msg("Cannot run command 'raw' with two environments")
+        end
+        names1 = get_table_names(@conn ).sort
+        names2 = get_table_names(@conn2).sort
+        compare_table_schemas_and_print(names1, names2)
       end
     when :xml
       output_xml(table_names)
@@ -570,8 +571,8 @@ class Schezer
   private
 
     # Return nil if VIEW
-    def parse_table_schema(name)
-      raw_schema = get_raw_table_schema(name)
+    def parse_table_schema(name, conn)
+      raw_schema = get_raw_table_schema(name, conn)
       return nil unless raw_schema
       ts = TableSchema.new
       ts.parse_raw_schema(raw_schema.split("\n"), @capitalizes_types)
@@ -597,10 +598,10 @@ class Schezer
     end
 
     # Return nil if VIEW
-    def get_raw_table_schema(name)
+    def get_raw_table_schema(name, conn)
       sql = "SHOW CREATE TABLE #{name}"
       begin
-        result = @conn.get_query_result(sql)
+        result = conn.get_query_result(sql)
       rescue CannotGetTableNameException => evar
         exit_with_msg("Failed to get schema for TABLE '#{name}'")
       end
@@ -612,9 +613,9 @@ class Schezer
       outs = Array.new
       table_names.each do |table_name|
         if is_raw
-          schema = get_raw_table_schema(table_name)
+          schema = get_raw_table_schema(table_name, @conn)
         else
-          schema = parse_table_schema(table_name)
+          schema = parse_table_schema(table_name, @conn)
         end
         next unless schema
         outs << schema
@@ -623,16 +624,31 @@ class Schezer
     end
 
     def compare_table_names_and_print(names1, names2)
+      names_both = compare_table_names_and_print_differences(names1, names2)
+
+      puts "[Tables which appears in both (Total of #{names_both.size})]:"
+      puts names_both.empty? ? "(none)" : names_both.join(JOINT_TABLE_NAME_OUTPUTS)
+    end
+
+    def compare_table_schemas_and_print(names1, names2)
+      outs = Array.new
+      names_both = compare_table_names_and_print_differences(names1, names2)
+      names_both.each do |table_name|
+      end
+    end
+
+    # Also return an array of table names which appear in both the arguments.
+    def compare_table_names_and_print_differences(names1, names2)
       names_only1 = names1 - names2
       names_only2 = names2 - names1
-      names_both  = names1 - names_only1
 
       puts "[Tables which appears only in '#{@conn .environment}' (Total of #{names_only1.size})]:"
       puts names_only1.empty? ? "(none)" : names_only1.join(JOINT_TABLE_NAME_OUTPUTS)
       puts "[Tables which appears only in '#{@conn2.environment}' (Total of #{names_only2.size})]:"
       puts names_only2.empty? ? "(none)" : names_only2.join(JOINT_TABLE_NAME_OUTPUTS)
-      puts "[Tables which appears in both (Total of #{names_both.size})]:"
-      puts names_both .empty? ? "(none)" : names_both .join(JOINT_TABLE_NAME_OUTPUTS)
+
+      names_both = names1 - names_only1
+      return names_both
     end
 
     XML_INDENT_WHEN_PRETTY = 2
@@ -641,7 +657,7 @@ class Schezer
       xml_doc = to_xml
       root_element = xml_doc.root
       table_names.each do |table_name|
-        schema = parse_table_schema(table_name)
+        schema = parse_table_schema(table_name, @conn)
         next unless schema
         root_element.add_element(schema.to_xml)
       end
@@ -705,7 +721,7 @@ class Schezer
     end
 
     def exit_with_msg(msg=nil, exit_no=1)
-      STDERR.puts msg if msg
+      $stderr.puts msg if msg
       exit(exit_no)
     end
 
