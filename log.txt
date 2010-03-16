@@ -1,9 +1,5 @@
-[2010-03-16 11:50 @pluto]
+[2010-03-16 13:34 @pluto]
 schema_browser/schezer.rb
 (class TableSchema)
-- Modified to_s() to return ColumnSchema#set_options display as well.
-- Modified to_xml() to include ColumnSchema#set_options info as well.
-(class ColumnSchema)
-- Added attr_reader :set_options.
-- Modified helper parse_definition() to prepare @set_options if the
-  column type was 'SET', nil otherwise.
+- Corrected helper set_default_column_comment_for_id() to return without
+  doing nothing when the column was not auto_increment.
