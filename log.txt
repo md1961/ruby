@@ -1,8 +1,9 @@
-[2010-03-16 10:55 @pluto]
+[2010-03-16 11:50 @pluto]
 schema_browser/schezer.rb
-(class Schezer)
-- Corrected get_table_names() not to include a name in the
-  return value if it was that of VIEW.
-- Added helper view?() along with FIELD_NAME_FOR_VIEW.
-- Extracted helper get_create_table_result() from helper
-  get_raw_table_schema().
+(class TableSchema)
+- Modified to_s() to return ColumnSchema#set_options display as well.
+- Modified to_xml() to include ColumnSchema#set_options info as well.
+(class ColumnSchema)
+- Added attr_reader :set_options.
+- Modified helper parse_definition() to prepare @set_options if the
+  column type was 'SET', nil otherwise.

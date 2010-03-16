@@ -104,6 +104,9 @@ class TableSchema
     @columns.each do |column|
       schemas << column.to_s
     end
+    @columns.each do |column|
+      schemas << "SET options for COLUMN `#{column.name}`: #{column.set_options}" if column.set_options
+    end
     schemas << "primary key = `#{@primary_keys.join('`,`')}`" if @primary_keys
     @unique_keys.each do |unique|
       schemas << unique.to_s
@@ -130,6 +133,16 @@ class TableSchema
         root_element << item.to_xml
       end
     end
+
+    element_set_options = REXML::Element.new('set_options')
+    @columns.each do |column|
+      next unless set_options = column.set_options
+      element = REXML::Element.new('set_option')
+      element.add_attribute('column_name', column.name)
+      element.add_text(set_options)
+      element_set_options << element
+    end
+    root_element << element_set_options
 
     add_table_options_as_xml(root_element)
 
@@ -257,7 +270,7 @@ class TableSchema
 end
 
 class ColumnSchema
-  attr_reader :name, :type, :default
+  attr_reader :name, :type, :default, :set_options
   attr_accessor :comment
 
   RE = %r!
@@ -339,16 +352,24 @@ class ColumnSchema
   private
 
     def parse_definition(definition, capitalizes_types)
+      @set_options = nil
+
       terms = definition.split
-      is_type_set = /^set\(/i =~ terms[0]
+      is_type_set = /^set\s*\(/i =~ terms[0]
       if capitalizes_types
         is_type_set ? terms[0][0, 3] = 'SET' : terms[0].upcase!
       end
       # Process a type such as "set('volumetic','material balance','d e f')".
-      if is_type_set && terms[0].index(')').nil?
-        begin
-          terms[0] += (term = terms.delete_at(1))
-        end until term.index(')')
+      # (Including quoted spaces.)
+      if is_type_set
+        if terms[0].index(')').nil?
+          begin
+            terms[0] += ' ' + (term = terms.delete_at(1))
+          end until term.index(')')
+        end
+        @set_options = terms[0]
+        @set_options.sub!(/^[^(]*(\([^)]*\)).*$/, "\\1")
+        terms[0] = "SET"
       end
 
       @type = get_type(terms, capitalizes_types)
