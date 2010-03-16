@@ -52,8 +52,8 @@ class TableSchemaDifference
   private
 
     def get_column_names_diff
-      column_names1 = @schema1.columns.map { |column| column.name }
-      column_names2 = @schema2.columns.map { |column| column.name }
+      column_names1 = @schema1.column_names
+      column_names2 = @schema2.column_names
       @column_names_only1 = column_names1 - column_names2
       @column_names_only2 = column_names2 - column_names1 
       @column_names_both  = column_names1 - @column_names_only1
@@ -84,6 +84,10 @@ class TableSchema
     set_primary_keys_to_columns
     sort_foreign_keys_by_column_order
     set_default_column_comment_for_id
+  end
+
+  def column_names
+    return @columns.map { |column| column.name }
   end
 
   def difference(other)

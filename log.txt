@@ -1,7 +1,6 @@
-[2010-03-15 16:56 @pluto]
+[2010-03-16 09:48 @pluto]
 schema_browser/schezer.rb
 (class TableSchemaDifference)
-- Added primary_keys1() and primary_keys2().
-(class Schezer)
-- Modified helper compare_table_schemas_and_print() to output
-  primary keys differences.
+- Modified helper get_column_names_diff() to use TableSchema#column_names().
+(class TableSchema)
+- Added column_names().
