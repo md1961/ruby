@@ -642,7 +642,10 @@ class Schezer
       sql = "SHOW TABLES"
       result = conn.get_query_result(sql)
       names = Array.new
-      result.each do |name| names << name[0] end
+      result.each do |name|
+        next if view?(name, conn)
+        names << name[0]
+      end
       return names
     end
 
@@ -656,16 +659,29 @@ class Schezer
       return names
     end
 
+    FIELD_NAME_FOR_VIEW = "View"
+
+    def view?(name, conn)
+      result = get_create_table_result(name, conn)
+      field_names = result.fetch_fields.map { |field| field.name }
+      return field_names.include?(FIELD_NAME_FOR_VIEW)
+    end
+
     # Return nil if VIEW
     def get_raw_table_schema(name, conn)
+      result = get_create_table_result(name, conn)
+      schema = result.fetch_hash['Create Table']
+      return schema
+    end
+
+    def get_create_table_result(name, conn)
       sql = "SHOW CREATE TABLE #{name}"
       begin
         result = conn.get_query_result(sql)
       rescue CannotGetTableNameException => evar
         exit_with_msg("Failed to get schema for TABLE '#{name}'")
       end
-      schema = result.fetch_hash['Create Table']
-      return schema
+      return result
     end
 
     def output_schema(table_names, is_raw)

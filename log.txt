@@ -1,6 +1,8 @@
-[2010-03-16 09:48 @pluto]
+[2010-03-16 10:55 @pluto]
 schema_browser/schezer.rb
-(class TableSchemaDifference)
-- Modified helper get_column_names_diff() to use TableSchema#column_names().
-(class TableSchema)
-- Added column_names().
+(class Schezer)
+- Corrected get_table_names() not to include a name in the
+  return value if it was that of VIEW.
+- Added helper view?() along with FIELD_NAME_FOR_VIEW.
+- Extracted helper get_create_table_result() from helper
+  get_raw_table_schema().
