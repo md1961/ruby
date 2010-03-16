@@ -564,15 +564,16 @@ class Schezer
     prepare_options(argv)
 
     exit_with_help if argv.empty?
+    exit_with_msg("Specify different names for option -e and -g") if @config_name == @config_name2
 
     @conn = configure(@config_filename, @config_name)
     unless @conn.configuration_suffices?
       exit_with_msg("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
     end
 
-    @conn2 = configure(@config_filename, @config_name_2)
-    if (@config_name_2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
-      exit_with_msg("Cannot read necessary configuration from '#{@config_name_2}'\n#{self.to_s}")
+    @conn2 = configure(@config_filename, @config_name2)
+    if (@config_name2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
+      exit_with_msg("Cannot read necessary configuration from '#{@config_name2}'\n#{self.to_s}")
     end
 
     @argv = argv
@@ -584,6 +585,7 @@ class Schezer
     "raw (table_name|all): Output raw table schema (all for all tables)",
     "table (table_name|all): Output parsed table schema (all for all tables)",
     "xml (table_name|all): Output schema in XML (all for all tables)",
+    "count (table_name|all): Output row count of the table (all for all tables)",
   ]
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
@@ -638,18 +640,35 @@ class Schezer
     when :xml
       output_xml(table_names)
     when :count
-      raise "Two environments not supported yet" if @conn2
-
+      table_names = table_names - (table_names - table_names2) if @conn2
       outs = Array.new
       table_names.each do |table_name|
-        row_count = get_row_count(table_name, @conn)
-        outs << "TABLE `#{table_name}`'s COUNT(*) = #{row_count}"
+        s = to_s_row_count(table_name, @conn, @conn2)
+        outs << s if s
       end
       puts outs.join("\n")
     else
       exit_with_msg("Unknown command '#{command}'")
     end
   end
+
+    def to_s_row_count(table_name, conn, conn2=nil)
+      row_count  = get_row_count(table_name, conn )
+      row_count2 = 0
+      if conn2
+        row_count2 = get_row_count(table_name, conn2)
+        return nil if row_count == row_count2 && ! @verbose
+      end
+      max_row_count = [1, row_count, row_count2].max
+      max_cols = (Math::log10(max_row_count) + 1).to_i
+      format = "TABLE `%s`'s COUNT(*) = %#{max_cols}d"
+
+      outs = Array.new
+      outs << (sprintf(format, table_name, row_count ) + (conn2 ? " for '#{conn .environment}'" : ""))
+      outs << (sprintf(format, table_name, row_count2) +          " for '#{conn2.environment}'") if conn2
+      return outs.join("\n")
+    end
+    private :to_s_row_count
 
   def to_s
     return "host = #{@host}, username = #{@username}, " \
@@ -893,12 +912,12 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-f", "--config_file=VALUE"  ) { |v| @config_filename = v }
-      opt_parser.on("-e", "--environment=VALUE"  ) { |v| @config_name     = v }
-      opt_parser.on("-g", "--environment_2=VALUE") { |v| @config_name_2   = v }
-      opt_parser.on("-v", "--verbose"            ) { |v| @verbose           = true }
-      opt_parser.on("--pretty"                   ) { |v| @is_pretty         = true }
-      opt_parser.on("--capitalizes_types"        ) { |v| @capitalizes_types = true }
+      opt_parser.on("-f", "--config_file=VALUE"    ) { |v| @config_filename = v }
+      opt_parser.on("-e", "--environment=VALUE"    ) { |v| @config_name     = v }
+      opt_parser.on("-g", "--environment_alt=VALUE") { |v| @config_name2    = v }
+      opt_parser.on("-v", "--verbose"              ) { |v| @verbose           = true }
+      opt_parser.on("--pretty"                     ) { |v| @is_pretty         = true }
+      opt_parser.on("--capitalizes_types"          ) { |v| @capitalizes_types = true }
       opt_parser.parse!(argv)
     end
 
