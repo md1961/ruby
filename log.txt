@@ -1,5 +1,6 @@
-[2010-03-16 13:34 @pluto]
+[2010-03-16 13:53 @pluto]
 schema_browser/schezer.rb
-(class TableSchema)
-- Corrected helper set_default_column_comment_for_id() to return without
-  doing nothing when the column was not auto_increment.
+(class Schezer)
+- Corrected execute() to exit if no table name specified.
+- Added command 'count', only for a single environment for now.
+- Added helper get_row_count().

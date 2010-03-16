@@ -600,13 +600,13 @@ class Schezer
     command = command.intern
 
     next_arg = @argv.shift
+    exit_with_msg("Specify a table name or 'all'") unless next_arg
     table_names = next_arg == 'all' ? get_table_names(@conn) : [next_arg]
 
     if @conn2
       if COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS.include?(command)
         exit_with_msg("Cannot run command '#{command}' with two environments")
       end
-
       table_names2 = next_arg == 'all' ? get_table_names(@conn2) : [next_arg]
     end
 
@@ -637,6 +637,15 @@ class Schezer
       end
     when :xml
       output_xml(table_names)
+    when :count
+      raise "Two environments not supported yet" if @conn2
+
+      outs = Array.new
+      table_names.each do |table_name|
+        row_count = get_row_count(table_name, @conn)
+        outs << "TABLE `#{table_name}`'s COUNT(*) = #{row_count}"
+      end
+      puts outs.join("\n")
     else
       exit_with_msg("Unknown command '#{command}'")
     end
@@ -699,10 +708,20 @@ class Schezer
       sql = "SHOW CREATE TABLE #{name}"
       begin
         result = conn.get_query_result(sql)
-      rescue CannotGetTableNameException => evar
-        exit_with_msg("Failed to get schema for TABLE '#{name}'")
+      rescue Mysql::Error => evar
+        exit_with_msg("Failed to get the schema of TABLE '#{name}'")
       end
       return result
+    end
+
+    def get_row_count(name, conn)
+      sql = "SELECT COUNT(*) FROM #{name}"
+      begin
+        result = conn.get_query_result(sql)
+      rescue Mysql::Error => evar
+        exit_with_msg("Failed to get the row count of TABLE '#{name}'")
+      end
+      return result.fetch_hash['COUNT(*)'].to_i
     end
 
     def output_schema(table_names, is_raw)
