@@ -567,16 +567,24 @@ end
 # Whole data of a specific TABLE
 class TableData
 
-  def initialize(table_schema, conn)
+  DEFAULT_DELIMITER_WHEN_OUTPUT = "\t"
+
+  def initialize(table_schema, conn, delimiter_out=DEFAULT_DELIMITER_WHEN_OUTPUT)
     @table_schema = table_schema
     @conn = conn
+    @delimiter_out = delimiter_out
+
     @result = get_result
+  end
+
+  def delimiter_out=(value)
+    @delimiter_out = value
   end
 
   def to_s
     outs = Array.new
     while values = @result.fetch_row
-      outs << values.join(' : ')
+      outs << values.join(@delimiter_out)
     end
     outs << "Total of #{@result.num_rows} rows"
 
@@ -600,7 +608,9 @@ class Schezer
   #                  次の config_name が指定されなかった場合は YAMLファイルの最上層を探す
   # config_name:     接続情報の名称。Rails の環境名にあたる
   def initialize(argv)
-    @is_pretty = false
+    # Default values of options
+    @delimiter_field   = nil
+    @is_pretty         = false
     @capitalizes_types = false
     prepare_options(argv)
 
@@ -697,6 +707,7 @@ class Schezer
       table_name = table_names[0]
       table_schema = parse_table_schema(table_name, @conn)
       table_data = TableData.new(table_schema, @conn)
+      table_data.delimiter_out = @delimiter_field if @delimiter_field
       puts table_data
     else
       exit_with_msg("Unknown command '#{command}'")
@@ -962,9 +973,10 @@ class Schezer
     def prepare_options(argv)
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-f", "--config_file=VALUE"    ) { |v| @config_filename = v }
-      opt_parser.on("-e", "--environment=VALUE"    ) { |v| @config_name     = v }
-      opt_parser.on("-g", "--environment_alt=VALUE") { |v| @config_name2    = v }
+      opt_parser.on("-d", "--delimiter_field=VALUE") { |v| @delimiter_field   = v }
+      opt_parser.on("-f", "--config_file=VALUE"    ) { |v| @config_filename   = v }
+      opt_parser.on("-e", "--environment=VALUE"    ) { |v| @config_name       = v }
+      opt_parser.on("-g", "--environment_alt=VALUE") { |v| @config_name2      = v }
       opt_parser.on("-v", "--verbose"              ) { |v| @verbose           = true }
       opt_parser.on("--pretty"                     ) { |v| @is_pretty         = true }
       opt_parser.on("--capitalizes_types"          ) { |v| @capitalizes_types = true }

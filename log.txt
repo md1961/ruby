@@ -1,17 +1,13 @@
-[2010-03-17 10:17 @pluto]
+[2010-03-17 10:39 @pluto]
 schema_browser/schezer.rb
-(class TableSchema)
-- Modified initialize() to receive argument raw_schema and
-  capitalizes_types (default of false), and call parse_raw_schema()
-  with those.
-- Changed parse_raw_schema() to a private method.
-(class ColumnSchema)
-- Added hard_to_sort?() along with TYPES_HARD_TO_SORT.
-- Corrected helper parse_definition() to use "set" or "SET"
-  according to capitalizes_types.
 (class TableData)
-- Newly created with only initialize() and to_s() for now.
+- Added DEFAULT_DELIMITER_WHEN_OUTPUT.
+- Modified initialize() to receive additonal argument delimiter_out with
+  a default value of DEFAULT_DELIMITER_WHEN_OUTPUT and prepare @delimiter_out.
+- Added delimiter_out=().
+- Modified to_s to use @delimiter_out as a field delimiter.
 (class Schezer)
-- Modified execute() to handle command 'data' with single environment
-  for now.
-- Modified helper parse_table_schema() to use altered TableSchema.new.
+- Modified to prepare @delimiter_field for which it acquired a value from
+  option '-d'.
+- Modified when :data in execute() to assign @delimiter_field to
+  TableData#delimiter_out if non-nil.
