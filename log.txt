@@ -1,13 +1,22 @@
-[2010-03-17 10:39 @pluto]
+[2010-03-17 16:51 @pluto]
 schema_browser/schezer.rb
+- Added class CannotCompareDueToSchemaDiscrepancyException and
+  NotComparedYetException.
+(class TableSchema)
+- Added column_names_to_sort().
+- Added ==().
+(class ColumnSchema)
+- Added ==().
+(class ForeignKey)
+- Fixed to_s() by replacing wrongly used @columns with @column_name.
 (class TableData)
-- Added DEFAULT_DELIMITER_WHEN_OUTPUT.
-- Modified initialize() to receive additonal argument delimiter_out with
-  a default value of DEFAULT_DELIMITER_WHEN_OUTPUT and prepare @delimiter_out.
-- Added delimiter_out=().
-- Modified to_s to use @delimiter_out as a field delimiter.
+- Modified initialize() to prepare @has_been_compared.
+- Added table_name(), environment(), identity(), schema(), to_s_row_values(),
+  hash_rows_only_in_self(), hash_rows_only_in_other(),
+  hash_rows_only_in_self_or_other() and compare().
+- Widened the scope of get_result() to public from private.
+- Corrected to_s() to use local result (@result had been removed).
+- Added helper compare_rows().
 (class Schezer)
-- Modified to prepare @delimiter_field for which it acquired a value from
-  option '-d'.
-- Modified when :data in execute() to assign @delimiter_field to
-  TableData#delimiter_out if non-nil.
+- Modified execute() to handle command 'data' with two environments.
+- Added helper print_rows_only_in_either().

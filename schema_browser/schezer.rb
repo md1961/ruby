@@ -18,6 +18,12 @@ end
 class DuplicatePrimaryKeyException < Exception
 end
 
+class CannotCompareDueToSchemaDiscrepancyException < Exception
+end
+
+class NotComparedYetException < Exception
+end
+
 class TableSchemaDifference
   attr_reader :column_names_only1, :column_names_only2, :column_names_both
 
@@ -93,12 +99,21 @@ class TableSchema
     return @columns.map { |column| column.name }
   end
 
+  def column_names_to_sort
+    columns_to_sort = @columns.select { |column| ! column.auto_increment? && ! column.hard_to_sort? }
+    return columns_to_sort.map { |column| column.name }
+  end
+
   def difference(other)
     unless other.kind_of?(TableSchema)
       raise ArgumentError.new("Argument other must be a TableSchemaDifference instance")
     end
 
     return TableSchemaDifference.new(self, other)
+  end
+
+  def ==(other)
+    return self.columns == other.columns
   end
 
   def to_s
@@ -328,6 +343,10 @@ class ColumnSchema
     return false
   end
 
+  def ==(other)
+    return self.name == other.name && self.type == other.type
+  end
+
   def to_s
     ar_str = Array.new
     ar_str << "`#{@name}`:#{@type}"
@@ -532,7 +551,7 @@ class ForeignKey
   end
 
   def to_s
-    return "foreign key `#{@name}` (`#{@columns}`) refs `#{@ref_table_name}` (`#{@ref_column_name}`)\n" \
+    return "foreign key `#{@name}` (`#{@column_name}`) refs `#{@ref_table_name}` (`#{@ref_column_name}`)\n" \
          + "    on update #{@on_update} on delete #{@on_delete}"
   end
 
@@ -574,30 +593,117 @@ class TableData
     @conn = conn
     @delimiter_out = delimiter_out
 
-    @result = get_result
+    @has_been_compared = false
+  end
+
+  def table_name
+    return @table_schema.name
+  end
+
+  def environment
+    return @conn.environment
+  end
+
+  def identity(is_self=true)
+    table_data = is_self ? self : @other
+    raise NotComparedYetException.new("Need to call compare() before refering other TableData") unless table_data
+    return "TABLE `#{table_data.table_name}` of '#{table_data.environment}'"
+  end
+
+  def schema
+    return @table_schema
+  end
+
+  def to_s_row_values(hash_rows)
+    values = Array.new
+    @table_schema.column_names.each do |column_name|
+      values << hash_rows[column_name]
+    end
+    return values.join(@delimiter_out)
   end
 
   def delimiter_out=(value)
     @delimiter_out = value
   end
 
+  # Return a Mysql::Result
+  def get_result
+    column_names_to_sort = @table_schema.column_names_to_sort
+    sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
+    return @conn.get_query_result(sql)
+  end
+
+  def hash_rows_only_in_self
+    return hash_rows_only_in_self_or_other(true)
+  end
+
+  def hash_rows_only_in_other
+    return hash_rows_only_in_self_or_other(false)
+  end
+
+  # Return an Array of Hash's with keys of column names and values of data values
+  def hash_rows_only_in_self_or_other(is_self=true)
+    raise NotComparedYetException.new unless @has_been_compared
+    return is_self ? @hash_rows_only_self : @hash_rows_only_other
+  end
+
+  def compare(other)
+    if self.schema != other.schema
+      msg = "Schema differs between #{self.identity} and #{other.identity}"
+      raise CannotCompareDueToSchemaDiscrepancyException.new(msg)
+    end
+    @other = other
+
+    result_self  = self .get_result
+    result_other = other.get_result
+    @hash_rows_only_self  = Array.new
+    @hash_rows_only_other = Array.new
+    begin
+      hash_row_self  = result_self .fetch_hash
+      hash_row_other = result_other.fetch_hash
+      until hash_row_self.nil? && hash_row_other.nil?
+        cmp = compare_rows(hash_row_self, hash_row_other)
+        break if cmp == 0
+        if cmp < 0
+          @hash_rows_only_self  << hash_row_self
+          hash_row_self  = result_self .fetch_hash
+        else
+          @hash_rows_only_other << hash_row_other
+          hash_row_other = result_other.fetch_hash
+        end
+      end
+    end until hash_row_self.nil? && hash_row_other.nil?
+
+    @has_been_compared = true
+  end
+
   def to_s
+    result = get_result
+
     outs = Array.new
-    while values = @result.fetch_row
+    while values = result.fetch_row
       outs << values.join(@delimiter_out)
     end
-    outs << "Total of #{@result.num_rows} rows"
+    outs << "Total of #{result.num_rows} rows"
 
     return outs.join("\n")
   end
 
-    def get_result
-      columns_to_sort = @table_schema.columns.select { |column| ! column.auto_increment? && ! column.hard_to_sort? }
-      column_names_to_sort = columns_to_sort.map { |column| column.name }
-      sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
-      return @conn.get_query_result(sql)
+  private
+
+    # Return -1, 0, 1 according to <, ==, >
+    def compare_rows(hash_row1, hash_row2)
+      return  0 if hash_row1.nil? && hash_row2.nil?
+      return -1 if hash_row2.nil?
+      return  1 if hash_row1.nil?
+      @table_schema.column_names_to_sort.each do |column_name|
+        value1 = hash_row1[column_name]
+        value2 = hash_row2[column_name]
+        next if value1 == value2
+        return value1 < value2 ? -1 : 1
+      end
+      return 0
     end
-    private :get_result
 end
 
 
@@ -702,17 +808,37 @@ class Schezer
     when :data
       exit_with_msg("Command 'data' not for multiple tables") if table_names.size > 1
 
-      raise "Not implemented for two environments" if @conn2
-
       table_name = table_names[0]
       table_schema = parse_table_schema(table_name, @conn)
       table_data = TableData.new(table_schema, @conn)
       table_data.delimiter_out = @delimiter_field if @delimiter_field
-      puts table_data
+      if @conn2.nil?
+        puts table_data
+      else
+        table_schema2 = parse_table_schema(table_name, @conn2)
+        table_data2 = TableData.new(table_schema2, @conn2)
+        table_data.compare(table_data2)
+
+        [true, false].each do |is_self|
+          print_rows_only_in_either(table_data, is_self)
+        end
+      end
     else
       exit_with_msg("Unknown command '#{command}'")
     end
   end
+
+    def print_rows_only_in_either(table_data, is_self=true)
+      puts "[Rows which appears only in #{table_data.identity(is_self)}]:"
+      hash_rows = table_data.hash_rows_only_in_self_or_other(is_self)
+      if hash_rows.empty?
+        puts "(none)"
+      else
+        hash_rows.each do |hash_row|
+          puts table_data.to_s_row_values(hash_row)
+        end
+      end
+    end
 
     def to_s_row_count(table_name, conn, conn2=nil)
       row_count  = get_row_count(table_name, conn )
