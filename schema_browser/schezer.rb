@@ -66,25 +66,28 @@ class TableSchema
 
   DEFAULT_COLUMN_COMMENT_FOR_ID = "RDBMSが生成する一意のID番号"
 
-  def initialize
+  def initialize(raw_schema, capitalizes_types=false)
     @name         = nil
     @columns      = Array.new
     @primary_keys = Array.new
     @unique_keys  = Array.new
     @foreign_keys = Array.new
     @keys         = Array.new
+
+    parse_raw_schema(raw_schema.split("\n"), capitalizes_types)
   end
 
-  def parse_raw_schema(lines, capitalizes_types)
-    lines.each do |line|
-      next if /^\s*$/ =~ line
-      parse_raw_line(line, capitalizes_types)
+    def parse_raw_schema(lines, capitalizes_types)
+      lines.each do |line|
+        next if /^\s*$/ =~ line
+        parse_raw_line(line, capitalizes_types)
+      end
+
+      set_primary_keys_to_columns
+      sort_foreign_keys_by_column_order
+      set_default_column_comment_for_id
     end
-
-    set_primary_keys_to_columns
-    sort_foreign_keys_by_column_order
-    set_default_column_comment_for_id
-  end
+    private :parse_raw_schema
 
   def column_names
     return @columns.map { |column| column.name }
@@ -316,6 +319,15 @@ class ColumnSchema
     return @comment.nil? || @comment.empty?
   end
 
+  TYPES_HARD_TO_SORT = %w(BLOB MEDIUMBLOB LONGBLOB)
+
+  def hard_to_sort?
+    TYPES_HARD_TO_SORT.each do |type_hard|
+      return true if @type[0, type_hard.length] == type_hard
+    end
+    return false
+  end
+
   def to_s
     ar_str = Array.new
     ar_str << "`#{@name}`:#{@type}"
@@ -369,7 +381,8 @@ class ColumnSchema
         end
         @set_options = terms[0]
         @set_options.sub!(/^[^(]*(\([^)]*\)).*$/, "\\1")
-        terms[0] = "SET"
+        terms[0] = "set"
+        terms[0].upcase! if capitalizes_types
       end
 
       @type = get_type(terms, capitalizes_types)
@@ -551,6 +564,34 @@ class ForeignKey
   end
 end
 
+# Whole data of a specific TABLE
+class TableData
+
+  def initialize(table_schema, conn)
+    @table_schema = table_schema
+    @conn = conn
+    @result = get_result
+  end
+
+  def to_s
+    outs = Array.new
+    while values = @result.fetch_row
+      outs << values.join(' : ')
+    end
+    outs << "Total of #{@result.num_rows} rows"
+
+    return outs.join("\n")
+  end
+
+    def get_result
+      columns_to_sort = @table_schema.columns.select { |column| ! column.auto_increment? && ! column.hard_to_sort? }
+      column_names_to_sort = columns_to_sort.map { |column| column.name }
+      sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
+      return @conn.get_query_result(sql)
+    end
+    private :get_result
+end
+
 
 class Schezer
 
@@ -586,6 +627,7 @@ class Schezer
     "table (table_name|all): Output parsed table schema (all for all tables)",
     "xml (table_name|all): Output schema in XML (all for all tables)",
     "count (table_name|all): Output row count of the table (all for all tables)",
+    "data table_name: Output data of the table",
   ]
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
@@ -647,6 +689,15 @@ class Schezer
         outs << s if s
       end
       puts outs.join("\n")
+    when :data
+      exit_with_msg("Command 'data' not for multiple tables") if table_names.size > 1
+
+      raise "Not implemented for two environments" if @conn2
+
+      table_name = table_names[0]
+      table_schema = parse_table_schema(table_name, @conn)
+      table_data = TableData.new(table_schema, @conn)
+      puts table_data
     else
       exit_with_msg("Unknown command '#{command}'")
     end
@@ -682,8 +733,7 @@ class Schezer
     def parse_table_schema(name, conn)
       raw_schema = get_raw_table_schema(name, conn)
       return nil unless raw_schema
-      ts = TableSchema.new
-      ts.parse_raw_schema(raw_schema.split("\n"), @capitalizes_types)
+      ts = TableSchema.new(raw_schema, @capitalizes_types)
       return ts
     end
 

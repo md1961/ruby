@@ -1,5 +1,17 @@
-[2010-03-16 14:53 @pluto]
+[2010-03-17 10:17 @pluto]
 schema_browser/schezer.rb
+(class TableSchema)
+- Modified initialize() to receive argument raw_schema and
+  capitalizes_types (default of false), and call parse_raw_schema()
+  with those.
+- Changed parse_raw_schema() to a private method.
+(class ColumnSchema)
+- Added hard_to_sort?() along with TYPES_HARD_TO_SORT.
+- Corrected helper parse_definition() to use "set" or "SET"
+  according to capitalizes_types.
+(class TableData)
+- Newly created with only initialize() and to_s() for now.
 (class Schezer)
-- Corrected initialize() to exit if @config_name == @config_name2.
-- Added helper to_s_row_count() to help command 'count' execution.
+- Modified execute() to handle command 'data' with single environment
+  for now.
+- Modified helper parse_table_schema() to use altered TableSchema.new.
