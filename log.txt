@@ -1,22 +1,7 @@
-[2010-03-17 16:51 @pluto]
+[2010-03-18 11:48 @pluto]
 schema_browser/schezer.rb
-- Added class CannotCompareDueToSchemaDiscrepancyException and
-  NotComparedYetException.
-(class TableSchema)
-- Added column_names_to_sort().
-- Added ==().
-(class ColumnSchema)
-- Added ==().
-(class ForeignKey)
-- Fixed to_s() by replacing wrongly used @columns with @column_name.
-(class TableData)
-- Modified initialize() to prepare @has_been_compared.
-- Added table_name(), environment(), identity(), schema(), to_s_row_values(),
-  hash_rows_only_in_self(), hash_rows_only_in_other(),
-  hash_rows_only_in_self_or_other() and compare().
-- Widened the scope of get_result() to public from private.
-- Corrected to_s() to use local result (@result had been removed).
-- Added helper compare_rows().
 (class Schezer)
-- Modified execute() to handle command 'data' with two environments.
-- Added helper print_rows_only_in_either().
+- Modified initialize() by moving the statements to assign default
+  values to the instance variables for command line options to helper
+  prepare_command_line_options() (former prepare_options()).
+- Extracted helper do_command() from execute().

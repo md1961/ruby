@@ -714,11 +714,7 @@ class Schezer
   #                  次の config_name が指定されなかった場合は YAMLファイルの最上層を探す
   # config_name:     接続情報の名称。Rails の環境名にあたる
   def initialize(argv)
-    # Default values of options
-    @delimiter_field   = nil
-    @is_pretty         = false
-    @capitalizes_types = false
-    prepare_options(argv)
+    prepare_command_line_options(argv)
 
     exit_with_help if argv.empty?
     exit_with_msg("Specify different names for option -e and -g") if @config_name == @config_name2
@@ -770,63 +766,75 @@ class Schezer
       table_names2 = next_arg == 'all' ? get_table_names(@conn2) : [next_arg]
     end
 
-    case command
-    when :names
-      if @conn2.nil?
-        puts get_table_names(@conn).join(JOINT_TABLE_NAME_OUTPUTS)
-      else
-        names1 = get_table_names(@conn ).sort
-        names2 = get_table_names(@conn2).sort
-        compare_table_names_and_print(names1, names2)
-      end
-    when :regexp
-      str_re = table_names[0]
-      if @conn2.nil?
-        names = get_table_names_with_regexp(@conn, str_re)
-        puts names.size == 0 ? '(none)' : names.join(JOINT_TABLE_NAME_OUTPUTS)
-      else
-        names1 = get_table_names_with_regexp(@conn , str_re).sort
-        names2 = get_table_names_with_regexp(@conn2, str_re).sort
-        compare_table_names_and_print(names1, names2)
-      end
-    when :raw, :table
-      if @conn2.nil?
-        output_schema(table_names, command == :raw)
-      else
-        compare_table_schemas_and_print(table_names, table_names2)
-      end
-    when :xml
-      output_xml(table_names)
-    when :count
-      table_names = table_names - (table_names - table_names2) if @conn2
-      outs = Array.new
-      table_names.each do |table_name|
-        s = to_s_row_count(table_name, @conn, @conn2)
-        outs << s if s
-      end
-      puts outs.join("\n")
-    when :data
-      exit_with_msg("Command 'data' not for multiple tables") if table_names.size > 1
-
-      table_name = table_names[0]
-      table_schema = parse_table_schema(table_name, @conn)
-      table_data = TableData.new(table_schema, @conn)
-      table_data.delimiter_out = @delimiter_field if @delimiter_field
-      if @conn2.nil?
-        puts table_data
-      else
-        table_schema2 = parse_table_schema(table_name, @conn2)
-        table_data2 = TableData.new(table_schema2, @conn2)
-        table_data.compare(table_data2)
-
-        [true, false].each do |is_self|
-          print_rows_only_in_either(table_data, is_self)
-        end
-      end
-    else
-      exit_with_msg("Unknown command '#{command}'")
-    end
+    do_command(command, table_names, table_names2)
   end
+
+  def to_s
+    return "host = #{@host}, username = #{@username}, " \
+         + "password = #{Schezer.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
+         + "encoding = #{@encoding}"
+  end
+
+  private
+
+    def do_command(command, table_names, table_names2)
+      case command
+      when :names
+        if @conn2.nil?
+          puts get_table_names(@conn).join(JOINT_TABLE_NAME_OUTPUTS)
+        else
+          names1 = get_table_names(@conn ).sort
+          names2 = get_table_names(@conn2).sort
+          compare_table_names_and_print(names1, names2)
+        end
+      when :regexp
+        str_re = table_names[0]
+        if @conn2.nil?
+          names = get_table_names_with_regexp(@conn, str_re)
+          puts names.size == 0 ? '(none)' : names.join(JOINT_TABLE_NAME_OUTPUTS)
+        else
+          names1 = get_table_names_with_regexp(@conn , str_re).sort
+          names2 = get_table_names_with_regexp(@conn2, str_re).sort
+          compare_table_names_and_print(names1, names2)
+        end
+      when :raw, :table
+        if @conn2.nil?
+          output_schema(table_names, command == :raw)
+        else
+          compare_table_schemas_and_print(table_names, table_names2)
+        end
+      when :xml
+        output_xml(table_names)
+      when :count
+        table_names = table_names - (table_names - table_names2) if @conn2
+        outs = Array.new
+        table_names.each do |table_name|
+          s = to_s_row_count(table_name, @conn, @conn2)
+          outs << s if s
+        end
+        puts outs.join("\n")
+      when :data
+        exit_with_msg("Command 'data' not for multiple tables") if table_names.size > 1
+
+        table_name = table_names[0]
+        table_schema = parse_table_schema(table_name, @conn)
+        table_data = TableData.new(table_schema, @conn)
+        table_data.delimiter_out = @delimiter_field if @delimiter_field
+        if @conn2.nil?
+          puts table_data
+        else
+          table_schema2 = parse_table_schema(table_name, @conn2)
+          table_data2 = TableData.new(table_schema2, @conn2)
+          table_data.compare(table_data2)
+
+          [true, false].each do |is_self|
+            print_rows_only_in_either(table_data, is_self)
+          end
+        end
+      else
+        exit_with_msg("Unknown command '#{command}'")
+      end
+    end
 
     def print_rows_only_in_either(table_data, is_self=true)
       puts "[Rows which appears only in #{table_data.identity(is_self)}]:"
@@ -856,15 +864,6 @@ class Schezer
       outs << (sprintf(format, table_name, row_count2) +          " for '#{conn2.environment}'") if conn2
       return outs.join("\n")
     end
-    private :to_s_row_count
-
-  def to_s
-    return "host = #{@host}, username = #{@username}, " \
-         + "password = #{Schezer.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
-         + "encoding = #{@encoding}"
-  end
-
-  private
 
     # Return nil if VIEW
     def parse_table_schema(name, conn)
@@ -1096,7 +1095,12 @@ class Schezer
       exit_with_msg(msg_list.join("\n"), exit_no)
     end
 
-    def prepare_options(argv)
+    def prepare_command_line_options(argv)
+      # Default values of options
+      @delimiter_field   = nil
+      @is_pretty         = false
+      @capitalizes_types = false
+
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
       opt_parser.on("-d", "--delimiter_field=VALUE") { |v| @delimiter_field   = v }
