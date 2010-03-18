@@ -736,7 +736,6 @@ class Schezer
 
   COMMAND_HELPS = [
     "names (table names|#{ALL_TABLES}): Output table names (#{ALL_TABLES} for all tables)",
-    "@Deprecated regexp: Output all the table names which match regular expression",
     "raw (table names|#{ALL_TABLES}): Output raw table schema (#{ALL_TABLES} for all tables)",
     "table (table names|#{ALL_TABLES}): Output parsed table schema (#{ALL_TABLES} for all tables)",
     "xml (table names|#{ALL_TABLES}): Output schema in XML (#{ALL_TABLES} for all tables)",
@@ -747,7 +746,7 @@ class Schezer
   COMMANDS_TO_TAKE_NO_ARGUMENTS             = []
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
 
-  JOINT_TABLE_NAME_OUTPUTS   = " "
+  JOINT_TABLE_NAME_OUTPUTS = "\n"
   SPLITTER_TABLE_SCHEMA_OUTPUTS = "#{'=' * 10}\n"
 
   def execute
@@ -764,6 +763,14 @@ class Schezer
 
     do_command(command, table_names, table_names2)
   end
+
+  def to_s
+    return "host = #{@host}, username = #{@username}, " \
+         + "password = #{Schezer.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
+         + "encoding = #{@encoding}"
+  end
+
+  private
 
     def get_both_table_names_from_argv(command)
       return nil, nil if COMMANDS_TO_TAKE_NO_ARGUMENTS.include?(command)
@@ -784,23 +791,38 @@ class Schezer
       end
 
       table_names = @argv.dup
+      table_names_expanded = Array.new
       non_existing_table_names = Array.new
       table_names.each do |table_name|
-        non_existing_table_names << table_name unless all_table_names.include?(table_name)
+        if str_re = table_name2str_regexp(table_name)
+          table_names_expanded.concat(get_table_names_with_regexp(conn, str_re))
+        elsif !  all_table_names.include?(table_name)
+          non_existing_table_names << table_name
+        else
+          table_names_expanded << table_name
+        end
       end
       if non_existing_table_names.size > 0
         exit_with_msg("No table names in '#{conn.environment}' such as `#{non_existing_table_names.join('`, `')}`")
       end
-      return table_names
+      return table_names_expanded.uniq
     end
 
-  def to_s
-    return "host = #{@host}, username = #{@username}, " \
-         + "password = #{Schezer.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
-         + "encoding = #{@encoding}"
-  end
+    MARKER_FOR_REGEXP = %w(* . ^ $ ?)
+    RE_LITERAL_REGEXP = /^([^\w])(.+)\1$/
 
-  private
+    def table_name2str_regexp(table_name)
+      if RE_LITERAL_REGEXP =~ table_name
+        c_quote = $1
+        str_re  = $2
+        exit_with_msg("Illegal table name regexp '#{table_name}' (quote mark in quote)") if str_re.index(c_quote)
+        return str_re
+      end
+      MARKER_FOR_REGEXP.each do |marker|
+        return table_name if table_name.index(marker)
+      end
+      return nil
+    end
 
     def do_command(command, table_names, table_names2)
       case command
@@ -810,16 +832,6 @@ class Schezer
         else
           names1 = table_names .sort
           names2 = table_names2.sort
-          compare_table_names_and_print(names1, names2)
-        end
-      when :regexp
-        str_re = table_names[0]
-        if @conn2.nil?
-          names = get_table_names_with_regexp(@conn, str_re)
-          puts names.size == 0 ? '(none)' : names.join(JOINT_TABLE_NAME_OUTPUTS)
-        else
-          names1 = get_table_names_with_regexp(@conn , str_re).sort
-          names2 = get_table_names_with_regexp(@conn2, str_re).sort
           compare_table_names_and_print(names1, names2)
         end
       when :raw, :table

@@ -1,16 +1,9 @@
-[2010-03-18 16:24 @pluto]
+[2010-03-18 17:15 @pluto]
 schema_browser/schezer.rb
-(Handle multiple table names in command line argument.)
+(Regexp table names for almost all the commands)
 (class Schezer)
-- Added ALL_TABLES and COMMANDS_TO_TAKE_NO_ARGUMENTS.
-- Extracted helper get_both_table_names_from_argv() and its helper
-  get_both_table_names_from_argv() from execute().  Now the command
-  can handle multiple 
-- Modified helper do_command() to use argument table_names and table_names2
-  when command :names.
-- Modified helper to_s_row_count() for output readability.
-- Altered helper compare_table_names() to return an array of an output
-  string array of differences and table names common in both environments
-- Corrected helper to_s_array_to_display_names() to return an empty array
-  if @verbose was false and argument names was empty.
-- Corrected helper prepare_command_line_options() to initiallize @config_name2.
+- Changed JOINT_TABLE_NAME_OUTPUTS to "\n".
+- Modified helper get_table_names_from_argv() to handle regexp's.
+- Added helper table_name2str_regexp() along with MARKER_FOR_REGEXP
+  and RE_LITERAL_REGEXP.
+- Removed 'when :regexp' from helper do_command().
