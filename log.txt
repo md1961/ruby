@@ -1,7 +1,16 @@
-[2010-03-18 11:48 @pluto]
+[2010-03-18 16:24 @pluto]
 schema_browser/schezer.rb
+(Handle multiple table names in command line argument.)
 (class Schezer)
-- Modified initialize() by moving the statements to assign default
-  values to the instance variables for command line options to helper
-  prepare_command_line_options() (former prepare_options()).
-- Extracted helper do_command() from execute().
+- Added ALL_TABLES and COMMANDS_TO_TAKE_NO_ARGUMENTS.
+- Extracted helper get_both_table_names_from_argv() and its helper
+  get_both_table_names_from_argv() from execute().  Now the command
+  can handle multiple 
+- Modified helper do_command() to use argument table_names and table_names2
+  when command :names.
+- Modified helper to_s_row_count() for output readability.
+- Altered helper compare_table_names() to return an array of an output
+  string array of differences and table names common in both environments
+- Corrected helper to_s_array_to_display_names() to return an empty array
+  if @verbose was false and argument names was empty.
+- Corrected helper prepare_command_line_options() to initiallize @config_name2.

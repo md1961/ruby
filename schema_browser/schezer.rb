@@ -732,16 +732,19 @@ class Schezer
     @argv = argv
   end
 
+  ALL_TABLES = 'all'
+
   COMMAND_HELPS = [
-    "names: Output all the table names",
-    "regexp: Output all the table names which match regular expression",
-    "raw (table_name|all): Output raw table schema (all for all tables)",
-    "table (table_name|all): Output parsed table schema (all for all tables)",
-    "xml (table_name|all): Output schema in XML (all for all tables)",
-    "count (table_name|all): Output row count of the table (all for all tables)",
-    "data table_name: Output data of the table",
+    "names (table names|#{ALL_TABLES}): Output table names (#{ALL_TABLES} for all tables)",
+    "@Deprecated regexp: Output all the table names which match regular expression",
+    "raw (table names|#{ALL_TABLES}): Output raw table schema (#{ALL_TABLES} for all tables)",
+    "table (table names|#{ALL_TABLES}): Output parsed table schema (#{ALL_TABLES} for all tables)",
+    "xml (table names|#{ALL_TABLES}): Output schema in XML (#{ALL_TABLES} for all tables)",
+    "count (table names|#{ALL_TABLES}): Output row count of the table (#{ALL_TABLES} for all tables)",
+    "data (table names): Output data of the table",
   ]
 
+  COMMANDS_TO_TAKE_NO_ARGUMENTS             = []
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
 
   JOINT_TABLE_NAME_OUTPUTS   = " "
@@ -749,25 +752,47 @@ class Schezer
 
   def execute
     command = @argv.shift
-    unless command
-      $stderr.puts "No command specified"
-      return
-    end
+    exit_with_msg("No command specified") unless command
+
     command = command.intern
 
-    next_arg = @argv.shift
-    exit_with_msg("Specify a table name or 'all'") unless next_arg
-    table_names = next_arg == 'all' ? get_table_names(@conn) : [next_arg]
-
-    if @conn2
-      if COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS.include?(command)
-        exit_with_msg("Cannot run command '#{command}' with two environments")
-      end
-      table_names2 = next_arg == 'all' ? get_table_names(@conn2) : [next_arg]
+    if @conn2 && COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS.include?(command)
+      exit_with_msg("Cannot run command '#{command}' with two environments")
     end
+
+    table_names, table_names2 = get_both_table_names_from_argv(command)
 
     do_command(command, table_names, table_names2)
   end
+
+    def get_both_table_names_from_argv(command)
+      return nil, nil if COMMANDS_TO_TAKE_NO_ARGUMENTS.include?(command)
+      exit_with_msg("Specify a table name or '#{ALL_TABLES}'") if @argv.empty?
+
+      table_names  = get_table_names_from_argv(@conn , command)
+      table_names2 = get_table_names_from_argv(@conn2, command) if @conn2
+
+      @argv.clear
+
+      return table_names, table_names2
+    end
+
+    def get_table_names_from_argv(conn, command)
+      all_table_names = get_table_names(conn)
+      if @argv.size == 1 && @argv[0] == ALL_TABLES
+        return all_table_names
+      end
+
+      table_names = @argv.dup
+      non_existing_table_names = Array.new
+      table_names.each do |table_name|
+        non_existing_table_names << table_name unless all_table_names.include?(table_name)
+      end
+      if non_existing_table_names.size > 0
+        exit_with_msg("No table names in '#{conn.environment}' such as `#{non_existing_table_names.join('`, `')}`")
+      end
+      return table_names
+    end
 
   def to_s
     return "host = #{@host}, username = #{@username}, " \
@@ -781,10 +806,10 @@ class Schezer
       case command
       when :names
         if @conn2.nil?
-          puts get_table_names(@conn).join(JOINT_TABLE_NAME_OUTPUTS)
+          puts table_names.sort.join(JOINT_TABLE_NAME_OUTPUTS)
         else
-          names1 = get_table_names(@conn ).sort
-          names2 = get_table_names(@conn2).sort
+          names1 = table_names .sort
+          names2 = table_names2.sort
           compare_table_names_and_print(names1, names2)
         end
       when :regexp
@@ -858,10 +883,24 @@ class Schezer
       max_row_count = [1, row_count, row_count2].max
       max_cols = (Math::log10(max_row_count) + 1).to_i
       format = "TABLE `%s`'s COUNT(*) = %#{max_cols}d"
+      
+      env  = conn .environment
+      env2 = conn2.environment
+      for_env  = ""
+      for_env2 = nil
+      if conn2
+        for_env = " for '#{env}'"
+        if row_count == row_count2
+          for_env = " for both"
+        else
+          for_env2 = " for '#{env2}'"
+        end
+      end
 
       outs = Array.new
-      outs << (sprintf(format, table_name, row_count ) + (conn2 ? " for '#{conn .environment}'" : ""))
-      outs << (sprintf(format, table_name, row_count2) +          " for '#{conn2.environment}'") if conn2
+      outs << (sprintf(format, table_name, row_count ) + for_env  )
+      outs << (sprintf(format, table_name, row_count2) + for_env2 ) if for_env2
+
       return outs.join("\n")
     end
 
@@ -944,9 +983,9 @@ class Schezer
     end
 
     def compare_table_names_and_print(names1, names2)
-      names_both = compare_table_names(names1, names2, true)
+      outs, names_both = compare_table_names(names1, names2, true)
 
-      outs = to_s_array_to_display_names(names_both, nil, 'tables')
+      outs.concat(to_s_array_to_display_names(names_both, nil, 'tables'))
       puts outs.join("\n") unless outs.empty?
     end
 
@@ -955,8 +994,9 @@ class Schezer
     def compare_table_schemas_and_print(names1, names2)
       outs = Array.new
       prints_difference = names1.size > 1 || names1 != names2
-      names_both = compare_table_names(names1, names2, prints_difference)
-      puts SPLITTER_TABLE_SCHEMA_OUTPUTS if prints_difference && ! names_both.empty?
+      outs_diff, names_both = compare_table_names(names1, names2, prints_difference)
+      outs << outs_diff.join("\n")
+
       names_both.each do |table_name|
         schema1 = parse_table_schema(table_name, @conn )
         schema2 = parse_table_schema(table_name, @conn2)
@@ -982,7 +1022,7 @@ class Schezer
           outs2 << "[Primary keys for '#{@conn2.environment}']: (#{schema_diff.primary_keys2.join(', ')})"
         end
 
-        #TODO
+        #TODO: More diff output might be comming
 
         outs << outs2.join("\n") unless outs2.empty?
       end
@@ -995,22 +1035,24 @@ class Schezer
       names_only1 = names1 - names2
       names_only2 = names2 - names1
 
+      outs_diff = Array.new
       if prints_difference
-        outs = Array.new
-        outs.concat(to_s_array_to_display_names(names_only1, @conn .environment, 'tables'))
-        outs.concat(to_s_array_to_display_names(names_only2, @conn2.environment, 'tables'))
-        puts outs.join("\n") unless outs.empty?
+        outs_diff.concat(to_s_array_to_display_names(names_only1, @conn .environment, 'tables'))
+        outs_diff.concat(to_s_array_to_display_names(names_only2, @conn2.environment, 'tables'))
       end
 
       names_both = names1 - names_only1
-      return names_both
+      return outs_diff, names_both
     end
 
     def to_s_array_to_display_names(names, environment_name, subject_name)
-      where = environment_name ? "only in '#{environment_name}'" : "in both environments"
       outs = Array.new
+      return outs if ! @verbose && names.empty?
+
+      where = environment_name ? "only in '#{environment_name}'" : "in both environments"
       outs << "[#{subject_name.capitalize} which appears #{where} (Total of #{names.size})]:"
       outs << (names.empty? ? "(none)" : names.join(JOINT_COLUMN_NAME_OUTPUTS))
+
       return outs
     end
 
@@ -1098,6 +1140,7 @@ class Schezer
     def prepare_command_line_options(argv)
       # Default values of options
       @delimiter_field   = nil
+      @config_name2      = nil
       @is_pretty         = false
       @capitalizes_types = false
 
