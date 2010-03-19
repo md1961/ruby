@@ -859,26 +859,30 @@ class Schezer
         end
         puts outs.join("\n")
       when :data
-        exit_with_msg("Command 'data' not for multiple tables") if table_names.size > 1
-
-        table_name = table_names[0]
-        table_schema = parse_table_schema(table_name, @conn)
-        table_data = TableData.new(table_schema, @conn)
-        table_data.delimiter_out = @delimiter_field if @delimiter_field
-        if @conn2.nil?
-          puts table_data
-        else
-          table_schema2 = parse_table_schema(table_name, @conn2)
-          table_data2 = TableData.new(table_schema2, @conn2)
-          table_data.compare(table_data2)
-
-          puts "TABLE `#{table_name}`:"
-          [true, false].each do |is_self|
-            print_rows_only_in_either(table_data, is_self)
-          end
-        end
+        output_table_data(table_names)
       else
         exit_with_msg("Unknown command '#{command}'")
+      end
+    end
+
+    def output_table_data(table_names)
+      exit_with_msg("Command 'data' not for multiple tables") if table_names.size > 1
+
+      table_name = table_names[0]
+      table_schema = parse_table_schema(table_name, @conn)
+      table_data = TableData.new(table_schema, @conn)
+      table_data.delimiter_out = @delimiter_field if @delimiter_field
+      if @conn2.nil?
+        puts table_data
+      else
+        table_schema2 = parse_table_schema(table_name, @conn2)
+        table_data2 = TableData.new(table_schema2, @conn2)
+        table_data.compare(table_data2)
+
+        puts "TABLE `#{table_name}`:"
+        [true, false].each do |is_self|
+          print_rows_only_in_either(table_data, is_self)
+        end
       end
     end
 

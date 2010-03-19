@@ -1,10 +1,4 @@
-[2010-03-19 11:32 @pluto]
+[2010-03-19 13:54 @pluto]
 schema_browser/schezer.rb
-(class TableData)
-- Modified table_name() and environment() to receive argument is_self.
-- Extracted helper check_other_table_data() from identity().
-(class Schezer)
-- Modified to output a table name first when comparing two environments
-  with command 'data'.
-- Modified prepare_command_line_options() to output option descriptions
-  when help.
+- Extracted helper output_table_data() from 'when :data' in
+  helper execute().
