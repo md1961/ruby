@@ -1,9 +1,8 @@
-[2010-03-18 17:15 @pluto]
+[2010-03-19 10:47 @pluto]
 schema_browser/schezer.rb
-(Regexp table names for almost all the commands)
 (class Schezer)
-- Changed JOINT_TABLE_NAME_OUTPUTS to "\n".
-- Modified helper get_table_names_from_argv() to handle regexp's.
-- Added helper table_name2str_regexp() along with MARKER_FOR_REGEXP
-  and RE_LITERAL_REGEXP.
-- Removed 'when :regexp' from helper do_command().
+- Modified COMMAND_HELPS.
+- Added DEFAULT_TABLE_NAME and modified execute() to add it to @argv
+  if it's empty.
+- Removed COMMANDS_TO_TAKE_NO_ARGUMENTS.
+- Modified exit_with_help() for the output.

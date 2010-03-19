@@ -734,17 +734,18 @@ class Schezer
 
   ALL_TABLES = 'all'
 
+  SPC_ALL_T = ' ' * ALL_TABLES.length
   COMMAND_HELPS = [
-    "names (table names|#{ALL_TABLES}): Output table names (#{ALL_TABLES} for all tables)",
-    "raw (table names|#{ALL_TABLES}): Output raw table schema (#{ALL_TABLES} for all tables)",
-    "table (table names|#{ALL_TABLES}): Output parsed table schema (#{ALL_TABLES} for all tables)",
-    "xml (table names|#{ALL_TABLES}): Output schema in XML (#{ALL_TABLES} for all tables)",
-    "count (table names|#{ALL_TABLES}): Output row count of the table (#{ALL_TABLES} for all tables)",
-    "data (table names): Output data of the table",
+    "names (table name(s)|#{ALL_TABLES}): Output table names",
+    "raw   (table name(s)|#{ALL_TABLES}): Output raw table schema (No '#{ALL_TABLES}' with -g)",
+    "table (table name(s)|#{ALL_TABLES}): Output parsed table schema",
+    "xml   (table name(s)|#{ALL_TABLES}): Output schema in XML (No '#{ALL_TABLES}' with -g)",
+    "count (table name(s)|#{ALL_TABLES}): Output row count of the table",
+    "data  (table name)   #{SPC_ALL_T } : Output data of the table",
   ]
 
-  COMMANDS_TO_TAKE_NO_ARGUMENTS             = []
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
+  DEFAULT_TABLE_NAME = 'all'
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
   SPLITTER_TABLE_SCHEMA_OUTPUTS = "#{'=' * 10}\n"
@@ -759,6 +760,7 @@ class Schezer
       exit_with_msg("Cannot run command '#{command}' with two environments")
     end
 
+    @argv << DEFAULT_TABLE_NAME if @argv.empty?
     table_names, table_names2 = get_both_table_names_from_argv(command)
 
     do_command(command, table_names, table_names2)
@@ -773,7 +775,6 @@ class Schezer
   private
 
     def get_both_table_names_from_argv(command)
-      return nil, nil if COMMANDS_TO_TAKE_NO_ARGUMENTS.include?(command)
       exit_with_msg("Specify a table name or '#{ALL_TABLES}'") if @argv.empty?
 
       table_names  = get_table_names_from_argv(@conn , command)
@@ -1128,7 +1129,8 @@ class Schezer
 
     def exit_with_help
       puts "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
-      puts "command is one of the followings:"
+      puts "#{$0} -h or --help for available options"
+      puts "command is one of the followings ('#{ALL_TABLES}' or no table name for all tables):"
       indent = ' ' * 2
       COMMAND_HELPS.each do |explanation|
         puts sprintf("%s%s\n", indent, explanation)
