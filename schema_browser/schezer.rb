@@ -335,13 +335,23 @@ class ColumnSchema
   end
 
   TYPES_HARD_TO_SORT = %w(BLOB MEDIUMBLOB LONGBLOB)
+  TYPES_TOO_LONG_TO_DISPLAY = %w(TEXT MEDIUMTEXT LONGTEXT)
 
   def hard_to_sort?
-    TYPES_HARD_TO_SORT.each do |type_hard|
-      return true if @type[0, type_hard.length] == type_hard
-    end
-    return false
+    return type?(TYPES_HARD_TO_SORT)
   end
+
+  def too_long_to_display?
+    return type?(TYPES_TOO_LONG_TO_DISPLAY)
+  end
+
+    def type?(types)
+      types.each do |type|
+        return true if @type[0, type.length].upcase == type
+      end
+      return false
+    end
+    private :type?
 
   def ==(other)
     return self.name == other.name && self.type == other.type
@@ -621,14 +631,6 @@ class TableData
     return @table_schema
   end
 
-  def to_s_row_values(hash_rows)
-    values = Array.new
-    @table_schema.column_names.each do |column_name|
-      values << hash_rows[column_name]
-    end
-    return values.join(@delimiter_out)
-  end
-
   def delimiter_out=(value)
     @delimiter_out = value
   end
@@ -684,12 +686,25 @@ class TableData
     @has_been_compared = true
   end
 
+  LENGTH_TRUNCATE_FOR_LONG_TEXT = 20
+  MARK_TRUNCATED = '.' * 6
+
+  def to_s_row_values(hash_rows)
+    values = Array.new
+    @table_schema.columns.each do |column|
+      value = column.hard_to_sort? ? "(Type:#{column.type})" : hash_rows[column.name]
+      value = value[0, LENGTH_TRUNCATE_FOR_LONG_TEXT] + MARK_TRUNCATED if column.too_long_to_display?
+      values << value
+    end
+    return values.join(@delimiter_out)
+  end
+
   def to_s
     result = get_result
 
     outs = Array.new
-    while values = result.fetch_row
-      outs << values.join(@delimiter_out)
+    while hash_rows = result.fetch_hash
+      outs << to_s_row_values(hash_rows)
     end
     outs << "Total of #{result.num_rows} rows"
 
@@ -707,6 +722,8 @@ class TableData
         value1 = hash_row1[column_name]
         value2 = hash_row2[column_name]
         next if value1 == value2
+        return -1 if value1.nil?
+        return  1 if value2.nil?
         return value1 < value2 ? -1 : 1
       end
       return 0
@@ -859,43 +876,64 @@ class Schezer
         end
         puts outs.join("\n")
       when :data
-        output_table_data(table_names)
+        output_table_data(table_names, table_names2)
       else
         exit_with_msg("Unknown command '#{command}'")
       end
     end
 
-    def output_table_data(table_names)
-      exit_with_msg("Command 'data' not for multiple tables") if table_names.size > 1
-
-      table_name = table_names[0]
-      table_schema = parse_table_schema(table_name, @conn)
-      table_data = TableData.new(table_schema, @conn)
-      table_data.delimiter_out = @delimiter_field if @delimiter_field
-      if @conn2.nil?
-        puts table_data
+    def output_table_data(table_names, table_names2)
+      if @conn2
+        prints_difference = true
+        outs, table_names_both = compare_table_names(table_names, table_names2, prints_difference)
       else
-        table_schema2 = parse_table_schema(table_name, @conn2)
-        table_data2 = TableData.new(table_schema2, @conn2)
-        table_data.compare(table_data2)
-
-        puts "TABLE `#{table_name}`:"
-        [true, false].each do |is_self|
-          print_rows_only_in_either(table_data, is_self)
-        end
+        table_names_both = table_names
+        outs = Array.new
       end
+
+      table_names_both.each do |table_name|
+        outs2 = Array.new
+
+        table_schema = parse_table_schema(table_name, @conn)
+        table_data = TableData.new(table_schema, @conn)
+        table_data.delimiter_out = @delimiter_field if @delimiter_field
+        if @conn2.nil?
+          outs2 << table_data.to_s
+        else
+          table_schema2 = parse_table_schema(table_name, @conn2)
+          table_data2 = TableData.new(table_schema2, @conn2)
+          table_data.compare(table_data2)
+
+          next if ! @verbose && table_data.hash_rows_only_in_self .empty? \
+                             && table_data.hash_rows_only_in_other.empty?
+          outs2 << "TABLE `#{table_name}`:"
+          [true, false].each do |is_self|
+             outs2 << to_s_rows_only_in_either(table_data, is_self)
+          end
+        end
+
+        outs << outs2.join("\n")
+      end
+
+      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS)
     end
 
-    def print_rows_only_in_either(table_data, is_self=true)
-      puts "[Rows which appears only in #{table_data.environment(is_self)}]:"
+    NO_ROWS = "(none)"
+
+    def to_s_rows_only_in_either(table_data, is_self=true)
+      outs = Array.new
+
+      outs << "[Rows which appears only in #{table_data.environment(is_self)}]:"
       hash_rows = table_data.hash_rows_only_in_self_or_other(is_self)
       if hash_rows.empty?
-        puts "(none)"
+        outs << NO_ROWS
       else
         hash_rows.each do |hash_row|
-          puts table_data.to_s_row_values(hash_row)
+          outs << table_data.to_s_row_values(hash_row)
         end
       end
+
+      return outs
     end
 
     def to_s_row_count(table_name, conn, conn2=nil)
@@ -1008,9 +1046,10 @@ class Schezer
     end
 
     def compare_table_names_and_print(names1, names2)
-      outs, names_both = compare_table_names(names1, names2, true)
+      prints_difference = true
+      outs, table_names_both = compare_table_names(names1, names2, prints_difference)
 
-      outs.concat(to_s_array_to_display_names(names_both, nil, 'tables'))
+      outs.concat(to_s_array_to_display_names(table_names_both, nil, 'tables'))
       puts outs.join("\n") unless outs.empty?
     end
 
@@ -1019,10 +1058,10 @@ class Schezer
     def compare_table_schemas_and_print(names1, names2)
       outs = Array.new
       prints_difference = names1.size > 1 || names1 != names2
-      outs_diff, names_both = compare_table_names(names1, names2, prints_difference)
+      outs_diff, table_names_both = compare_table_names(names1, names2, prints_difference)
       outs << outs_diff.join("\n")
 
-      names_both.each do |table_name|
+      table_names_both.each do |table_name|
         schema1 = parse_table_schema(table_name, @conn )
         schema2 = parse_table_schema(table_name, @conn2)
         next if schema1.nil? || schema2.nil?
