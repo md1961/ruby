@@ -596,19 +596,26 @@ class TableData
     @has_been_compared = false
   end
 
-  def table_name
-    return @table_schema.name
+  def table_name(is_self=true)
+    check_other_table_data unless is_self
+    return is_self ? @table_schema.name : @other.table_name
   end
 
-  def environment
-    return @conn.environment
+  def environment(is_self=true)
+    check_other_table_data unless is_self
+    return is_self ? @conn.environment : @other.environment
   end
 
   def identity(is_self=true)
+    check_other_table_data unless is_self
     table_data = is_self ? self : @other
-    raise NotComparedYetException.new("Need to call compare() before refering other TableData") unless table_data
     return "TABLE `#{table_data.table_name}` of '#{table_data.environment}'"
   end
+
+    def check_other_table_data
+      raise NotComparedYetException.new("Need to call compare() before refering other TableData") unless @other
+    end
+    private :check_other_table_data
 
   def schema
     return @table_schema
@@ -865,6 +872,7 @@ class Schezer
           table_data2 = TableData.new(table_schema2, @conn2)
           table_data.compare(table_data2)
 
+          puts "TABLE `#{table_name}`:"
           [true, false].each do |is_self|
             print_rows_only_in_either(table_data, is_self)
           end
@@ -875,7 +883,7 @@ class Schezer
     end
 
     def print_rows_only_in_either(table_data, is_self=true)
-      puts "[Rows which appears only in #{table_data.identity(is_self)}]:"
+      puts "[Rows which appears only in #{table_data.environment(is_self)}]:"
       hash_rows = table_data.hash_rows_only_in_self_or_other(is_self)
       if hash_rows.empty?
         puts "(none)"
@@ -1151,6 +1159,15 @@ class Schezer
       exit_with_msg(msg_list.join("\n"), exit_no)
     end
 
+    DESC_D  = "Delimiter of output for command 'data' (Default is a 'tab')"
+    DESC_F  = "Database connection configuration YAML file (Format of config/database.yml in Rails)"
+    DESC_E  = "Database connection name (Environment name in Rails)"
+    DESC_G  = "Second database connection name for comparison with -e"
+    DESC_V  = "Verbose output"
+    DESC_CT = "Capitalize COLUMN data types of TABLE schema"
+    DESC_PR = "Pretty indented XML outputs"
+    DESC_UK = "Regard two records equal and output together if the unique key values are equal"
+
     def prepare_command_line_options(argv)
       # Default values of options
       @delimiter_field   = nil
@@ -1160,13 +1177,14 @@ class Schezer
 
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
-      opt_parser.on("-d", "--delimiter_field=VALUE") { |v| @delimiter_field   = v }
-      opt_parser.on("-f", "--config_file=VALUE"    ) { |v| @config_filename   = v }
-      opt_parser.on("-e", "--environment=VALUE"    ) { |v| @config_name       = v }
-      opt_parser.on("-g", "--environment_alt=VALUE") { |v| @config_name2      = v }
-      opt_parser.on("-v", "--verbose"              ) { |v| @verbose           = true }
-      opt_parser.on("--pretty"                     ) { |v| @is_pretty         = true }
-      opt_parser.on("--capitalizes_types"          ) { |v| @capitalizes_types = true }
+      opt_parser.on("-d", "--delimiter_field=VALUE", DESC_D ) { |v| @delimiter_field = v }
+      opt_parser.on("-f", "--config_file=VALUE"    , DESC_F ) { |v| @config_filename = v }
+      opt_parser.on("-e", "--environment=VALUE"    , DESC_E ) { |v| @config_name     = v }
+      opt_parser.on("-g", "--environment_alt=VALUE", DESC_G ) { |v| @config_name2    = v }
+      opt_parser.on("-v", "--verbose"              , DESC_V ) { |v| @verbose             = true }
+      opt_parser.on("--capitalizes_types"          , DESC_CT) { |v| @capitalizes_types   = true }
+      opt_parser.on("--pretty"                     , DESC_PR) { |v| @is_pretty           = true }
+      opt_parser.on("--unique_key_equalize"        , DESC_UK) { |v| @unique_key_equalize = true }
       opt_parser.parse!(argv)
     end
 
