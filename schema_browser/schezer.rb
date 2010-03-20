@@ -744,7 +744,7 @@ class Schezer
     exit_with_msg("Specify different names for option -e and -g") if @config_name == @config_name2
 
     @conn = configure(@config_filename, @config_name)
-    unless @conn.configuration_suffices?
+    unless @conn && @conn.configuration_suffices?
       exit_with_msg("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
     end
 
