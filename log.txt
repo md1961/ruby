@@ -1,6 +1,4 @@
-[2010-03-23 16:25 @pluto]
+[2010-03-23 16:55 @macbook]
 schema_browser/schezer.rb
-(class TableSchema)
-- Modified to_s() to use to_columns_table() for column definition.
-  Also altered to_s() to display 'comment' right after the table name.
-- Added to_columns_table() along with to_map_table_items().
+(class Schezer)
+- Fixed initialize() to nil-check @conn right after configure() call.
