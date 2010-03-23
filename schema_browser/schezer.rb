@@ -5,6 +5,8 @@ require 'yaml'
 require 'optparse'
 require 'rexml/document'
 
+require 'kuma_util'
+
 
 class CannotGetTableNameException < Exception
 end
@@ -174,7 +176,8 @@ class TableSchema
   INDEX_KEYS    = "Key"
   INDEX_DEFAULT = "Default"
   INDEX_EXTRA   = "Extra"
-  INDEXES = [INDEX_NAME, INDEX_TYPE, INDEX_NULL, INDEX_KEYS, INDEX_DEFAULT, INDEX_EXTRA].freeze
+  INDEX_COMMENT = "Comment"
+  INDEXES = [INDEX_NAME, INDEX_TYPE, INDEX_NULL, INDEX_KEYS, INDEX_DEFAULT, INDEX_EXTRA, INDEX_COMMENT].freeze
 
   def to_columns_table
     map_indexes = Hash.new
@@ -191,7 +194,7 @@ class TableSchema
     map_max_lengths = Hash.new { |h, k| h[k] = 0 }
     table_items.each do |map_items|
       INDEXES.each do |index|
-        length = map_items[index].length
+        length = KumaUtil.displaying_length(map_items[index])
         map_max_lengths[index] = length if length > map_max_lengths[index]
       end
     end
@@ -204,10 +207,13 @@ class TableSchema
     strs << hr
     is_index = true
     table_items.each do |map_items|
-      s = '|'
+      s = '| '
       INDEXES.each do |index|
+        item = map_items[index]
         width = map_max_lengths[index]
-        s += (" %-#{width}s " % map_items[index]) + '|'
+        length = KumaUtil.displaying_length(item)
+        s += item + (' ' * (width - length)) + ' | '
+        #s += (" %-#{width}s " % map_items[index]) + '|'
       end
       strs << s
       strs << hr if is_index
@@ -233,6 +239,7 @@ class TableSchema
       map_items[INDEX_KEYS] =  keys.join(',')
       map_items[INDEX_DEFAULT] = column.default || ''
       map_items[INDEX_EXTRA] = column.auto_increment? ? ITEMS_AUTO_INCREMENT : ''
+      map_items[INDEX_COMMENT] = column.comment || ""
 
       return map_items
     end
@@ -818,6 +825,8 @@ class Schezer
     unless @conn && @conn.configuration_suffices?
       exit_with_msg("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
     end
+
+    $KCODE = @conn.encoding  # $KCODE use only the first letter of the operand
 
     @conn2 = configure(@config_filename, @config_name2)
     if (@config_name2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
