@@ -1,4 +1,9 @@
-[2010-03-20 10:35 @macbook]
+[2010-03-23 17:32 @pluto]
+lib/kuma_util.rb
+- Newly created.
 schema_browser/schezer.rb
+(class TableSchema)
+- Modified to_columns_table() to output 'comment' as well.
+  In the process, use KumaUtil.displaying_length() instead of String#length().
 (class Schezer)
-- Fixed initialize() to nil-check @conn right after configure() call.
+- Modified initialize() to set $KCODE with @conn.encoding.
