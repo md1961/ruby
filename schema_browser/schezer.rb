@@ -67,6 +67,8 @@ class TableSchemaDifference
 end
 
 class TableSchema
+  # @primary_keys は String、@unique_keys と @keys は Key、@foreign_keys は ForeignKey の
+  # それぞれ配列。
   attr_reader :name, :columns, :primary_keys, :unique_keys, :foreign_keys, :keys
   attr_reader :engine, :auto_increment, :default_charset, :collate, :max_rows, :comment
 
@@ -118,10 +120,10 @@ class TableSchema
 
   def to_s
     schemas = Array.new
-    schemas << "TABLE `#{@name}`"
-    @columns.each do |column|
-      schemas << column.to_s
-    end
+    schemas << "TABLE `#{@name}`, comment「#{@comment || '(n/a)'}」"
+
+    schemas << to_columns_table
+
     @columns.each do |column|
       schemas << "SET options for COLUMN `#{column.name}`: #{column.set_options}" if column.set_options
     end
@@ -136,7 +138,6 @@ class TableSchema
     schemas << "default_charset=#{ @default_charset || '(n/a)'}"
     schemas << "collate=#{         @collate         || '(n/a)'}"
     schemas << "max_rows=#{        @max_rows        || '(n/a)'}"
-    schemas << "comment=#{         @comment         || '(n/a)'}"
     return schemas.join("\n")
   end
 
@@ -166,6 +167,76 @@ class TableSchema
 
     return root_element
   end
+
+  INDEX_NAME    = "Field"
+  INDEX_TYPE    = "Type"
+  INDEX_NULL    = "Null"
+  INDEX_KEYS    = "Key"
+  INDEX_DEFAULT = "Default"
+  INDEX_EXTRA   = "Extra"
+  INDEXES = [INDEX_NAME, INDEX_TYPE, INDEX_NULL, INDEX_KEYS, INDEX_DEFAULT, INDEX_EXTRA].freeze
+
+  def to_columns_table
+    map_indexes = Hash.new
+    INDEXES.each do |index|
+      map_indexes[index] = index
+    end
+
+    table_items = Array.new
+    table_items << map_indexes
+    @columns.each do |column|
+      table_items << to_map_table_items(column)
+    end
+
+    map_max_lengths = Hash.new { |h, k| h[k] = 0 }
+    table_items.each do |map_items|
+      INDEXES.each do |index|
+        length = map_items[index].length
+        map_max_lengths[index] = length if length > map_max_lengths[index]
+      end
+    end
+
+    hr_items = INDEXES.map { |index| '-' * (1 + map_max_lengths[index] + 1) }
+    hr = '+' + hr_items.join('+') + '+'
+
+    strs = Array.new
+
+    strs << hr
+    is_index = true
+    table_items.each do |map_items|
+      s = '|'
+      INDEXES.each do |index|
+        width = map_max_lengths[index]
+        s += (" %-#{width}s " % map_items[index]) + '|'
+      end
+      strs << s
+      strs << hr if is_index
+      is_index = false
+    end
+    strs << hr
+
+    return strs.join("\n")
+  end
+
+    ITEMS_NOT_NULL = 'NO'
+    ITEMS_AUTO_INCREMENT = 'auto inc.'
+
+    def to_map_table_items(column)
+      map_items = Hash.new
+
+      map_items[INDEX_NAME] = column.name
+      map_items[INDEX_TYPE] = column.type
+      map_items[INDEX_NULL] = column.not_null? ? ITEMS_NOT_NULL : ''
+      keys = Array.new
+      keys << 'PRI' if @primary_keys.include?(column.name)
+      keys << 'FK'  if @foreign_keys.map {|key| key.name }.include?(column.name)
+      map_items[INDEX_KEYS] =  keys.join(',')
+      map_items[INDEX_DEFAULT] = column.default || ''
+      map_items[INDEX_EXTRA] = column.auto_increment? ? ITEMS_AUTO_INCREMENT : ''
+
+      return map_items
+    end
+    private :to_map_table_items
 
   private
 

@@ -1,19 +1,6 @@
-[2010-03-19 17:10 @pluto]
+[2010-03-23 16:25 @pluto]
 schema_browser/schezer.rb
-(class ColumnSchema)
-- Extracted helper type?() from hard_to_sort?(), and added
-  too_long_to_display?().
-(class TableData)
-- Added LENGTH_TRUNCATE_FOR_LONG_TEXT and MARK_TRUNCATED.
-- Corrected to_s_row_values() not to display BLOB type data and
-  to truncate TEXT type data.
-- Fixed helper compare_rows() to nil-check the values before comparison
-  treat it as a minimum value if nil.
-- Fixed to_s() to use to_s_row_values().
-(class Schezer)
-- Fixed helper output_table_data() to receive additional argument
-  table_names2, and output table existence differences and data differences
-  for common tables if @conn2 was non-nil.  Also modified not to output
-  tables with identical records.
-- Changed helper print_rows_only_in_either() into to_s_rows_only_in_either()
-  which returned an array of String's to output instead of outputting them.
+(class TableSchema)
+- Modified to_s() to use to_columns_table() for column definition.
+  Also altered to_s() to display 'comment' right after the table name.
+- Added to_columns_table() along with to_map_table_items().
