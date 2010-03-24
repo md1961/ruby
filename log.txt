@@ -1,13 +1,19 @@
-[2010-03-24 12:01 @pluto]
+[2010-03-24 15:08 @pluto]
 schema_browser/schezer.rb
-(class TableSchema)
-- Modified initialize() to receive additional argument terminal_width
-  and prepare @terminal_width.
-- Extracted helper to_table() and to_hr() from to_columns_table().
-- Modified to_columns_table() to split the table into two, one for except
-  comment's and another for colume names and comment's.
+(class TableData)
+- Added pair_hash_rows_with_unique_key_same().
+- Modified compare() to receive additional argument unique_key_equalize
+  and put the pair of the hash_row's into @pair_hash_rows_with_unique_key_same
+  if the argument was treu and they are not equal but equal with unique key
+  comparison.
+- Modified helper compare_rows() to receive additional argument
+  column_names_to_sort_with to be used by compare_rows_with_unique_keys_only()
+  as well.
+- Added helper compare_rows_with_unique_keys_only().
 (class Schezer)
-- Modified parse_table_schema() to call TableSchema.new() with argument
-  terminal_width as well.
-- Modified helper prepare_command_line_options() to receive option
-  terminal_width.
+- Added SPLITTER_LENGTH and modified SPLITTER_TABLE_SCHEMA_OUTPUTS to use it.
+- Modified output_table_data() to call TableData#compare() with
+  @unique_key_equalize and output pairs of the rows not equal but equal with
+  unique keys using to_s_pairs_with_unique_key_same().
+- Corrected prepare_command_line_options() to prepare @unique_key_equalize
+  with false.

@@ -752,7 +752,12 @@ class TableData
     return is_self ? @hash_rows_only_self : @hash_rows_only_other
   end
 
-  def compare(other)
+  def pair_hash_rows_with_unique_key_same
+    raise NotComparedYetException.new unless @has_been_compared
+    return @pair_hash_rows_with_unique_key_same
+  end
+
+  def compare(other, unique_key_equalize=false)
     if self.schema != other.schema
       msg = "Schema differs between #{self.identity} and #{other.identity}"
       raise CannotCompareDueToSchemaDiscrepancyException.new(msg)
@@ -763,13 +768,18 @@ class TableData
     result_other = other.get_result
     @hash_rows_only_self  = Array.new
     @hash_rows_only_other = Array.new
+    @pair_hash_rows_with_unique_key_same = Array.new
     begin
       hash_row_self  = result_self .fetch_hash
       hash_row_other = result_other.fetch_hash
       until hash_row_self.nil? && hash_row_other.nil?
         cmp = compare_rows(hash_row_self, hash_row_other)
         break if cmp == 0
-        if cmp < 0
+        if unique_key_equalize && compare_rows_with_unique_keys_only(hash_row_self, hash_row_other) == 0
+          @pair_hash_rows_with_unique_key_same << [hash_row_self, hash_row_other]
+          hash_row_self  = result_self .fetch_hash
+          hash_row_other = result_other.fetch_hash
+        elsif cmp < 0
           @hash_rows_only_self  << hash_row_self
           hash_row_self  = result_self .fetch_hash
         else
@@ -810,17 +820,25 @@ class TableData
   private
 
     # Return -1, 0, 1 according to <, ==, >
-    def compare_rows(hash_row1, hash_row2)
+    def compare_rows(hash_row1, hash_row2, column_names_to_sort_with=@table_schema.column_names_to_sort)
       return  0 if hash_row1.nil? && hash_row2.nil?
       return -1 if hash_row2.nil?
       return  1 if hash_row1.nil?
-      @table_schema.column_names_to_sort.each do |column_name|
+      column_names_to_sort_with.each do |column_name|
         value1 = hash_row1[column_name]
         value2 = hash_row2[column_name]
         next if value1 == value2
         return -1 if value1.nil?
         return  1 if value2.nil?
         return value1 < value2 ? -1 : 1
+      end
+      return 0
+    end
+
+    def compare_rows_with_unique_keys_only(hash_row1, hash_row2)
+      @table_schema.unique_keys.each do |unique_key|
+        cmp = compare_rows(hash_row1, hash_row2, unique_key.column_names)
+        return cmp unless cmp == 0
       end
       return 0
     end
@@ -870,7 +888,9 @@ class Schezer
   DEFAULT_TABLE_NAME = 'all'
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
-  SPLITTER_TABLE_SCHEMA_OUTPUTS = "#{'=' * 10}\n"
+
+  SPLITTER_LENGTH = 50
+  SPLITTER_TABLE_SCHEMA_OUTPUTS = "#{'=' * SPLITTER_LENGTH}\n"
 
   def execute
     command = @argv.shift
@@ -1000,11 +1020,13 @@ class Schezer
         else
           table_schema2 = parse_table_schema(table_name, @conn2)
           table_data2 = TableData.new(table_schema2, @conn2)
-          table_data.compare(table_data2)
+          table_data.compare(table_data2, @unique_key_equalize)
 
-          next if ! @verbose && table_data.hash_rows_only_in_self .empty? \
-                             && table_data.hash_rows_only_in_other.empty?
+          next if ! @verbose && table_data.hash_rows_only_in_self             .empty? \
+                             && table_data.hash_rows_only_in_other            .empty? \
+                             && table_data.pair_hash_rows_with_unique_key_same.empty?
           outs2 << "TABLE `#{table_name}`:"
+          outs2 << to_s_pairs_with_unique_key_same(table_data)
           [true, false].each do |is_self|
              outs2 << to_s_rows_only_in_either(table_data, is_self)
           end
@@ -1017,6 +1039,27 @@ class Schezer
     end
 
     NO_ROWS = "(none)"
+    SPLITTER_PAIR_OF_TABLE_ROWS = '-' * SPLITTER_LENGTH
+
+    def to_s_pairs_with_unique_key_same(table_data)
+      outs = Array.new
+
+      env_self  = table_data.environment(true )
+      env_other = table_data.environment(false)
+      index = "[Pair of rows different but same with unique keys ('#{env_self}', then '#{env_other}')"
+      pair_hash_rows = table_data.pair_hash_rows_with_unique_key_same
+      if pair_hash_rows.empty?
+        outs << NO_ROWS
+      else
+        pair_hash_rows.each do |hash_row_self, hash_row_other|
+          outs << SPLITTER_PAIR_OF_TABLE_ROWS
+          outs << table_data.to_s_row_values(hash_row_self )
+          outs << table_data.to_s_row_values(hash_row_other)
+        end
+      end
+
+      return [index] + outs
+    end
 
     def to_s_rows_only_in_either(table_data, is_self=true)
       outs = Array.new
@@ -1314,11 +1357,12 @@ class Schezer
 
     def prepare_command_line_options(argv)
       # Default values of options
-      @delimiter_field   = nil
-      @config_name2      = nil
-      @terminal_width    = DEFAULT_TERMINAL_WIDTH
-      @is_pretty         = false
-      @capitalizes_types = false
+      @delimiter_field     = nil
+      @config_name2        = nil
+      @terminal_width      = DEFAULT_TERMINAL_WIDTH
+      @is_pretty           = false
+      @capitalizes_types   = false
+      @unique_key_equalize = false
 
       @options = Hash.new { |h, k| h[k] = nil }
       opt_parser = OptionParser.new
