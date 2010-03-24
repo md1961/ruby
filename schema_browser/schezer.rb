@@ -76,13 +76,15 @@ class TableSchema
 
   DEFAULT_COLUMN_COMMENT_FOR_ID = "RDBMSが生成する一意のID番号"
 
-  def initialize(raw_schema, capitalizes_types=false)
+  def initialize(raw_schema, terminal_width, capitalizes_types=false)
     @name         = nil
     @columns      = Array.new
     @primary_keys = Array.new
     @unique_keys  = Array.new
     @foreign_keys = Array.new
     @keys         = Array.new
+
+    @terminal_width = terminal_width
 
     parse_raw_schema(raw_schema.split("\n"), capitalizes_types)
   end
@@ -199,30 +201,46 @@ class TableSchema
       end
     end
 
-    hr_items = INDEXES.map { |index| '-' * (1 + map_max_lengths[index] + 1) }
-    hr = '+' + hr_items.join('+') + '+'
-
-    strs = Array.new
-
-    strs << hr
-    is_index = true
-    table_items.each do |map_items|
-      s = '| '
-      INDEXES.each do |index|
-        item = map_items[index]
-        width = map_max_lengths[index]
-        length = KumaUtil.displaying_length(item)
-        s += item + (' ' * (width - length)) + ' | '
-        #s += (" %-#{width}s " % map_items[index]) + '|'
-      end
-      strs << s
-      strs << hr if is_index
-      is_index = false
+    if to_hr(INDEXES, map_max_lengths).length <= @terminal_width
+      return to_table(INDEXES, table_items, map_max_lengths)
+    else
+      table0 = to_table(INDEXES - [INDEX_COMMENT]  , table_items, map_max_lengths)
+      table1 = to_table([INDEX_NAME, INDEX_COMMENT], table_items, map_max_lengths)
+      return [table0, table1].join("\n")
     end
-    strs << hr
-
-    return strs.join("\n")
   end
+
+    def to_hr(indexes, map_max_lengths)
+      hr_items = indexes.map { |index| '-' * (1 + map_max_lengths[index] + 1) }
+      return '+' + hr_items.join('+') + '+'
+    end
+    private :to_hr
+
+    def to_table(indexes, table_items, map_max_lengths)
+      hr = to_hr(indexes, map_max_lengths)
+
+      strs = Array.new
+
+      strs << hr
+      is_index = true
+      table_items.each do |map_items|
+        s = '| '
+        indexes.each do |index|
+          item = map_items[index]
+          width = map_max_lengths[index]
+          length = KumaUtil.displaying_length(item)
+          s += item + (' ' * (width - length)) + ' | '
+          #s += (" %-#{width}s " % map_items[index]) + '|'
+        end
+        strs << s
+        strs << hr if is_index
+        is_index = false
+      end
+      strs << hr
+
+      return strs.join("\n")
+    end
+    private :to_table
 
     ITEMS_NOT_NULL = 'NO'
     ITEMS_AUTO_INCREMENT = 'auto inc.'
@@ -1051,7 +1069,7 @@ class Schezer
     def parse_table_schema(name, conn)
       raw_schema = get_raw_table_schema(name, conn)
       return nil unless raw_schema
-      ts = TableSchema.new(raw_schema, @capitalizes_types)
+      ts = TableSchema.new(raw_schema, @terminal_width, @capitalizes_types)
       return ts
     end
 
@@ -1282,6 +1300,8 @@ class Schezer
       exit_with_msg(msg_list.join("\n"), exit_no)
     end
 
+    DEFAULT_TERMINAL_WIDTH = 120
+
     DESC_D  = "Delimiter of output for command 'data' (Default is a 'tab')"
     DESC_F  = "Database connection configuration YAML file (Format of config/database.yml in Rails)"
     DESC_E  = "Database connection name (Environment name in Rails)"
@@ -1289,12 +1309,14 @@ class Schezer
     DESC_V  = "Verbose output"
     DESC_CT = "Capitalize COLUMN data types of TABLE schema"
     DESC_PR = "Pretty indented XML outputs"
+    DESC_TW = "Terminal column width to display (default is #{DEFAULT_TERMINAL_WIDTH})"
     DESC_UK = "Regard two records equal and output together if the unique key values are equal"
 
     def prepare_command_line_options(argv)
       # Default values of options
       @delimiter_field   = nil
       @config_name2      = nil
+      @terminal_width    = DEFAULT_TERMINAL_WIDTH
       @is_pretty         = false
       @capitalizes_types = false
 
@@ -1304,10 +1326,11 @@ class Schezer
       opt_parser.on("-f", "--config_file=VALUE"    , DESC_F ) { |v| @config_filename = v }
       opt_parser.on("-e", "--environment=VALUE"    , DESC_E ) { |v| @config_name     = v }
       opt_parser.on("-g", "--environment_alt=VALUE", DESC_G ) { |v| @config_name2    = v }
-      opt_parser.on("-v", "--verbose"              , DESC_V ) { |v| @verbose             = true }
-      opt_parser.on("--capitalizes_types"          , DESC_CT) { |v| @capitalizes_types   = true }
-      opt_parser.on("--pretty"                     , DESC_PR) { |v| @is_pretty           = true }
-      opt_parser.on("--unique_key_equalize"        , DESC_UK) { |v| @unique_key_equalize = true }
+      opt_parser.on("-v", "--verbose"              , DESC_V ) { |v| @verbose             = true   }
+      opt_parser.on("--capitalizes_types"          , DESC_CT) { |v| @capitalizes_types   = true   }
+      opt_parser.on("--pretty"                     , DESC_PR) { |v| @is_pretty           = true   }
+      opt_parser.on("--terminal_width=VALUE"       , DESC_TW) { |v| @terminal_width      = v.to_i }
+      opt_parser.on("--unique_key_equalize"        , DESC_UK) { |v| @unique_key_equalize = true   }
       opt_parser.parse!(argv)
     end
 

@@ -1,3 +1,13 @@
-[2010-03-24 11:25 @pluto]
-bin/term_width.rb
-- Newly created.
+[2010-03-24 12:01 @pluto]
+schema_browser/schezer.rb
+(class TableSchema)
+- Modified initialize() to receive additional argument terminal_width
+  and prepare @terminal_width.
+- Extracted helper to_table() and to_hr() from to_columns_table().
+- Modified to_columns_table() to split the table into two, one for except
+  comment's and another for colume names and comment's.
+(class Schezer)
+- Modified parse_table_schema() to call TableSchema.new() with argument
+  terminal_width as well.
+- Modified helper prepare_command_line_options() to receive option
+  terminal_width.
