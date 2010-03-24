@@ -1,9 +1,3 @@
-[2010-03-23 17:32 @pluto]
-lib/kuma_util.rb
+[2010-03-24 11:25 @pluto]
+bin/term_width.rb
 - Newly created.
-schema_browser/schezer.rb
-(class TableSchema)
-- Modified to_columns_table() to output 'comment' as well.
-  In the process, use KumaUtil.displaying_length() instead of String#length().
-(class Schezer)
-- Modified initialize() to set $KCODE with @conn.encoding.
