@@ -219,13 +219,16 @@ class TableSchema
       end
     end
 
-    table0 = TableOnCUI.new(INDEXES, map_max_lengths)
-    if table0.width <= @terminal_width
-      return table0.to_table(table_items)
+    table = TableOnCUI.new(INDEXES, map_max_lengths)
+    if table.width <= @terminal_width
+      return table.to_table(table_items)
     else
-      table0 = TableOnCUI.new(INDEXES - [INDEX_COMMENT]  , map_max_lengths)
-      table1 = TableOnCUI.new([INDEX_NAME, INDEX_COMMENT], map_max_lengths)
-      return [table0.to_table(table_items), table1.to_table(table_items)].join("\n")
+      table.hide(INDEX_COMMENT)
+      table0 = table.to_table(table_items)
+      table.hide(:all)
+      table.show(INDEX_NAME, INDEX_COMMENT)
+      table1 = table.to_table(table_items)
+      return [table0, table1].join("\n")
     end
   end
 
@@ -236,28 +239,50 @@ class TableSchema
 
     DEFAULT_NUM_PADDING = 1
 
-    # indexes: 表示順（左から右）に整列された列名の Array
+    # index_names: 表示順（左から右）に整列された列名の Array
     # map_max_lengths: 列名をキー、表示幅を値とした Hash
-    def initialize(indexes, map_max_lengths, num_padding=DEFAULT_NUM_PADDING)
-      @map_indexes     = Hash.new
-      indexes.each do |index|
-        @map_indexes[index] = true  # Values are whether display or not
-      end
+    def initialize(index_names, map_max_lengths, num_padding=DEFAULT_NUM_PADDING)
+      @index_names     = index_names
       @map_max_lengths = map_max_lengths
       @num_padding     = num_padding
+
+      @index_names_to_hide = []
     end
 
     def width
       return hr.length
     end
 
-    def hide(*index_name)
+    def show(*index_names)
+      if index_names.size == 1 && index_names[0] == :all
+        index_names_to_hide = []
+        return
+      end
+
+      @index_names_to_hide.uniq
+      index_names.each do |index|
+        raise NoSuchIndexException.new("No such index as '#{index}'") unless @index_names.include?(index)
+        @index_names_to_hide.delete(index)
+      end
+    end
+
+    def hide(*index_names)
+      if index_names.size == 1 && index_names[0] == :all
+        @index_names_to_hide = @index_names.dup
+        return
+      end
+
+      index_names.each do |index|
+        raise NoSuchIndexException.new("No such index as '#{index}'") unless @index_names.include?(index)
+        @index_names_to_hide << index
+      end
+      @index_names_to_hide.uniq
     end
 
     # 表中に表示される水平線
     def hr
       npad = @num_padding
-      hr_items = @map_indexes.keys.map { |index| '-' * (npad + @map_max_lengths[index] + npad) }
+      hr_items = index_names_to_display.map { |index| '-' * (npad + @map_max_lengths[index] + npad) }
       return "+#{hr_items.join('+')}+"
     end
 
@@ -272,7 +297,7 @@ class TableSchema
       is_index = true
       table_items.each do |map_items|
         s = '| '
-        @map_indexes.keys.each do |index|
+        index_names_to_display.each do |index|
           item = map_items[index]
           width = @map_max_lengths[index]
           length = KumaUtil.displaying_length(item)
@@ -286,6 +311,12 @@ class TableSchema
 
       return strs.join("\n")
     end
+
+    private
+      
+      def index_names_to_display
+        return @index_names - @index_names_to_hide
+      end
   end  # End of class TableOnCUI
 
   private
@@ -964,13 +995,13 @@ class Schezer
 
   SPC_ALL_T = ' ' * ALL_TABLES.length
   COMMAND_HELPS = [
-    "names    (table name(s)|#{ALL_TABLES}): Output table names",
-    "raw      (table name(s)|#{ALL_TABLES}): Output raw table schema (No '#{ALL_TABLES}' with -g)",
-    "table    (table name(s)|#{ALL_TABLES}): Output parsed table schema",
-    "xml      (table name(s)|#{ALL_TABLES}): Output schema in XML (No '#{ALL_TABLES}' with -g)",
-    "count    (table name(s)|#{ALL_TABLES}): Output row count of the table",
-    "data     (table name(s)|#{ALL_TABLES}): Output data of the table",
-    "sql_sync (table name(s)|#{ALL_TABLES}): Generate SQL's to synchronize data of '-e' to '-g'",
+    "names    [table name(s)|#{ALL_TABLES}]: Output table names",
+    "raw      [table name(s)|#{ALL_TABLES}]: Output raw table schema (No '#{ALL_TABLES}' with -g)",
+    "table    [table name(s)|#{ALL_TABLES}]: Output parsed table schema",
+    "xml      [table name(s)|#{ALL_TABLES}]: Output schema in XML (No '#{ALL_TABLES}' with -g)",
+    "count    [table name(s)|#{ALL_TABLES}]: Output row count of the table",
+    "data     [table name(s)|#{ALL_TABLES}]: Output data of the table",
+    "sql_sync [table name(s)|#{ALL_TABLES}]: Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
@@ -1518,17 +1549,19 @@ class Schezer
     end
 
     COMMAND_OPTIONS_AND_SUBCOMMAND = \
-          "-f DB_config_filename -e environment [-g environment_2] [options]" \
-        + " command [table_name|all]"
+          "-f DB_config_filename -e environment [-g environment_2] [options] command [table_name(s)|all]"
 
     def exit_with_help
-      puts "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
-      puts "#{$0} -h or --help for available options"
+      command = File.basename($0)
+      puts "Usage: #{command} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
       puts "command is one of the followings ('#{ALL_TABLES}' or no table name for all tables):"
       indent = ' ' * 2
       COMMAND_HELPS.each do |explanation|
         puts sprintf("%s%s\n", indent, explanation)
       end
+
+      puts "options:"
+      system("#{$0} --help | grep -v '^Usage'")
 
       exit(0)
     end

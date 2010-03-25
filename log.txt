@@ -1,4 +1,11 @@
-[2010-03-25 15:28 @pluto]
+[2010-03-25 16:13 @pluto]
 schema_browser/schezer.rb
-- Created class TableOnCUI from helper to_hr() and to_table()
-  in class TableSchema.
+(class TableSchema)
+- Modified to_columns_table() using TableOnCUI#show() and hide().
+- Altered back initialize() to prepare @index_names (indexes formerly),
+  not @map_indexes, as required to keep the order.
+  Also modified to prepare @index_names_to_hide.
+- Added show() and hide().
+- Added helper index_names_to_display().
+(class Schezer)
+- Modified helper exit_with_help() to display option's help as well.
