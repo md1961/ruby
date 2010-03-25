@@ -20,11 +20,18 @@ end
 class DuplicatePrimaryKeyException < Exception
 end
 
-class CannotCompareDueToSchemaDiscrepancyException < Exception
+class SchemaDiscrepancyException < Exception
 end
 
 class NotComparedYetException < Exception
 end
+
+class NoPrimaryKeyException < Exception
+end
+
+class MultipleRowsExpectingUniqueResultException < Exception
+end
+
 
 class TableSchemaDifference
   attr_reader :column_names_only1, :column_names_only2, :column_names_both
@@ -69,7 +76,7 @@ class TableSchemaDifference
 end
 
 class TableSchema
-  # @primary_keys は String、@unique_keys と @keys は Key、@foreign_keys は ForeignKey の
+  # @primary_keys は String.@unique_keys と @keys は Key.@foreign_keys は ForeignKey の
   # それぞれ配列。
   attr_reader :name, :columns, :primary_keys, :unique_keys, :foreign_keys, :keys
   attr_reader :engine, :auto_increment, :default_charset, :collate, :max_rows, :comment
@@ -103,6 +110,13 @@ class TableSchema
 
   def column_names
     return @columns.map { |column| column.name }
+  end
+
+  def has_columns_hard_to_sort?
+    @columns.each do |column|
+      return true if column.hard_to_sort?
+    end
+    return false
   end
 
   def column_names_to_sort
@@ -443,11 +457,20 @@ class ColumnSchema
 
     def type?(types)
       types.each do |type|
-        return true if @type[0, type.length].upcase == type
+        return true if @type[0, type.length].upcase == type.upcase
       end
       return false
     end
     private :type?
+
+  NUMERICAL_TYPES = %w(NUMERIC DECIMAL INTEGER SMALLINT TINYINT FLOAT REAL DOUBLE INT DEC)
+
+  def numerical_type?
+    NUMERICAL_TYPES.each do |num_type|
+      return true if @type[0, num_type.length].upcase == num_type.upcase
+    end
+    return false
+  end
 
   def ==(other)
     return self.name == other.name && self.type == other.type
@@ -702,6 +725,39 @@ class TableData
     @has_been_compared = false
   end
 
+  # Return a Mysql::Result
+  def get_result
+    column_names_to_sort = @table_schema.column_names_to_sort
+    sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
+    return @conn.get_query_result(sql)
+  end
+
+  # Find a row using the value(s) of the primary key(s) fo argument ref_hash_row
+  def find_hash_row_by_primary_key(ref_hash_row)
+    primary_keys = @table_schema.primary_keys
+    if primary_keys.nil? || primary_keys.empty?
+      raise NoPrimaryKeyException.new
+    end
+
+    column_names_self = @table_schema.column_names.sort
+    column_names_arg  = ref_hash_row .keys        .sort
+    unless column_names_self == column_names_arg
+      msg = "self(#{column_names_self.inspect}) vs argument(#{column_names_arg.inspect})"
+      raise SchemaDiscrepancyException.new(msg)
+    end
+
+    cond_primary_keys = Array.new
+    primary_keys.each do |primary_key|
+      ref_value = ref_hash_row[primary_key]
+      ref_value = "'#{ref_value}'" if ref_value.kind_of?(String)
+      cond_primary_keys << "#{primary_key} = #{ref_value}"
+    end
+    sql = "SELECT * FROM #{@table_schema.name} WHERE #{cond_primary_keys.join(' AND ')}"
+    result = @conn.get_query_result(sql)
+    raise MultipleRowsExpectingUniqueResultException.new(sql) if result.num_rows > 1
+    return result.fetch_hash
+  end
+
   def table_name(is_self=true)
     check_other_table_data unless is_self
     return is_self ? @table_schema.name : @other.table_name
@@ -731,13 +787,6 @@ class TableData
     @delimiter_out = value
   end
 
-  # Return a Mysql::Result
-  def get_result
-    column_names_to_sort = @table_schema.column_names_to_sort
-    sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
-    return @conn.get_query_result(sql)
-  end
-
   def hash_rows_only_in_self
     return hash_rows_only_in_self_or_other(true)
   end
@@ -759,8 +808,8 @@ class TableData
 
   def compare(other, unique_key_equalize=false)
     if self.schema != other.schema
-      msg = "Schema differs between #{self.identity} and #{other.identity}"
-      raise CannotCompareDueToSchemaDiscrepancyException.new(msg)
+      msg = "Table schema differs between #{self.identity} and #{other.identity}"
+      raise SchemaDiscrepancyException.new(msg)
     end
     @other = other
 
@@ -876,12 +925,13 @@ class Schezer
 
   SPC_ALL_T = ' ' * ALL_TABLES.length
   COMMAND_HELPS = [
-    "names (table name(s)|#{ALL_TABLES}): Output table names",
-    "raw   (table name(s)|#{ALL_TABLES}): Output raw table schema (No '#{ALL_TABLES}' with -g)",
-    "table (table name(s)|#{ALL_TABLES}): Output parsed table schema",
-    "xml   (table name(s)|#{ALL_TABLES}): Output schema in XML (No '#{ALL_TABLES}' with -g)",
-    "count (table name(s)|#{ALL_TABLES}): Output row count of the table",
-    "data  (table name)   #{SPC_ALL_T } : Output data of the table",
+    "names    (table name(s)|#{ALL_TABLES}): Output table names",
+    "raw      (table name(s)|#{ALL_TABLES}): Output raw table schema (No '#{ALL_TABLES}' with -g)",
+    "table    (table name(s)|#{ALL_TABLES}): Output parsed table schema",
+    "xml      (table name(s)|#{ALL_TABLES}): Output schema in XML (No '#{ALL_TABLES}' with -g)",
+    "count    (table name(s)|#{ALL_TABLES}): Output row count of the table",
+    "data     (table name(s)|#{ALL_TABLES}): Output data of the table",
+    "sql_sync (table name(s)|#{ALL_TABLES}): Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
@@ -995,15 +1045,85 @@ class Schezer
         puts outs.join("\n")
       when :data
         output_table_data(table_names, table_names2)
+      when :sql_sync
+        generate_sql_to_sync(table_names, table_names2)
       else
         exit_with_msg("Unknown command '#{command}'")
       end
     end
 
+    # Generate SQL's to synchronize DB at @conn to DB at @conn2
+    def generate_sql_to_sync(table_names, table_names2)
+      unless @conn2
+        exit_with_msg("Specify synchronization destination environment with option '-g'")
+      end
+
+      outs, table_names_both = compare_table_names(table_names, table_names2)
+      table_names_both.each do |table_name|
+        table_schema  = parse_table_schema(table_name, @conn )
+        table_schema2 = parse_table_schema(table_name, @conn2)
+        next if table_schema.has_columns_hard_to_sort?
+        table_data  = TableData.new(table_schema , @conn )
+        table_data2 = TableData.new(table_schema2, @conn2)
+        table_data.compare(table_data2, unique_key_equalize = true)
+
+        next if table_data.hash_rows_only_in_other.empty?
+
+        outs2 = Array.new
+        outs2 << "TABLE `#{table_name}`:"
+
+        unless (hash_rows = table_data.hash_rows_only_in_other).empty?
+          hash_rows.each do |hash_row|
+            has_single_primary_key = table_schema.primary_keys.size == 1
+            original_hash_row = table_data.find_hash_row_by_primary_key(hash_row)
+
+            index_id = nil
+            table_schema.columns.each_with_index do |column, index|
+              value = hash_row[column.name]
+              if has_single_primary_key && original_hash_row && column.auto_increment?
+                index_id = index
+                break
+              end
+            end
+
+            values = make_values_for_sql_insert(hash_row, table_schema.columns)
+            values[index_id] = 0 if index_id
+
+            outs2 << "INSERT INTO #{table_name} VALUES (#{values.join(', ')})"
+            if index_id
+              original_values = make_values_for_sql_insert(original_hash_row, table_schema.columns)
+              outs2 << "(#{original_values.join(', ')}) exists in '#{@conn2.environment}'"
+            end
+          end
+        end
+
+        outs << outs2.join("\n")
+      end
+
+      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS)
+    end
+
+    # hash_row: Hash with keys of column names and values of column values
+    # columns: Array of ColumnSchema's
+    def make_values_for_sql_insert(hash_row, columns)
+      values = Array.new
+
+      columns.each do |column|
+        value = hash_row[column.name]
+        if value.nil?
+          value = 'NULL'
+        elsif ! column.numerical_type?
+          value = "'#{value}'"
+        end
+        values << value
+      end
+
+      return values
+    end
+
     def output_table_data(table_names, table_names2)
       if @conn2
-        prints_difference = true
-        outs, table_names_both = compare_table_names(table_names, table_names2, prints_difference)
+        outs, table_names_both = compare_table_names(table_names, table_names2)
       else
         table_names_both = table_names
         outs = Array.new
@@ -1187,8 +1307,7 @@ class Schezer
     end
 
     def compare_table_names_and_print(names1, names2)
-      prints_difference = true
-      outs, table_names_both = compare_table_names(names1, names2, prints_difference)
+      outs, table_names_both = compare_table_names(names1, names2)
 
       outs.concat(to_s_array_to_display_names(table_names_both, nil, 'tables'))
       puts outs.join("\n") unless outs.empty?
@@ -1198,9 +1317,8 @@ class Schezer
 
     def compare_table_schemas_and_print(names1, names2)
       outs = Array.new
-      prints_difference = names1.size > 1 || names1 != names2
-      outs_diff, table_names_both = compare_table_names(names1, names2, prints_difference)
-      outs << outs_diff.join("\n")
+      outs_diff, table_names_both = compare_table_names(names1, names2)
+      outs << outs_diff.join("\n") if names1.size > 1 || names1 != names2
 
       table_names_both.each do |table_name|
         schema1 = parse_table_schema(table_name, @conn )
@@ -1236,15 +1354,13 @@ class Schezer
     end
 
     # Also return an array of table names which appear in both the arguments.
-    def compare_table_names(names1, names2, prints_difference=false)
+    def compare_table_names(names1, names2)
       names_only1 = names1 - names2
       names_only2 = names2 - names1
 
       outs_diff = Array.new
-      if prints_difference
-        outs_diff.concat(to_s_array_to_display_names(names_only1, @conn .environment, 'tables'))
-        outs_diff.concat(to_s_array_to_display_names(names_only2, @conn2.environment, 'tables'))
-      end
+      outs_diff.concat(to_s_array_to_display_names(names_only1, @conn .environment, 'tables'))
+      outs_diff.concat(to_s_array_to_display_names(names_only2, @conn2.environment, 'tables'))
 
       names_both = names1 - names_only1
       return outs_diff, names_both
