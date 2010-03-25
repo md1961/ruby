@@ -112,6 +112,10 @@ class TableSchema
     return @columns.map { |column| column.name }
   end
 
+  def columns_with_primary_key
+    return @columns.select { |column| @primary_keys.include?(column.name) }
+  end
+
   def has_columns_hard_to_sort?
     @columns.each do |column|
       return true if column.hard_to_sort?
@@ -806,6 +810,14 @@ class TableData
     return @pair_hash_rows_with_unique_key_same
   end
 
+  # メソッド compare() の結果、値の異なるレコードが見つからなかったか、
+  # 否かを評価する
+  def different_rows_empty?
+    return hash_rows_only_in_self             .empty? \
+        && hash_rows_only_in_other            .empty? \
+        && pair_hash_rows_with_unique_key_same.empty?
+  end
+
   def compare(other, unique_key_equalize=false)
     if self.schema != other.schema
       msg = "Table schema differs between #{self.identity} and #{other.identity}"
@@ -1067,12 +1079,13 @@ class Schezer
         table_data2 = TableData.new(table_schema2, @conn2)
         table_data.compare(table_data2, unique_key_equalize = true)
 
-        next if table_data.hash_rows_only_in_other.empty?
+        next if table_data.different_rows_empty?
 
         outs2 = Array.new
 
-        outs2 << "TABLE `#{table_name}`:"
+        outs2 << "TABLE `#{table_name}`:" if @verbose
         outs2.concat(generate_sql_insert_to_sync(table_data, table_schema))
+        outs2.concat(generate_sql_update_to_sync(table_data, table_schema))
 
         outs << outs2.join("\n")
       end
@@ -1101,10 +1114,43 @@ class Schezer
           values = make_values_for_sql_insert(hash_row, table_schema.columns)
           values[index_id] = 0 if index_id
 
-          outs << "INSERT INTO #{table_schema.name} VALUES (#{values.join(', ')})"
-          if index_id
+          outs << "INSERT INTO #{table_schema.name} VALUES (#{values.join(', ')});"
+          if index_id && @verbose
             original_values = make_values_for_sql_insert(original_hash_row, table_schema.columns)
-            outs << "(#{original_values.join(', ')}) exists in '#{@conn2.environment}'"
+            outs << "((#{original_values.join(', ')}) exists in '#{@conn.environment}')"
+          end
+        end
+      end
+
+      return outs
+    end
+
+    def generate_sql_update_to_sync(table_data, table_schema)
+      outs = Array.new
+
+      column_names_without_primary_key = table_schema.column_names - table_schema.primary_keys
+      columns_without_primary_key = table_schema.columns.select do |column|
+        column_names_without_primary_key.include?(column.name)
+      end
+
+      pair_hash_rows = table_data.pair_hash_rows_with_unique_key_same
+      unless pair_hash_rows.empty?
+        pair_hash_rows.each do |hash_row1, hash_row2|
+          wheres_pk = Array.new
+          table_schema.columns_with_primary_key.each do |column|
+            wheres_pk << "#{column.name} = #{value_in_sql(hash_row1, column)}"
+          end
+
+          setters = Array.new
+          columns_without_primary_key.each do |column|
+            next if hash_row1[column.name] == hash_row2[column.name]
+            setters << "#{column.name} = #{value_in_sql(hash_row2, column)}"
+          end
+
+          outs << "UPDATE #{table_schema.name} SET #{setters.join(', ')} WHERE #{wheres_pk.join(' AND ')};"
+          if @verbose
+            values_overwritten = make_values_for_sql_insert(hash_row1, table_schema.columns)
+            outs << "(Overwriting (#{values_overwritten.join(', ')}) in '#{@conn.environment}')"
           end
         end
       end
@@ -1116,18 +1162,20 @@ class Schezer
     # columns: ColumnSchema の配列
     def make_values_for_sql_insert(hash_row, columns)
       values = Array.new
-
       columns.each do |column|
-        value = hash_row[column.name]
-        if value.nil?
-          value = 'NULL'
-        elsif ! column.numerical_type?
-          value = "'#{value}'"
-        end
-        values << value
+        values << value_in_sql(hash_row, column)
       end
-
       return values
+    end
+
+    def value_in_sql(hash_row, column)
+      value = hash_row[column.name]
+      if value.nil?
+        return 'NULL'
+      elsif column.numerical_type?
+        return value
+      end
+      return "'#{value}'"
     end
 
     def output_table_data(table_names, table_names2)

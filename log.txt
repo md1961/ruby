@@ -1,7 +1,12 @@
-[2010-03-25 11:46 @pluto]
+[2010-03-25 14:34 @pluto]
 schema_browser/schezer.rb
-(class TableSchemaDifference)
-- Corrected primary_keys_equals?() to sort the keys before the comparison.
+(class TableSchema)
+- Added columns_with_primary_key().
+(class TableData)
+- Added different_rows_empty?().
 (class Schezer)
-- Extracted helper generate_sql_insert_to_sync() from helper
-  generate_sql_to_sync().
+- Modified to suppress table names and non-SQL statement unless @verbose.
+- Corrected generate_sql_to_sync() to skip current table if
+  TableData#different_rows_empty?() and to display UPDATE SQL's.
+- Added generate_sql_update_to_sync().
+- Extracted helper value_in_sql() from helper make_values_for_sql_insert().
