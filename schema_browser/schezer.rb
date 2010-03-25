@@ -219,23 +219,52 @@ class TableSchema
       end
     end
 
-    if to_hr(INDEXES, map_max_lengths).length <= @terminal_width
-      return to_table(INDEXES, table_items, map_max_lengths)
+    table0 = TableOnCUI.new(INDEXES, map_max_lengths)
+    if table0.width <= @terminal_width
+      return table0.to_table(table_items)
     else
-      table0 = to_table(INDEXES - [INDEX_COMMENT]  , table_items, map_max_lengths)
-      table1 = to_table([INDEX_NAME, INDEX_COMMENT], table_items, map_max_lengths)
-      return [table0, table1].join("\n")
+      table0 = TableOnCUI.new(INDEXES - [INDEX_COMMENT]  , map_max_lengths)
+      table1 = TableOnCUI.new([INDEX_NAME, INDEX_COMMENT], map_max_lengths)
+      return [table0.to_table(table_items), table1.to_table(table_items)].join("\n")
     end
   end
 
-    def to_hr(indexes, map_max_lengths)
-      hr_items = indexes.map { |index| '-' * (1 + map_max_lengths[index] + 1) }
-      return '+' + hr_items.join('+') + '+'
-    end
-    private :to_hr
+  class TableOnCUI
 
-    def to_table(indexes, table_items, map_max_lengths)
-      hr = to_hr(indexes, map_max_lengths)
+    class NoSuchIndexException < Exception
+    end
+
+    DEFAULT_NUM_PADDING = 1
+
+    # indexes: 表示順（左から右）に整列された列名の Array
+    # map_max_lengths: 列名をキー、表示幅を値とした Hash
+    def initialize(indexes, map_max_lengths, num_padding=DEFAULT_NUM_PADDING)
+      @map_indexes     = Hash.new
+      indexes.each do |index|
+        @map_indexes[index] = true  # Values are whether display or not
+      end
+      @map_max_lengths = map_max_lengths
+      @num_padding     = num_padding
+    end
+
+    def width
+      return hr.length
+    end
+
+    def hide(*index_name)
+    end
+
+    # 表中に表示される水平線
+    def hr
+      npad = @num_padding
+      hr_items = @map_indexes.keys.map { |index| '-' * (npad + @map_max_lengths[index] + npad) }
+      return "+#{hr_items.join('+')}+"
+    end
+
+    # table_items: 表示順（上から下）に整列された、列名をキー、表示文字列を値とした Hash の Array
+    # 返り値: 表示文字列の Array
+    def to_table(table_items)
+      hr = self.hr
 
       strs = Array.new
 
@@ -243,12 +272,11 @@ class TableSchema
       is_index = true
       table_items.each do |map_items|
         s = '| '
-        indexes.each do |index|
+        @map_indexes.keys.each do |index|
           item = map_items[index]
-          width = map_max_lengths[index]
+          width = @map_max_lengths[index]
           length = KumaUtil.displaying_length(item)
           s += item + (' ' * (width - length)) + ' | '
-          #s += (" %-#{width}s " % map_items[index]) + '|'
         end
         strs << s
         strs << hr if is_index
@@ -258,7 +286,9 @@ class TableSchema
 
       return strs.join("\n")
     end
-    private :to_table
+  end  # End of class TableOnCUI
+
+  private
 
     ITEMS_NOT_NULL = 'NO'
     ITEMS_AUTO_INCREMENT = 'auto inc.'
@@ -279,9 +309,6 @@ class TableSchema
 
       return map_items
     end
-    private :to_map_table_items
-
-  private
 
     def parse_raw_line(line, capitalizes_types)
       if @name.nil?
