@@ -1,11 +1,19 @@
-[2010-03-25 16:13 @pluto]
+[2010-03-25 17:30 @pluto]
 schema_browser/schezer.rb
-(class TableSchema)
-- Modified to_columns_table() using TableOnCUI#show() and hide().
-- Altered back initialize() to prepare @index_names (indexes formerly),
-  not @map_indexes, as required to keep the order.
-  Also modified to prepare @index_names_to_hide.
-- Added show() and hide().
-- Added helper index_names_to_display().
+(class TableData)
+- Fixed to_s_row_values() to nil-check value.
 (class Schezer)
-- Modified helper exit_with_help() to display option's help as well.
+- Corrected helper do_command() to get an Array of String from
+  all the sub-helpers and output it outside the case statements.
+- Changed helper generate_sql_to_sync() to return an Array of String
+  and renamed it to_disp_sql_to_sync().
+  Same with output_table_data() to to_disp_table_data(), output_schema()
+  to to_disp_schema(), compare_table_schemas_and_print() to
+  to_disp_table_schema_comparison().
+- Renamed generate_sql_insert_to_sync() and generate_sql_update_to_sync()
+  to to_disp_sql_insert_to_sync() and to_disp_sql_update_to_sync(),
+  respectively.
+- Fixed to_disp_row_count() (Former to_s_row_count()) by moving conn2
+  reference inside 'if conn2' clause.
+- Changed output_xml() to return a REXML::Document instance and renamed
+  to to_xml().  Former to_xml() was renamed to initialize_xml_doc().

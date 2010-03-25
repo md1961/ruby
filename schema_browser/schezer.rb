@@ -918,7 +918,7 @@ class TableData
     values = Array.new
     @table_schema.columns.each do |column|
       value = column.hard_to_sort? ? "(Type:#{column.type})" : hash_rows[column.name]
-      value = value[0, LENGTH_TRUNCATE_FOR_LONG_TEXT] + MARK_TRUNCATED if column.too_long_to_display?
+      value = value[0, LENGTH_TRUNCATE_FOR_LONG_TEXT] + MARK_TRUNCATED if value && column.too_long_to_display?
       values << value
     end
     return values.join(@delimiter_out)
@@ -1088,42 +1088,51 @@ class Schezer
     end
 
     def do_command(command, table_names, table_names2)
+      outs = Array.new
+      joint = "\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS
+
       case command
       when :names
         if @conn2.nil?
-          puts table_names.sort.join(JOINT_TABLE_NAME_OUTPUTS)
+          outs = table_names.sort
+          joint = JOINT_TABLE_NAME_OUTPUTS
         else
           names1 = table_names .sort
           names2 = table_names2.sort
-          compare_table_names_and_print(names1, names2)
+          outs = to_disp_table_name_comparison(names1, names2)
+          joint = "\n"
         end
       when :raw, :table
         if @conn2.nil?
-          output_schema(table_names, command == :raw)
+          outs = to_disp_schema(table_names, command == :raw)
         else
-          compare_table_schemas_and_print(table_names, table_names2)
+          outs = to_disp_table_schema_comparison(table_names, table_names2)
         end
       when :xml
-        output_xml(table_names)
+        xml_doc = to_xml(table_names)
+        indent = @is_pretty ? XML_INDENT_WHEN_PRETTY / 2 : -1
+        xml_doc.write($stdout, indent)
+        puts
       when :count
         table_names = table_names - (table_names - table_names2) if @conn2
-        outs = Array.new
         table_names.each do |table_name|
-          s = to_s_row_count(table_name, @conn, @conn2)
+          s = to_disp_row_count(table_name, @conn, @conn2)
           outs << s if s
         end
-        puts outs.join("\n")
+        joint = "\n"
       when :data
-        output_table_data(table_names, table_names2)
+        outs = to_disp_table_data(table_names, table_names2)
       when :sql_sync
-        generate_sql_to_sync(table_names, table_names2)
+        outs = to_disp_sql_to_sync(table_names, table_names2)
       else
         exit_with_msg("Unknown command '#{command}'")
       end
+
+      puts outs.join(joint) unless outs.empty?
     end
 
     # @conn の DB を @conn2 の DB に同期されるための SQL を生成する
-    def generate_sql_to_sync(table_names, table_names2)
+    def to_disp_sql_to_sync(table_names, table_names2)
       unless @conn2
         exit_with_msg("Specify synchronization destination environment with option '-g'")
       end
@@ -1142,16 +1151,16 @@ class Schezer
         outs2 = Array.new
 
         outs2 << "TABLE `#{table_name}`:" if @verbose
-        outs2.concat(generate_sql_insert_to_sync(table_data, table_schema))
-        outs2.concat(generate_sql_update_to_sync(table_data, table_schema))
+        outs2.concat(to_disp_sql_insert_to_sync(table_data, table_schema))
+        outs2.concat(to_disp_sql_update_to_sync(table_data, table_schema))
 
         outs << outs2.join("\n")
       end
 
-      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS)
+      return outs
     end
 
-    def generate_sql_insert_to_sync(table_data, table_schema)
+    def to_disp_sql_insert_to_sync(table_data, table_schema)
       outs = Array.new
 
       hash_rows = table_data.hash_rows_only_in_other
@@ -1183,7 +1192,7 @@ class Schezer
       return outs
     end
 
-    def generate_sql_update_to_sync(table_data, table_schema)
+    def to_disp_sql_update_to_sync(table_data, table_schema)
       outs = Array.new
 
       column_names_without_primary_key = table_schema.column_names - table_schema.primary_keys
@@ -1236,7 +1245,7 @@ class Schezer
       return "'#{value}'"
     end
 
-    def output_table_data(table_names, table_names2)
+    def to_disp_table_data(table_names, table_names2)
       if @conn2
         outs, table_names_both = compare_table_names(table_names, table_names2)
       else
@@ -1270,7 +1279,7 @@ class Schezer
         outs << outs2.join("\n")
       end
 
-      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS)
+      return outs
     end
 
     NO_ROWS = "(none)"
@@ -1312,7 +1321,7 @@ class Schezer
       return outs
     end
 
-    def to_s_row_count(table_name, conn, conn2=nil)
+    def to_disp_row_count(table_name, conn, conn2=nil)
       row_count  = get_row_count(table_name, conn )
       row_count2 = 0
       if conn2
@@ -1323,16 +1332,14 @@ class Schezer
       max_cols = (Math::log10(max_row_count) + 1).to_i
       format = "TABLE `%s`'s COUNT(*) = %#{max_cols}d"
       
-      env  = conn .environment
-      env2 = conn2.environment
       for_env  = ""
       for_env2 = nil
       if conn2
-        for_env = " for '#{env}'"
+        for_env = " for '#{conn.environment}'"
         if row_count == row_count2
           for_env = " for both"
         else
-          for_env2 = " for '#{env2}'"
+          for_env2 = " for '#{conn2.environment}'"
         end
       end
 
@@ -1407,7 +1414,7 @@ class Schezer
       return result.fetch_hash['COUNT(*)'].to_i
     end
 
-    def output_schema(table_names, is_raw)
+    def to_disp_schema(table_names, is_raw)
       outs = Array.new
       table_names.each do |table_name|
         if is_raw
@@ -1418,19 +1425,18 @@ class Schezer
         next unless schema
         outs << schema
       end
-      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS)
+      return outs
     end
 
-    def compare_table_names_and_print(names1, names2)
+    def to_disp_table_name_comparison(names1, names2)
       outs, table_names_both = compare_table_names(names1, names2)
-
       outs.concat(to_s_array_to_display_names(table_names_both, nil, 'tables'))
-      puts outs.join("\n") unless outs.empty?
+      return outs
     end
 
     JOINT_COLUMN_NAME_OUTPUTS = " "
 
-    def compare_table_schemas_and_print(names1, names2)
+    def to_disp_table_schema_comparison(names1, names2)
       outs = Array.new
       outs_diff, table_names_both = compare_table_names(names1, names2)
       outs << outs_diff.join("\n") if names1.size > 1 || names1 != names2
@@ -1465,7 +1471,7 @@ class Schezer
         outs << outs2.join("\n") unless outs2.empty?
       end
 
-      puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS) unless outs.empty?
+      return outs
     end
 
     # 引数 names1、および names2 のそれぞれにしか現れない名称を示す表示文字列と、
@@ -1496,22 +1502,20 @@ class Schezer
 
     XML_INDENT_WHEN_PRETTY = 2
 
-    def output_xml(table_names)
-      xml_doc = to_xml
+    def to_xml(table_names)
+      xml_doc = initialize_xml_doc
       root_element = xml_doc.root
       table_names.each do |table_name|
         schema = parse_table_schema(table_name, @conn)
         next unless schema
         root_element.add_element(schema.to_xml)
       end
-      indent = @is_pretty ? XML_INDENT_WHEN_PRETTY / 2 : -1
-      xml_doc.write($stdout, indent)
-      puts
+      return xml_doc
     end
 
     ROOT_ELEMENT_NAME = 'table_schema'
 
-    def to_xml
+    def initialize_xml_doc
       xml_doc = REXML::Document.new
       xml_doc.add(REXML::XMLDecl.new(version="1.0", encoding="utf-8"))
 
