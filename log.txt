@@ -1,16 +1,7 @@
-[2010-03-25 11:00 @pluto]
+[2010-03-25 11:46 @pluto]
 schema_browser/schezer.rb
-- Renamed class CannotCompareDueToSchemaDiscrepancyException
-  to SchemaDiscrepancyException.
-- Added class NoPrimaryKeyException and
-  MultipleRowsExpectingUniqueResultException.
-(class TableSchema)
-- Added has_columns_hard_to_sort?() and numerical_type?().
-(class TableData)
-- Added find_hash_row_by_primary_key().
+(class TableSchemaDifference)
+- Corrected primary_keys_equals?() to sort the keys before the comparison.
 (class Schezer)
-- Modified helper do_command() by adding "when :sql_sync" clause to call
+- Extracted helper generate_sql_insert_to_sync() from helper
   generate_sql_to_sync().
-- Added helper generate_sql_to_sync().
-- Modified compare_table_names() not to receive argument prints_difference
-  and always output differences as a return value.

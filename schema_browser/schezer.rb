@@ -53,7 +53,7 @@ class TableSchemaDifference
   end
 
   def primary_keys_equals?
-    return @schema1.primary_keys == @schema2.primary_keys
+    return @schema1.primary_keys.sort == @schema2.primary_keys.sort
   end
 
   def primary_keys1
@@ -712,7 +712,7 @@ class ForeignKey
   end
 end
 
-# Whole data of a specific TABLE
+# 特定の DBテーブルの全レコードを取得するためのクラス
 class TableData
 
   DEFAULT_DELIMITER_WHEN_OUTPUT = "\t"
@@ -732,7 +732,7 @@ class TableData
     return @conn.get_query_result(sql)
   end
 
-  # Find a row using the value(s) of the primary key(s) fo argument ref_hash_row
+  # 主キーが引数と等しいレコードを返す。見つからないときは nil を返す
   def find_hash_row_by_primary_key(ref_hash_row)
     primary_keys = @table_schema.primary_keys
     if primary_keys.nil? || primary_keys.empty?
@@ -795,7 +795,7 @@ class TableData
     return hash_rows_only_in_self_or_other(false)
   end
 
-  # Return an Array of Hash's with keys of column names and values of data values
+  # 返り値: カラム名をキー、カラム値を値とする Hash の配列
   def hash_rows_only_in_self_or_other(is_self=true)
     raise NotComparedYetException.new unless @has_been_compared
     return is_self ? @hash_rows_only_self : @hash_rows_only_other
@@ -911,7 +911,7 @@ class Schezer
       exit_with_msg("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
     end
 
-    $KCODE = @conn.encoding  # $KCODE use only the first letter of the operand
+    $KCODE = @conn.encoding  # $KCODE は代入値の最初の文字のみによって決定される
 
     @conn2 = configure(@config_filename, @config_name2)
     if (@config_name2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
@@ -1052,7 +1052,7 @@ class Schezer
       end
     end
 
-    # Generate SQL's to synchronize DB at @conn to DB at @conn2
+    # @conn の DB を @conn2 の DB に同期されるための SQL を生成する
     def generate_sql_to_sync(table_names, table_names2)
       unless @conn2
         exit_with_msg("Specify synchronization destination environment with option '-g'")
@@ -1070,32 +1070,9 @@ class Schezer
         next if table_data.hash_rows_only_in_other.empty?
 
         outs2 = Array.new
+
         outs2 << "TABLE `#{table_name}`:"
-
-        unless (hash_rows = table_data.hash_rows_only_in_other).empty?
-          hash_rows.each do |hash_row|
-            has_single_primary_key = table_schema.primary_keys.size == 1
-            original_hash_row = table_data.find_hash_row_by_primary_key(hash_row)
-
-            index_id = nil
-            table_schema.columns.each_with_index do |column, index|
-              value = hash_row[column.name]
-              if has_single_primary_key && original_hash_row && column.auto_increment?
-                index_id = index
-                break
-              end
-            end
-
-            values = make_values_for_sql_insert(hash_row, table_schema.columns)
-            values[index_id] = 0 if index_id
-
-            outs2 << "INSERT INTO #{table_name} VALUES (#{values.join(', ')})"
-            if index_id
-              original_values = make_values_for_sql_insert(original_hash_row, table_schema.columns)
-              outs2 << "(#{original_values.join(', ')}) exists in '#{@conn2.environment}'"
-            end
-          end
-        end
+        outs2.concat(generate_sql_insert_to_sync(table_data, table_schema))
 
         outs << outs2.join("\n")
       end
@@ -1103,8 +1080,40 @@ class Schezer
       puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS)
     end
 
-    # hash_row: Hash with keys of column names and values of column values
-    # columns: Array of ColumnSchema's
+    def generate_sql_insert_to_sync(table_data, table_schema)
+      outs = Array.new
+
+      hash_rows = table_data.hash_rows_only_in_other
+      unless hash_rows.empty?
+        hash_rows.each do |hash_row|
+          has_single_primary_key = table_schema.primary_keys.size == 1
+          original_hash_row = table_data.find_hash_row_by_primary_key(hash_row)
+
+          index_id = nil
+          table_schema.columns.each_with_index do |column, index|
+            value = hash_row[column.name]
+            if has_single_primary_key && original_hash_row && column.auto_increment?
+              index_id = index
+              break
+            end
+          end
+
+          values = make_values_for_sql_insert(hash_row, table_schema.columns)
+          values[index_id] = 0 if index_id
+
+          outs << "INSERT INTO #{table_schema.name} VALUES (#{values.join(', ')})"
+          if index_id
+            original_values = make_values_for_sql_insert(original_hash_row, table_schema.columns)
+            outs << "(#{original_values.join(', ')}) exists in '#{@conn2.environment}'"
+          end
+        end
+      end
+
+      return outs
+    end
+
+    # hash_row: カラム名をキー、カラム値を値とする Hash で１レコードを表したもの
+    # columns: ColumnSchema の配列
     def make_values_for_sql_insert(hash_row, columns)
       values = Array.new
 
@@ -1353,7 +1362,9 @@ class Schezer
       puts outs.join("\n" + SPLITTER_TABLE_SCHEMA_OUTPUTS) unless outs.empty?
     end
 
-    # Also return an array of table names which appear in both the arguments.
+    # 引数 names1、および names2 のそれぞれにしか現れない名称を示す表示文字列と、
+    # 両方の引数に現れる名称の文字列配列とからなる、要素数２の配列を返す
+    #TODO: あるいは返り値の１つは別メソッドで取得するようにするか
     def compare_table_names(names1, names2)
       names_only1 = names1 - names2
       names_only2 = names2 - names1
@@ -1472,7 +1483,7 @@ class Schezer
     DESC_UK = "Regard two records equal and output together if the unique key values are equal"
 
     def prepare_command_line_options(argv)
-      # Default values of options
+      # コマンドラインオプションのデフォルト値
       @delimiter_field     = nil
       @config_name2        = nil
       @terminal_width      = DEFAULT_TERMINAL_WIDTH
