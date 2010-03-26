@@ -955,21 +955,21 @@ class Schezer
   def initialize(argv)
     prepare_command_line_options(argv)
 
-    exit_with_help if argv.empty?
-    exit_with_msg("Specify different names for option -e and -g") if @config_name == @config_name2
+    exit_with_help("No command specified") if argv.empty?
 
     @conn = configure(@config_filename, @config_name)
     unless @conn && @conn.configuration_suffices?
       exit_with_msg("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
     end
 
-    $KCODE = @conn.encoding  # $KCODE は代入値の最初の文字のみによって決定される
+    exit_with_msg("Specify different names for option -e and -g") if @config_name == @config_name2
 
     @conn2 = configure(@config_filename, @config_name2)
     if (@config_name2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
       exit_with_msg("Cannot read necessary configuration from '#{@config_name2}'\n#{self.to_s}")
     end
 
+    $KCODE = @conn.encoding  # $KCODE は代入値の最初の文字のみによって決定される
     @argv = argv
   end
 
@@ -1012,7 +1012,7 @@ class Schezer
 
   def to_s
     return "host = #{@host}, username = #{@username}, " \
-         + "password = #{Schezer.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
+         + "password = #{Kuma::StrUtil.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
          + "encoding = #{@encoding}"
   end
 
@@ -1531,19 +1531,14 @@ class Schezer
       return DBConnection.new(hash_conf)
     end
 
-    #TODO: Move to utility class
-    def self.non_empty_string?(*args)
-      args.each do |x|
-        return false if ! x.kind_of?(String) || x.empty?
-      end
-      return true
-    end
-
     COMMAND_OPTIONS_AND_SUBCOMMAND = \
           "-f DB_config_filename -e environment [-g environment_2] [options] command [table_name(s)|all]"
 
-    def exit_with_help
+    def exit_with_help(msg=nil)
+      puts msg if msg
+
       command = File.basename($0)
+
       puts "Usage: #{command} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
       puts "command is one of the followings ('#{ALL_TABLES}' or no table name for all tables):"
       indent = ' ' * 2
@@ -1563,10 +1558,10 @@ class Schezer
     end
 
     def exit_with_usage(msg=nil, exit_no=1)
-      msg_list = Array.new
-      msg_list << msg if msg
-      msg_list << "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
-      exit_with_msg(msg_list.join("\n"), exit_no)
+      outs = Array.new
+      outs << msg if msg
+      outs << "Usage: #{$0} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
+      exit_with_msg(outs.join("\n"), exit_no)
     end
 
     DEFAULT_TERMINAL_WIDTH = 120
@@ -1627,7 +1622,7 @@ class Schezer
         private :connect
 
       def configuration_suffices?
-        return Schezer.non_empty_string?(@host, @username, @database)
+        return Kuma::StrUtil.non_empty_string?(@host, @username, @database)
       end
 
       # 返り値: Mysql::Result のインスタンス

@@ -1,7 +1,11 @@
-[2010-03-26 10:26 @pluto]
-lib/kuma_util.rb
+[2010-03-26 11:03 @pluto]
 lib/kuma.rb
-- Renamed class KumaUtil to StrUtil and put it into module Kuma.
-- Renamed the file to 'kuma.rb'.
+(class StrUtil)
+- Took over self.non_empty_string?() from class Schezer in file
+  'schema_browser/schezer.rb'.
+- Corrected self.displaying_length() to nil-check and String-check
+  the argument.
 schema_browser/schezer.rb
-- Former KumaUtil is now Kuma::StrUtil.
+(class Schezer)
+- Moved self.displaying_length() to Kuma::StrUtil in 'lib/kuma.rb'.
+- Modified exit_with_help() to receive argument msg.
