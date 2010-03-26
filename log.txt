@@ -1,9 +1,3 @@
-[2010-03-26 17:04 @pluto]
-Rakefile
-- Newly created for rdoc generation.
-bin/marrs_access_log.rb
-bin/randstr.rb
-bin/rbgrep.rb
-bin/rbrename.rb
-bin/term_width.rb
-- Added brief doc for the script.
+[2010-03-26 17:32 @pluto]
+unit_test/lib/test_kuma.rb
+- Newly created.
