@@ -1,18 +1,5 @@
-[2010-03-26 14:07 @pluto]
-lib/kuma.rb
-- Fixed self.displaying_length() to nil-check the argument before
-  String-checking.
+[2010-03-26 16:05 @pluto]
+lib/table_on_cui.rb
+- Newly created, taking over class TableOnCUI from 'schema_browser/schezer.rb'.
 schema_browser/schezer.rb
-(class TableSchema)
-- Modified to_columns_table() according to modified class TableOnCUI.
-(class TableOnCUI)
-- Added class NoDataSpecifiedException.
-- Added DEFAULT_SHOWS_INDEXES.
-- Modified initialize() not to receive argument map_max_lengths.
-- Added shows_indexes=().
-- Altered hr() to raise NoDataSpecifiedException if @ary_map_data was
-  empty.
-- Added set_data() to take over the codes to receive data from outside
-  the class and process for display.
-  to_table() became no-argument method.
-- Added helper ary_map_whole_table() and make_map_max_lengths().
+- Moved class TableOnCUI to 'lib/table_on_cui.rb'.

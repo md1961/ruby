@@ -6,6 +6,7 @@ require 'optparse'
 require 'rexml/document'
 
 require 'kuma'
+require 'table_on_cui'
 
 
 # 例外クラス
@@ -209,134 +210,6 @@ class TableSchema
       return [table0, table1].join("\n")
     end
   end
-
-  class TableOnCUI
-
-    class NoSuchIndexException     < Exception; end
-    class NoDataSpecifiedException < Exception; end
-
-    DEFAULT_NUM_PADDING = 1
-    DEFAULT_SHOWS_INDEXES = true
-
-    # index_names: 表示順（左から右）に整列された列名の Array
-    # map_max_lengths: 列名をキー、表示幅を値とした Hash
-    def initialize(index_names, num_padding=DEFAULT_NUM_PADDING)
-      @index_names = index_names
-      @num_padding = num_padding
-
-      @map_indexes  = []
-      @ary_map_data = []
-      @map_max_lengths = {}
-
-      @index_names_to_hide = []
-      @shows_indexes = DEFAULT_SHOWS_INDEXES
-    end
-
-    def width
-      return hr.length
-    end
-
-    def shows_indexes=(value)
-      @shows_indexes = value
-      @map_max_lengths = make_map_max_lengths
-    end
-
-    def show(*index_names)
-      if index_names.size == 1 && index_names[0] == :all
-        index_names_to_hide = []
-        return
-      end
-
-      @index_names_to_hide.uniq
-      index_names.each do |index|
-        raise NoSuchIndexException.new("No such index as '#{index}'") unless @index_names.include?(index)
-        @index_names_to_hide.delete(index)
-      end
-    end
-
-    def hide(*index_names)
-      if index_names.size == 1 && index_names[0] == :all
-        @index_names_to_hide = @index_names.dup
-        return
-      end
-
-      index_names.each do |index|
-        raise NoSuchIndexException.new("No such index as '#{index}'") unless @index_names.include?(index)
-        @index_names_to_hide << index
-      end
-      @index_names_to_hide.uniq
-    end
-
-    # 表中に表示される水平線
-    def hr
-      raise NoDataSpecifiedException.new("Must specify data (set_data()) first") if @ary_map_data.empty?
-      npad = @num_padding
-      hr_items = index_names_to_display.map { |index| '-' * (npad + @map_max_lengths[index] + npad) }
-      return "+#{hr_items.join('+')}+"
-    end
-
-    # data: 表示順（上から下）に整列された、列名をキー、表示文字列を値とした Hash の Array
-    # first_is_indexes:
-    # 返り値: 表示文字列の Array
-    def set_data(data, first_is_indexes=false)
-      @map_indexes = first_is_indexes ? data.shift : hash_of_value_equal_to_key
-      @ary_map_data = data
-      @map_max_lengths = make_map_max_lengths
-    end
-
-    def hash_of_value_equal_to_key
-      return Hash.new { |h, k| h[k] = k }
-    end
-
-    def to_table
-      hr = self.hr
-
-      strs = Array.new
-      strs << hr  # Top border of the table
-
-      is_index = @shows_indexes
-      ary_map_whole_table.each do |map_items|
-        s = '| '
-        index_names_to_display.each do |index|
-          item = map_items[index]
-          width = @map_max_lengths[index]
-          length = Kuma::StrUtil.displaying_length(item)
-          s += item + (' ' * (width - length)) + ' | '
-        end
-        strs << s
-        strs << hr if is_index
-        is_index = false
-      end
-
-      strs << hr  # Bottom border of the table
-
-      return strs.join("\n")
-    end
-
-    private
-      
-      def index_names_to_display
-        return @index_names - @index_names_to_hide
-      end
-
-      # 列見出しを含む全データの Hash の Array を返す
-      def ary_map_whole_table(includes_index=@shows_indexes)
-        return (includes_index ? [@map_indexes] : []) + @ary_map_data
-      end
-
-      def make_map_max_lengths
-        map_max_lengths = Hash.new { |h, k| h[k] = 0 }
-
-        ary_map_whole_table.each do |map_items|
-          INDEXES.each do |index|
-            length = Kuma::StrUtil.displaying_length(map_items[index])
-            map_max_lengths[index] = length if length > map_max_lengths[index]
-          end
-        end
-
-        return map_max_lengths
-      end
-  end  # End of class TableOnCUI
 
   private
 
