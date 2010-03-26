@@ -1,11 +1,7 @@
-[2010-03-26 10:01 @pluto]
+[2010-03-26 10:26 @pluto]
+lib/kuma_util.rb
+lib/kuma.rb
+- Renamed class KumaUtil to StrUtil and put it into module Kuma.
+- Renamed the file to 'kuma.rb'.
 schema_browser/schezer.rb
-(class TableData)
-(class Schezer)
-- (comments)
-- Altered self.non_empty_string?() to use String#empty?() instead of
-  testing String#length with zero.
-(class Schezer::DBConnection)
-- Altered initialize() to take over @conn preparation and "SET NAMES"
-  execution from helper connect().
-- Altered helper connect() to return a Mysql instance.
+- Former KumaUtil is now Kuma::StrUtil.

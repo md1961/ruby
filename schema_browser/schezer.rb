@@ -5,32 +5,18 @@ require 'yaml'
 require 'optparse'
 require 'rexml/document'
 
-require 'kuma_util'
+require 'kuma'
 
 
-class CannotGetTableNameException < Exception
-end
-
-class CannotGetTableOptionsException < Exception
-end
-
-class UnsupportedColumnDefinitionException < Exception
-end
-
-class DuplicatePrimaryKeyException < Exception
-end
-
-class SchemaDiscrepancyException < Exception
-end
-
-class NotComparedYetException < Exception
-end
-
-class NoPrimaryKeyException < Exception
-end
-
-class MultipleRowsExpectingUniqueResultException < Exception
-end
+# 例外クラス
+class CannotGetTableNameException                < Exception; end
+class CannotGetTableOptionsException             < Exception; end
+class UnsupportedColumnDefinitionException       < Exception; end
+class DuplicatePrimaryKeyException               < Exception; end
+class SchemaDiscrepancyException                 < Exception; end
+class NotComparedYetException                    < Exception; end
+class NoPrimaryKeyException                      < Exception; end
+class MultipleRowsExpectingUniqueResultException < Exception; end
 
 
 class TableSchemaDifference
@@ -214,7 +200,7 @@ class TableSchema
     map_max_lengths = Hash.new { |h, k| h[k] = 0 }
     table_items.each do |map_items|
       INDEXES.each do |index|
-        length = KumaUtil.displaying_length(map_items[index])
+        length = Kuma::StrUtil.displaying_length(map_items[index])
         map_max_lengths[index] = length if length > map_max_lengths[index]
       end
     end
@@ -300,7 +286,7 @@ class TableSchema
         index_names_to_display.each do |index|
           item = map_items[index]
           width = @map_max_lengths[index]
-          length = KumaUtil.displaying_length(item)
+          length = Kuma::StrUtil.displaying_length(item)
           s += item + (' ' * (width - length)) + ' | '
         end
         strs << s
