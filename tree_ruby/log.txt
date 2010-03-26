@@ -1,9 +1,0 @@
-binary_tree.rb
-[BinaryTree]
-- Method height without argument max_or_min.
-- Method rotate to call rotate_unless_solely_balanced on @root_node.
-[TreeNode]
-- Method height without arguments.
-- Method balanced? to evaluate whether difference of the height of left
-  and right node was within one for every nodes.
-- Added method solely_balanced?, height_of and rotate_unless_solely_balanced.

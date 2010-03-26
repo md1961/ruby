@@ -1,5 +1,9 @@
-[2010-03-26 16:05 @pluto]
-lib/table_on_cui.rb
-- Newly created, taking over class TableOnCUI from 'schema_browser/schezer.rb'.
-schema_browser/schezer.rb
-- Moved class TableOnCUI to 'lib/table_on_cui.rb'.
+[2010-03-26 16:13 @pluto]
+clock_angle.rb
+match_three.rb
+test.rb
+test_impl_each.rb
+test_overload.rb
+times.txt
+tree_ruby/log.txt
+- Removed from the repository for good.
