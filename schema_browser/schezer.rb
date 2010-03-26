@@ -787,7 +787,7 @@ class TableData
     @has_been_compared = false
   end
 
-  # Return a Mysql::Result
+  # 返り値: Mysql::Result のインスタンス
   def get_result
     column_names_to_sort = @table_schema.column_names_to_sort
     sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
@@ -966,10 +966,6 @@ end
 
 class Schezer
 
-  # config_filename: YAML 形式のデータベース接続情報を含んだファイルのファイル名。
-  #                  形式は Rails の config/database.yml と同等。
-  #                  次の config_name が指定されなかった場合は YAMLファイルの最上層を探す
-  # config_name:     接続情報の名称。Rails の環境名にあたる
   def initialize(argv)
     prepare_command_line_options(argv)
 
@@ -1527,6 +1523,10 @@ class Schezer
       return xml_doc
     end
 
+    # filename: YAML 形式のデータベース接続情報を含んだファイルのファイル名。
+    #           形式は Rails の config/database.yml と同等。
+    #           次の config_name が指定されなかった場合は YAMLファイルの最上層を探す
+    # name:     接続情報の名称。Rails の環境名にあたる
     def configure(filename, name)
       return nil unless name
 
@@ -1545,9 +1545,10 @@ class Schezer
       return DBConnection.new(hash_conf)
     end
 
+    #TODO: Move to utility class
     def self.non_empty_string?(*args)
       args.each do |x|
-        return false if ! x.kind_of?(String) || x.length == 0
+        return false if ! x.kind_of?(String) || x.empty?
       end
       return true
     end
@@ -1617,6 +1618,8 @@ class Schezer
       opt_parser.parse!(argv)
     end
 
+    # データベースの接続情報を受け取って、データベースに接続し、
+    # Mysql のインスタンスを保持するクラス
     class DBConnection
       attr_reader :host, :username, :password, :database, :encoding, :environment
 
@@ -1628,12 +1631,12 @@ class Schezer
         @encoding    = hash_conf['encoding']
         @environment = hash_conf['environment']
 
-        connect
+        @conn = connect
+        get_query_result("SET NAMES #{@encoding}")
       end
 
         def connect
-          @conn = Mysql.new(@host, @username, @password, @database)
-          get_query_result("SET NAMES #{@encoding}")
+          return Mysql.new(@host, @username, @password, @database)
         end
         private :connect
 
@@ -1641,6 +1644,7 @@ class Schezer
         return Schezer.non_empty_string?(@host, @username, @database)
       end
 
+      # 返り値: Mysql::Result のインスタンス
       def get_query_result(sql)
         return @conn.query(sql)
       end
