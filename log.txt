@@ -1,9 +1,9 @@
-[2010-03-26 16:13 @pluto]
-clock_angle.rb
-match_three.rb
-test.rb
-test_impl_each.rb
-test_overload.rb
-times.txt
-tree_ruby/log.txt
-- Removed from the repository for good.
+[2010-03-26 17:04 @pluto]
+Rakefile
+- Newly created for rdoc generation.
+bin/marrs_access_log.rb
+bin/randstr.rb
+bin/rbgrep.rb
+bin/rbrename.rb
+bin/term_width.rb
+- Added brief doc for the script.

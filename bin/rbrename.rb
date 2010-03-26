@@ -1,5 +1,6 @@
 #! /usr/bin/env ruby
 
+# Ruby の正規表現を用いた rename を実現するスクリプト
 
 class RegexpFileRenamer
 

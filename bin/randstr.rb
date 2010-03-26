@@ -1,5 +1,7 @@
 #! /bin/env ruby
 
+# 英子文字と数字からならランダムな文字列を生成するスクリプト
+
 if ARGV.length != 1
   puts "Specify length of random string"
   exit
@@ -12,12 +14,13 @@ rescue ArgumentError
   exit
 end
 
-srand
-
+# Make a string which consists of [a-z0-9]
 source = ""
 (('a' .. 'z').to_a + ('0' .. '9').to_a).each do |c|
   source += c
 end
+
+srand
 
 result = ""
 len.times do |i|

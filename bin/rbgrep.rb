@@ -1,24 +1,31 @@
 #! /usr/bin/env ruby
 
+# Ruby の正規表現を用いた grep を実現するスクリプト
+
 require 'optparse'
 
 
+#= Ruby の正規表現を用いた grep を実現するクラス
 class RubyGrep
   MAX_LINES_FOR_MULTI_LINES = 20
   JOINT_FOR_MULTI_LINES = ' '
 
+  # コンストラクタ
+  # <em>argv</em> :: コマンドライン引数
   def initialize(argv)
     compile_option = 0
     prepare_options(argv)
     compile_option |= Regexp::IGNORECASE if @options[:i]
 
     pattern = argv.shift
+    exit_with_usage unless pattern
     @re = Regexp.compile(pattern, compile_option)
 
     @filenames = argv
     check_file_existence(@options[:r] || @filenames)
   end
 
+  # コンストラクト時の引数に基づき grep を実行し、結果を出力する
   def grep
     do_grep
   end
@@ -121,6 +128,13 @@ class RubyGrep
           exit
         end
       end
+    end
+
+    def exit_with_usage
+      command = File.basename($0)
+      puts "Usage: #{command} [options] pattern filename ..."
+      system("#{$0} --help | grep -v '^Usage'")
+      exit(1)
     end
 end
 
