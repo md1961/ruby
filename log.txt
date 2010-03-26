@@ -1,11 +1,18 @@
-[2010-03-26 11:03 @pluto]
+[2010-03-26 14:07 @pluto]
 lib/kuma.rb
-(class StrUtil)
-- Took over self.non_empty_string?() from class Schezer in file
-  'schema_browser/schezer.rb'.
-- Corrected self.displaying_length() to nil-check and String-check
-  the argument.
+- Fixed self.displaying_length() to nil-check the argument before
+  String-checking.
 schema_browser/schezer.rb
-(class Schezer)
-- Moved self.displaying_length() to Kuma::StrUtil in 'lib/kuma.rb'.
-- Modified exit_with_help() to receive argument msg.
+(class TableSchema)
+- Modified to_columns_table() according to modified class TableOnCUI.
+(class TableOnCUI)
+- Added class NoDataSpecifiedException.
+- Added DEFAULT_SHOWS_INDEXES.
+- Modified initialize() not to receive argument map_max_lengths.
+- Added shows_indexes=().
+- Altered hr() to raise NoDataSpecifiedException if @ary_map_data was
+  empty.
+- Added set_data() to take over the codes to receive data from outside
+  the class and process for display.
+  to_table() became no-argument method.
+- Added helper ary_map_whole_table() and make_map_max_lengths().
