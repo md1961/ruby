@@ -1,2 +1,2 @@
 unit_test/lib/test_kuma.rb
-- Added test_displaying_length_raise_exception().
+- Added test_displaying_length().

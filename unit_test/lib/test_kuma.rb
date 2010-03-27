@@ -42,5 +42,22 @@ class TestKumaStrUtil < Test::Unit::TestCase
       end
     end
   end
+
+  def test_displaying_length
+    $KCODE = 'UTF-8'
+
+    {
+      nil        => 0,
+      ""         => 0,
+      " "        => 1,
+      "a亜"      => 3,
+      "a亜b位"   => 6,
+      "魑魅魍魎" => 8,
+    }.each do |arg, expected|
+      actual = Kuma::StrUtil.displaying_length(arg)
+      msg = "Kuma::StrUtil.displaying_length(#{arg.inspect}) should be #{expected}"
+      assert_equal(expected, actual, msg)
+    end
+  end
 end
 
