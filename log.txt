@@ -1,5 +1,2 @@
-[2010-03-27 09:08 @macbook]
 unit_test/lib/test_kuma.rb
-- Renamed test_non_empty_string() to test_non_empty_string_to_be_false()
-  and added additional test targets.
-- Added test_non_empty_string_to_be_true().
+- Added test_displaying_length_raise_exception().

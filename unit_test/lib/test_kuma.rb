@@ -7,22 +7,20 @@ require 'kuma'
 class TestKumaStrUtil < Test::Unit::TestCase
 
   def test_non_empty_string_to_be_false
-    false_args = [
+    [
       [nil], [""], [nil, ""], ["", nil], [nil, " "], [" ", nil], [" ", "", nil],
       [1], [1, " "], [" ", 1], ["a", " ", 1],
-    ]
-    false_args.each do |arg|
-      msg = "non_empty_string?(#{arg_display(arg)}) should be false"
+    ].each do |arg|
+      msg = "Kuma::StrUtil.non_empty_string?(#{arg_display(arg)}) should be false"
       assert(! Kuma::StrUtil.non_empty_string?(*arg), msg)
     end
   end
 
   def test_non_empty_string_to_be_true
-    true_args = [
+    [
       [" "], ["a"], [" ", "a"], [" ", "a", "."],
-    ]
-    true_args.each do |arg|
-      msg = "non_empty_string?(#{arg_display(arg)}) should be true"
+    ].each do |arg|
+      msg = "Kuma::StrUtil.non_empty_string?(#{arg_display(arg)}) should be true"
       assert(Kuma::StrUtil.non_empty_string?(*arg), msg)
     end
   end
@@ -32,5 +30,17 @@ class TestKumaStrUtil < Test::Unit::TestCase
       return arg.inspect[1 .. -2]
     end
     private :arg_display
+
+  def test_displaying_length_raise_exception
+    [
+      1, 3.14, [], {},
+    ].each do |arg|
+      begin
+        Kuma::StrUtil.displaying_length(arg)
+        flunk("Kuma::StrUtil.displaying_length(#{arg.inspect}) should raise an ArgumentError")
+      rescue ArgumentError => e
+      end
+    end
+  end
 end
 
