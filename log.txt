@@ -1,3 +1,5 @@
-[2010-03-26 17:32 @pluto]
+[2010-03-27 09:08 @macbook]
 unit_test/lib/test_kuma.rb
-- Newly created.
+- Renamed test_non_empty_string() to test_non_empty_string_to_be_false()
+  and added additional test targets.
+- Added test_non_empty_string_to_be_true().
