@@ -1,2 +1,0 @@
-unit_test/lib/test_kuma.rb
-- Added test_displaying_length().

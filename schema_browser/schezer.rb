@@ -1442,18 +1442,8 @@ class Schezer
 
     def exit_with_help(msg=nil)
       puts msg if msg
-
-      command = File.basename($0)
-
-      puts "Usage: #{command} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
-      puts "command is one of the followings ('#{ALL_TABLES}' or no table name for all tables):"
-      indent = ' ' * 2
-      COMMAND_HELPS.each do |explanation|
-        puts sprintf("%s%s\n", indent, explanation)
-      end
-
-      puts "options:"
-      system("#{$0} --help | grep -v '^Usage'")
+      puts
+      puts @opt_parser.help
 
       exit(0)
     end
@@ -1472,6 +1462,7 @@ class Schezer
 
     DEFAULT_TERMINAL_WIDTH = 120
 
+    DESC_H  = "Print this message and quit"
     DESC_D  = "Delimiter of output for command 'data' (Default is a 'tab')"
     DESC_F  = "Database connection configuration YAML file (Format of config/database.yml in Rails)"
     DESC_E  = "Database connection name (Environment name in Rails)"
@@ -1492,17 +1483,36 @@ class Schezer
       @unique_key_equalize = false
 
       @options = Hash.new { |h, k| h[k] = nil }
-      opt_parser = OptionParser.new
-      opt_parser.on("-d", "--delimiter_field=VALUE", DESC_D ) { |v| @delimiter_field = v }
-      opt_parser.on("-f", "--config_file=VALUE"    , DESC_F ) { |v| @config_filename = v }
-      opt_parser.on("-e", "--environment=VALUE"    , DESC_E ) { |v| @config_name     = v }
-      opt_parser.on("-g", "--environment_alt=VALUE", DESC_G ) { |v| @config_name2    = v }
-      opt_parser.on("-v", "--verbose"              , DESC_V ) { |v| @verbose             = true   }
-      opt_parser.on("--capitalizes_types"          , DESC_CT) { |v| @capitalizes_types   = true   }
-      opt_parser.on("--pretty"                     , DESC_PR) { |v| @is_pretty           = true   }
-      opt_parser.on("--terminal_width=VALUE"       , DESC_TW) { |v| @terminal_width      = v.to_i }
-      opt_parser.on("--unique_key_equalize"        , DESC_UK) { |v| @unique_key_equalize = true   }
-      opt_parser.parse!(argv)
+      @opt_parser = OptionParser.new
+      put_banner(@opt_parser)
+
+      @opt_parser.on("-h", "--help"                 , DESC_H ) { puts @opt_parser.help; exit(0) }
+
+      @opt_parser.on("-d", "--delimiter_field=VALUE", DESC_D ) { |v| @delimiter_field = v }
+      @opt_parser.on("-f", "--config_file=VALUE"    , DESC_F ) { |v| @config_filename = v }
+      @opt_parser.on("-e", "--environment=VALUE"    , DESC_E ) { |v| @config_name     = v }
+      @opt_parser.on("-g", "--environment_alt=VALUE", DESC_G ) { |v| @config_name2    = v }
+      @opt_parser.on("-v", "--verbose"              , DESC_V ) { |v| @verbose             = true   }
+      @opt_parser.on("--capitalizes_types"          , DESC_CT) { |v| @capitalizes_types   = true   }
+      @opt_parser.on("--pretty"                     , DESC_PR) { |v| @is_pretty           = true   }
+      @opt_parser.on("--terminal_width=VALUE"       , DESC_TW) { |v| @terminal_width      = v.to_i }
+      @opt_parser.on("--unique_key_equalize"        , DESC_UK) { |v| @unique_key_equalize = true   }
+
+      @opt_parser.parse!(argv)
+    end
+
+    def put_banner(opt_parser)
+      command = File.basename($0)
+
+      banners = Array.new
+      banners << "Usage: #{command} #{COMMAND_OPTIONS_AND_SUBCOMMAND}"
+      banners << "command is one of the followings ('#{ALL_TABLES}' or no table name for all tables):"
+      indent = ' ' * 2
+      COMMAND_HELPS.each do |explanation|
+        banners << indent + explanation
+      end
+
+      opt_parser.banner = banners.join("\n")
     end
 
     # データベースの接続情報を受け取って、データベースに接続し、
