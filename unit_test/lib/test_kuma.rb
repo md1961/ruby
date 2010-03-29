@@ -31,23 +31,15 @@ class TestKumaStrUtil < Test::Unit::TestCase
     end
     private :arg_display
 
-  def test_displaying_length_raise_exception
-    [
-      1, 3.14, [], {},
-    ].each do |arg|
-      begin
-        Kuma::StrUtil.displaying_length(arg)
-        flunk("Kuma::StrUtil.displaying_length(#{arg.inspect}) should raise an ArgumentError")
-      rescue ArgumentError => e
-      end
-    end
-  end
-
   def test_displaying_length
     $KCODE = 'UTF-8'
 
     {
       nil        => 0,
+      1          => 1,
+      3.14       => 4,
+      []         => 0,
+      {}         => 0,
       ""         => 0,
       " "        => 1,
       "a亜"      => 3,

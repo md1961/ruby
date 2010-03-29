@@ -197,7 +197,7 @@ class TableSchema
       table_items << to_map_table_items(column)
     end
 
-    table = TableOnCUI.new(INDEXES)
+    table = TableOnCUI.new(INDEXES, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
     table.set_data(table_items)
     if table.width <= @terminal_width
       return table.to_table

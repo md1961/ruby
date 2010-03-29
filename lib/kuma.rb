@@ -4,8 +4,8 @@ module Kuma
   class StrUtil
 
     # 引数がすべて、空文字列でない String であるかを評価する
-    # args: 可変長引数
-    # 返り値: 引数がすべて、空文字列でない String であれば true、
+    # <em>args</em> :: 対象のオブジェクトを列挙した可変長引数
+    # 返り値 :: 引数がすべて、空文字列でない String であれば true、
     # 引数の１つにでも、空文字列でない String でないものがあれば false
     def self.non_empty_string?(*args)
       args.each do |x|
@@ -20,12 +20,11 @@ module Kuma
     # 引数が nil のときはゼロを返す。
     # 引数が nil でも String でもないときは ArgumentError を投げる。
     # （全角文字が３バイトである UTF-8 にも対応したもの）
-    def self.displaying_length(str)
-      return 0 unless str
-      unless str.kind_of?(String)
-        raise ArgumentError.new("Argument must be a String ('#{str.class}' given)")
-      end
-
+    # <em>x</em> :: 対象のオブジェクト
+    # 返り値 :: 表示文字数の整数値
+    def self.displaying_length(x)
+      return 0 unless x
+      str = x.to_s
       return str.length unless $KCODE == UTF8
       return (str.split(//).length + str.length) / 2
     end

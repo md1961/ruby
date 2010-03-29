@@ -9,6 +9,9 @@ class TableOnCUI
   class NoSuchIndexException     < Exception; end
   class NoDataSpecifiedException < Exception; end
 
+  # 表示文字数を求める、デフォルトの関数
+  DEFAULT_FUNC_LENGTH = lambda { |x| x ? x.to_s.length : 0 }
+
   # 表示項目の左右に置く半角スペースの個数のデフォルト値
   DEFAULT_NUM_PADDING = 1
 
@@ -17,10 +20,10 @@ class TableOnCUI
 
   # コンストラクタ。
   # <em>index_names</em> :: 表示順（左から右）に整列された列名の Array
-  # <em>num_padding</em> :: 表示項目の左右に置く半角スペースの個数。デフォルトは DEFAULT_NUM_PADDING
-  def initialize(index_names, num_padding=DEFAULT_NUM_PADDING)
+  # <em>func_length</em> :: 表示文字数を求める、１引数を取り整数値を返すラムダ関数
+  def initialize(index_names, func_length=DEFAULT_FUNC_LENGTH)
     @index_names = index_names
-    @num_padding = num_padding
+    @func_length = func_length
 
     @map_indexes  = []
     @ary_map_data = []
@@ -28,6 +31,8 @@ class TableOnCUI
 
     @index_names_to_hide = []
     @shows_indexes = DEFAULT_SHOWS_INDEXES
+
+    @num_padding = DEFAULT_NUM_PADDING
   end
 
   # 表の表示幅を半角文字単位で返す。
@@ -41,6 +46,12 @@ class TableOnCUI
   def shows_indexes=(value)
     @shows_indexes = value
     @map_max_lengths = make_map_max_lengths
+  end
+
+  # 表示項目の左右に置く半角スペースの個数を設定する
+  # <em>value</em> :: 設定する値
+  def num_padding=(value)
+    @num_padding = value
   end
 
   # 列を表示とすることを、new 時に渡した列名の列挙で設定する。
@@ -109,7 +120,7 @@ class TableOnCUI
       index_names_to_display.each do |index|
         item = map_items[index]
         width = @map_max_lengths[index]
-        length = Kuma::StrUtil.displaying_length(item)
+        length = @func_length.call(item)
         s += item + (' ' * (width - length)) + ' | '
       end
       strs << s
@@ -138,7 +149,7 @@ class TableOnCUI
 
       ary_map_whole_table.each do |map_items|
         @index_names.each do |index|
-          length = Kuma::StrUtil.displaying_length(map_items[index])
+          length = @func_length.call(map_items[index])
           map_max_lengths[index] = length if length > map_max_lengths[index]
         end
       end

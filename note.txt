@@ -1,6 +1,18 @@
+lib/kuma.rb
+(class StrUtil)
+- Modified self.displaying_length() to apply to_s to argument
+  instead of raising an ArgumentError if it was non-String.
+lib/table_on_cui.rb
+- Added DEFAULT_FUNC_LENGTH.
+- Modified initialize() to receive argument func_length instead
+  of num_padding, and prepare @func_length.
+- Added num_padding=().
+- Modified to use @func_length instead of
+  Kuma::StrUtil.displaying_length().
 schema_browser/schezer.rb
-(class Schezer)
-- Modified helper exit_with_help() to move the command explanation
-  output codes to helper put_banner() and use OptionParser.help.
-- Added command line option '-h' to output help.
-- Added helper put_banner() to take over the codes from exit_with_help().
+(class TableSchema)
+- Modified to_columns_table() to pass a lambda to apply
+  Kuma::StrUtil.displaying_length() as a second argument.
+unit_test/lib/test_kuma.rb
+- Removed test_displaying_length_raise_exception().
+- Modified test_displaying_length() to include numerical values, etc.
