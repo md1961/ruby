@@ -1,4 +1,0 @@
-dynamic_programming/.vimrc
-- New symbolic link.
-dynamic_programming/knapsack_solver.rb
-- Newly created, with just class frameworks.
