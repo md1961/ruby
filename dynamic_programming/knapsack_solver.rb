@@ -34,10 +34,15 @@ class KnapsackSolver
 
     def do_solve
       @possible_packs.each do |pack|
-        @array_move.each do |move|
-          move.fill(pack)
+        pack.size.upto(@size) do |index|
+          fill(index, pack)
         end
       end
+    end
+
+    def fill(index, pack)
+      move_src  = @array_move[index - pack.size]
+      move_dest = @array_move[index]
     end
 end
 
@@ -56,10 +61,6 @@ class Move
   def initialize
     @size   = 0
     @amount = 0
-  end
-
-  def fill(pack)
-
   end
 end
 
