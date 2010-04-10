@@ -1,3 +1,5 @@
+#! /usr/bin/env ruby
+
 
 class KnapsackSolver
   attr_reader :size
@@ -20,6 +22,28 @@ class KnapsackSolver
 
   def solve
     @array_move = prepare_array_move
+
+    puts "Before:\n#{self}"
+
+    do_solve
+
+    puts "After:\n#{self}"
+
+  end
+
+  def to_s
+    outs = Array.new
+    indexes = (0 .. @size - 1).to_a
+    [
+      [''      , indexes],
+      ['size'  , indexes.map { |i| @array_move[i].size   }],
+      ['amount', indexes.map { |i| @array_move[i].amount }],
+    ].each do |label, values|
+      s  = sprintf("%6s : ", label)
+      s += values.map { |value| sprintf("%3d", value) }.join('')
+      outs << s
+    end
+    return outs.join("\n")
   end
 
   private
@@ -27,14 +51,14 @@ class KnapsackSolver
     def prepare_array_move
       array_move = Array.new
       @size.times do
-        array_move < Move.new
+        array_move << Move.new
       end
       return array_move
     end
 
     def do_solve
       @possible_packs.each do |pack|
-        pack.size.upto(@size) do |index|
+        pack.size.upto(@size - 1) do |index|
           fill(index, pack)
         end
       end
@@ -43,6 +67,11 @@ class KnapsackSolver
     def fill(index, pack)
       move_src  = @array_move[index - pack.size]
       move_dest = @array_move[index]
+      expected_amount = move_dest.amount + pack.price
+      if expected_amount > move_src.amount
+        move_src.size   = pack.size
+        move_src.amount = expected_amount
+      end
     end
 end
 
@@ -63,4 +92,13 @@ class Move
     @amount = 0
   end
 end
+
+
+if __FILE__ == $0
+  ks = KnapsackSolver.new(10)
+  ks.solve
+end
+
+
+#[EOF]
 
