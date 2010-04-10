@@ -33,7 +33,7 @@ class KnapsackSolver
 
   def to_s
     outs = Array.new
-    indexes = (0 .. @size - 1).to_a
+    indexes = (0 .. @size).to_a
     [
       [''      , indexes],
       ['size'  , indexes.map { |i| @array_move[i].size   }],
@@ -50,7 +50,7 @@ class KnapsackSolver
 
     def prepare_array_move
       array_move = Array.new
-      @size.times do
+      (@size + 1).times do
         array_move << Move.new
       end
       return array_move
@@ -58,7 +58,7 @@ class KnapsackSolver
 
     def do_solve
       @possible_packs.each do |pack|
-        pack.size.upto(@size - 1) do |index|
+        pack.size.upto(@size) do |index|
           fill(index, pack)
         end
       end
@@ -67,10 +67,10 @@ class KnapsackSolver
     def fill(index, pack)
       move_src  = @array_move[index - pack.size]
       move_dest = @array_move[index]
-      expected_amount = move_dest.amount + pack.price
-      if expected_amount > move_src.amount
-        move_src.size   = pack.size
-        move_src.amount = expected_amount
+      expected_amount = move_src.amount + pack.price
+      if expected_amount > move_dest.amount
+        move_dest.size   = pack.size
+        move_dest.amount = expected_amount
       end
     end
 end
