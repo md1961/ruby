@@ -4,30 +4,20 @@
 class KnapsackSolver
   attr_reader :size
 
-  PACK_ATTRS = [
-    [ 4, 6 ],
-    [ 3, 4 ],
-    [ 1, 1 ],
-  ]
-
   def initialize(size)
     @size = size
-    @possible_packs = make_possible_packs
   end
 
-    def make_possible_packs
-      return PACK_ATTRS.map { |size, price| Pack.new(size, price) }
-    end
-    private :make_possible_packs
+  def self.make_possible_packs(pack_attrs)
+    return pack_attrs.map { |size, price| Pack.new(size, price) }
+  end
 
-  def solve
+  def solve(pack_attrs)
+    @possible_packs = KnapsackSolver.make_possible_packs(pack_attrs)
     @array_move = prepare_array_move
-
-    puts "Before:\n#{self}"
-
     do_solve
 
-    puts "After:\n#{self}"
+    puts self
 
   end
 
@@ -94,9 +84,15 @@ class Move
 end
 
 
+PACK_ATTRS = [
+  [ 4, 6 ],
+  [ 3, 4 ],
+  [ 1, 1 ],
+]
+
 if __FILE__ == $0
   ks = KnapsackSolver.new(10)
-  ks.solve
+  ks.solve(PACK_ATTRS)
 end
 
 
