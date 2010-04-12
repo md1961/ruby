@@ -18,6 +18,7 @@ class KnapsackSolver
     do_solve
 
     puts self
+    puts
 
   end
 
@@ -91,11 +92,8 @@ P1 = [ 1, 1 ]
 if __FILE__ == $0
   ks = KnapsackSolver.new(10)
   ks.solve([P4, P3, P1])
-  puts
   ks.solve([P3, P4, P1])
-  puts
   ks.solve([P1, P3, P4])
-  puts
   ks.solve([P1, P4, P3])
 end
 
