@@ -84,15 +84,19 @@ class Move
 end
 
 
-PACK_ATTRS = [
-  [ 4, 6 ],
-  [ 3, 4 ],
-  [ 1, 1 ],
-]
+P4 = [ 4, 6 ]
+P3 = [ 3, 4 ]
+P1 = [ 1, 1 ]
 
 if __FILE__ == $0
   ks = KnapsackSolver.new(10)
-  ks.solve(PACK_ATTRS)
+  ks.solve([P4, P3, P1])
+  puts
+  ks.solve([P3, P4, P1])
+  puts
+  ks.solve([P1, P3, P4])
+  puts
+  ks.solve([P1, P4, P3])
 end
 
 
