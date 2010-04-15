@@ -911,7 +911,7 @@ class Schezer
     end
 
     @argv << DEFAULT_TABLE_NAME if @argv.empty?
-    table_names, table_names2 = get_both_table_names_from_argv(command)
+    table_names, table_names2 = get_both_table_names_from_argv
 
     do_command(command, table_names, table_names2)
   end
@@ -924,18 +924,18 @@ class Schezer
 
   private
 
-    def get_both_table_names_from_argv(command)
+    def get_both_table_names_from_argv
       exit_with_msg("Specify a table name or '#{ALL_TABLES}'") if @argv.empty?
 
-      table_names  = get_table_names_from_argv(@conn , command)
-      table_names2 = get_table_names_from_argv(@conn2, command) if @conn2
+      table_names  = get_table_names_from_argv(@conn )
+      table_names2 = get_table_names_from_argv(@conn2) if @conn2
 
       @argv.clear
 
       return table_names, table_names2
     end
 
-    def get_table_names_from_argv(conn, command)
+    def get_table_names_from_argv(conn)
       all_table_names = get_table_names(conn)
       if @argv.size == 1 && @argv[0] == ALL_TABLES
         return all_table_names

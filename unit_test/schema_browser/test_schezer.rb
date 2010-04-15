@@ -26,7 +26,7 @@ class TestSchezer < Test::Unit::TestCase
       table_names = nil
       schezer.instance_eval do
         @argv = [Schezer::DEFAULT_TABLE_NAME]
-        table_names = get_table_names_from_argv(@conn, nil)
+        table_names = get_table_names_from_argv(@conn)
       end
 
       return table_names
