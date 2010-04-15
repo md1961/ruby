@@ -1,0 +1,15 @@
+development:
+  adapter: mysql
+  database: schezer_test
+  username: schezer_test
+  password: pst9rur0
+  host: pluto
+  encoding: utf8
+
+production:
+  adapter: mysql
+  database: schezer_test2
+  username: schezer_test
+  password: pst9rur0
+  host: pluto
+  encoding: utf8
