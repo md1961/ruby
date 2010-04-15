@@ -10,7 +10,7 @@ class TestSchezer < Test::Unit::TestCase
   CONF_FILE = "#{BASE_DIR}/db/schezer_test.yml"
 
   TABLE_NAMES_DEVEL = %w(base_unit field fluid reserve reserve_header reserve_header_trash reservoir unit)
-  TABLE_NAMES_PROD  = %w(base_unit field fluid reserve reserve_header reservoir unit)
+  TABLE_NAMES_PROD  = %w(base_unit field fluid reserve reserve_header reservoir unit user)
 
   def test_get_table_names_from_argv
     table_names = call_get_table_names_from_argv(:development)
