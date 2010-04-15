@@ -911,8 +911,8 @@ class Schezer
     end
 
     @argv << DEFAULT_TABLE_NAME if @argv.empty?
+    #TODO: begin - recue with the following statements.
     table_names, table_names2 = get_both_table_names_from_argv
-
     do_command(command, table_names, table_names2)
   end
 
