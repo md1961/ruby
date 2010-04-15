@@ -947,7 +947,7 @@ class Schezer
       table_names.each do |table_name|
         if str_re = table_name2str_regexp(table_name)
           table_names_expanded.concat(get_table_names_with_regexp(conn, str_re))
-        elsif !  all_table_names.include?(table_name)
+        elsif ! all_table_names.include?(table_name)
           non_existing_table_names << table_name
         else
           table_names_expanded << table_name
