@@ -17,7 +17,8 @@ class TestSchezer < Test::Unit::TestCase
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
 
     no_table_names_devel.each do |table_name|
-      assert_raise(ExitWithMessageException, "Should have thrown an ExitWithMessageException") do
+      msg ="@argv = [\"#{table_name}\"] should have thrown an ExitWithMessageException"
+      assert_raise(ExitWithMessageException, msg) do
         schezer.instance_eval do
           @argv = [table_name]
           get_table_names_from_argv(@conn)
@@ -87,14 +88,24 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_do_command_raise_exception
-    no_commands = [:make, :delete, :remove, :table]
+    no_commands = [:make, :delete, :remove]
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
 
     no_commands.each do |command|
-      assert_raise(ExitWithMessageException, "Should have thrown an ExitWithMessageException") do
+      msg = "do_command(:#{command}, [], []) should have thrown an ExitWithMessageException"
+      assert_raise(ExitWithMessageException, msg) do
         schezer.instance_eval do
           do_command(command, [], [])
         end
+      end
+    end
+  end
+
+  def test_to_disp_sql_to_sync
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
+    assert_raise(ExitWithMessageException, "Should have thrown an ExitWithMessageException") do
+      schezer.instance_eval do
+        to_disp_sql_to_sync([], [])
       end
     end
   end

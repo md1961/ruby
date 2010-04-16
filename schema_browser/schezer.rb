@@ -1031,7 +1031,7 @@ class Schezer
     # @conn の DB を @conn2 の DB に同期されるための SQL を生成する
     def to_disp_sql_to_sync(table_names, table_names2)
       unless @conn2
-        exit_with_msg("Specify synchronization destination environment with option '-g'")
+        raise ExitWithMessageException.new("Specify synchronization destination environment with option '-g'")
       end
 
       outs, table_names_both = compare_table_names(table_names, table_names2)
