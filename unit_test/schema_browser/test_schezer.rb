@@ -59,5 +59,18 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_table_name2str_regexp
+    legal_patterns = %w('abcde' "fghij" !klmno! ab* a.b ^ab ab$ ab?)
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
+
+    legal_patterns.each do |pattern|
+      actual = nil
+      schezer.instance_eval do
+        actual = table_name2str_regexp(pattern)
+      end
+      assert_not_nil(actual, "table_name2str_regexp(\"#{pattern}\") should be non-nil")
+    end
+  end
 end
 
