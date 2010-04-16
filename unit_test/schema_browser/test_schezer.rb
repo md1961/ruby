@@ -101,7 +101,7 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
-  def test_to_disp_sql_to_sync
+  def test_to_disp_sql_to_sync_raise_exception
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
     assert_raise(ExitWithMessageException, "Should have thrown an ExitWithMessageException") do
       schezer.instance_eval do
@@ -109,5 +109,26 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_to_disp_sql_to_sync
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development -g production sql_sync))
+
+    table_names = %w(reserve_header)
+    expected = ["INSERT INTO reserve_header VALUES (3, 1, '2002-12-31', 90, 0, '2001-03-01 00:00:00', NULL, 'S', ' 減退見直し');"]
+    do_assert_to_disp_sql_to_sync(schezer, table_names, expected)
+
+    table_names = %w(reserve)
+    expected = ["INSERT INTO reserve VALUES (5, 3, 1, 6543.21, 1);\nINSERT INTO reserve VALUES (6, 3, 2, 8765.43, 2);"]
+    do_assert_to_disp_sql_to_sync(schezer, table_names, expected)
+  end
+
+    def do_assert_to_disp_sql_to_sync(schezer, table_names, expected)
+      actual = nil
+      schezer.instance_eval do
+        actual = to_disp_sql_to_sync(table_names, table_names)
+      end
+      assert_equal(expected, actual)
+    end
+    private :do_assert_to_disp_sql_to_sync
 end
 

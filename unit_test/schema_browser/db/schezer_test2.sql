@@ -34,3 +34,28 @@ INSERT INTO `user` VALUES
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 
+--
+-- Dumping data for table `reserve_header`
+--
+
+LOCK TABLES `reserve_header` WRITE;
+/*!40000 ALTER TABLE `reserve_header` DISABLE KEYS */;
+INSERT INTO `reserve_header` VALUES
+	  (3, 1, '2002-12-31', 90, 0, '2001-03-01 00:00:00', NULL, 'S', ' 減退見直し')
+	;
+/*!40000 ALTER TABLE `reserve_header` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Dumping data for table `reserve`
+--
+
+LOCK TABLES `reserve` WRITE;
+/*!40000 ALTER TABLE `reserve` DISABLE KEYS */;
+INSERT INTO `reserve` VALUES
+	  (5, 3, 1, '6543.21', 1)
+	, (6, 3, 2, '8765.43', 2)
+	;
+/*!40000 ALTER TABLE `reserve` ENABLE KEYS */;
+UNLOCK TABLES;
+
