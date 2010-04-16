@@ -46,5 +46,18 @@ class TestSchezer < Test::Unit::TestCase
       return table_names
     end
     private :call_get_table_names_from_argv
+
+  def test_table_name2str_regexp_raise_exception
+    illegal_patterns = %w('abc'de' "fg"hij" !klm!no!)
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
+
+    illegal_patterns.each do |pattern|
+      assert_raise(ExitWithMessageException, "Should have thrown an ExitWithMessageException") do
+        schezer.instance_eval do
+          table_name2str_regexp(pattern)
+        end
+      end
+    end
+  end
 end
 
