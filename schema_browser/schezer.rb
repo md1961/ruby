@@ -856,6 +856,8 @@ class TableData
 end
 
 
+class ExitWithMessageException < Exception; end
+
 class Schezer
 
   def initialize(argv)
@@ -911,9 +913,12 @@ class Schezer
     end
 
     @argv << DEFAULT_TABLE_NAME if @argv.empty?
-    #TODO: begin - recue with the following statements.
-    table_names, table_names2 = get_both_table_names_from_argv
-    do_command(command, table_names, table_names2)
+    begin
+      table_names, table_names2 = get_both_table_names_from_argv
+      do_command(command, table_names, table_names2)
+    rescue ExitWithMessageException => e
+      exit_with_msg(e.message)
+    end
   end
 
   def to_s
@@ -925,7 +930,7 @@ class Schezer
   private
 
     def get_both_table_names_from_argv
-      exit_with_msg("Specify a table name or '#{ALL_TABLES}'") if @argv.empty?
+      raise RuntimeError.new("@argv is impossiblly empty") if @argv.empty?
 
       table_names  = get_table_names_from_argv(@conn )
       table_names2 = get_table_names_from_argv(@conn2) if @conn2
@@ -954,7 +959,8 @@ class Schezer
         end
       end
       if non_existing_table_names.size > 0
-        exit_with_msg("No table names in '#{conn.environment}' such as `#{non_existing_table_names.join('`, `')}`")
+        raise ExitWithMessageException.new(
+                "No table in '#{conn.environment}' with name(s) of `#{non_existing_table_names.join('`, `')}`")
       end
       return table_names_expanded.uniq
     end
@@ -966,7 +972,9 @@ class Schezer
       if RE_LITERAL_REGEXP =~ table_name
         c_quote = $1
         str_re  = $2
-        exit_with_msg("Illegal table name regexp '#{table_name}' (quote mark in quote)") if str_re.index(c_quote)
+        if str_re.index(c_quote)
+          raise ExitWithMessageException.new("Illegal table name regexp '#{table_name}' (quote mark in quote)")
+        end
         return str_re
       end
       MARKER_FOR_REGEXP.each do |marker|
@@ -1013,7 +1021,7 @@ class Schezer
       when :sql_sync
         outs = to_disp_sql_to_sync(table_names, table_names2)
       else
-        exit_with_msg("Unknown command '#{command}'")
+        raise ExitWithMessageException.new("Unknown command '#{command}'")
       end
 
       puts outs.join(joint) unless outs.empty?
