@@ -930,6 +930,7 @@ class Schezer
   private
 
     def get_both_table_names_from_argv
+      #TODO: Basically unneccessary.  Delete?
       raise RuntimeError.new("@argv is impossiblly empty") if @argv.empty?
 
       table_names  = get_table_names_from_argv(@conn )
