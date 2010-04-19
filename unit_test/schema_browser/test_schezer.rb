@@ -120,15 +120,49 @@ class TestSchezer < Test::Unit::TestCase
     table_names = %w(reserve)
     expected = ["INSERT INTO reserve VALUES (5, 3, 1, 6543.21, 1);\nINSERT INTO reserve VALUES (6, 3, 2, 8765.43, 2);"]
     do_assert_to_disp_sql_to_sync(schezer, table_names, expected)
+
+    #TODO: Add more tests (to UPDATE and DELETE)
   end
 
-    def do_assert_to_disp_sql_to_sync(schezer, table_names, expected)
-      actual = nil
+    def do_assert_to_disp_sql_to_sync(schezer, table_names, expected_sqls)
+      actual_sqls = nil
       schezer.instance_eval do
-        actual = to_disp_sql_to_sync(table_names, table_names)
+        actual_sqls = to_disp_sql_to_sync(table_names, table_names)
       end
-      assert_equal(expected, actual)
+      assert_equal(expected_sqls, actual_sqls)
     end
     private :do_assert_to_disp_sql_to_sync
+
+  def test_value_in_sql
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
+
+    column = Object.new
+    def column.name           ; return 'id'; end
+    def column.numerical_type?; return true; end
+    actual = nil
+    schezer.instance_eval do
+      actual = value_in_sql({'id' => nil}, column)
+    end
+    assert_equal("NULL", actual)
+
+    actual = nil
+    schezer.instance_eval do
+      actual = value_in_sql({'id' => 23}, column)
+    end
+    assert_equal(23, actual)
+
+    column = Object.new
+    def column.name           ; return 'type'; end
+    def column.numerical_type?; return false ; end
+    actual = nil
+    schezer.instance_eval do
+      actual = value_in_sql({'type' => 'field'}, column)
+    end
+    assert_equal("'field'", actual)
+  end
+
+  def test_make_values_for_sql_insert
+  end
+
 end
 

@@ -1089,6 +1089,8 @@ class Schezer
       return outs
     end
 
+    #TODO: Add to_disp_sql_delete_to_sync()
+
     def to_disp_sql_update_to_sync(table_data, table_schema)
       outs = Array.new
 
