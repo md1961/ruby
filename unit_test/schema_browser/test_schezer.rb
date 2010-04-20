@@ -216,7 +216,7 @@ class TestSchezer < Test::Unit::TestCase
       + "4\t2\t2\t7890.12\t2\n" \
       + "Total of 4 rows"
     ]
-    assert_equal(expected, actual, "Data of TABLE reserve")
+    assert_equal(expected, actual, "Data of TABLE `reserve`")
 
     table_names = ['base_unit', 'field']
     actual = nil
@@ -235,7 +235,36 @@ class TestSchezer < Test::Unit::TestCase
       + "1\tYufutsu\t勇払\t\t\t\t140\n" \
       + "Total of 4 rows"
     ]
-    assert_equal(expected, actual, "Data of TABLE reserve")
+    assert_equal(expected, actual, "Data of TABLE `base_unit` and `field`")
+  end
+
+  def test_to_disp_table_data_with_two_envs
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development -g production data))
+
+    table_names = ['fluid']
+    actual = nil
+    schezer.instance_eval do
+      actual = to_disp_table_data(table_names)
+    end
+    msg = "to_disp_table_data() with TABLE `fluid` with two environments should return an emtpy array"
+    assert(actual.empty?, msg)
+
+    table_names = ['reserve']
+    actual = nil
+    schezer.instance_eval do
+      actual = to_disp_table_data(table_names)
+    end
+    expected = [
+        "TABLE `reserve`:\n" \
+      + "[Pair of rows different but same with unique keys ('development', then 'production')\n" \
+      + "(none)\n" \
+      + "[Rows which appears only in development]:\n" \
+      + "(none)\n" \
+      + "[Rows which appears only in production]:\n" \
+      + "5\t3\t1\t6543.21\t1\n" \
+      + "6\t3\t2\t8765.43\t2"
+    ]
+    assert_equal(expected, actual, "Data comparison of TABLE `base_unit` and `field`")
   end
 end
 
