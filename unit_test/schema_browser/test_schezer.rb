@@ -274,7 +274,6 @@ class TestSchezer < Test::Unit::TestCase
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
 
     table_name = 'reserve'
-
     actual = nil
     schezer.instance_eval do
       actual = to_disp_row_count(table_name, @conn)
@@ -286,8 +285,14 @@ class TestSchezer < Test::Unit::TestCase
   def test_to_disp_row_count_with_two_envs
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development -g production data))
 
-    table_name = 'reserve'
+    table_name = 'base_unit'
+    actual = nil
+    schezer.instance_eval do
+      actual = to_disp_row_count(table_name, @conn, @conn2)
+    end
+    assert_nil(actual, "Row count comparison of TABLE `#{table_name}`")
 
+    table_name = 'reserve'
     actual = nil
     schezer.instance_eval do
       actual = to_disp_row_count(table_name, @conn, @conn2)
@@ -295,7 +300,7 @@ class TestSchezer < Test::Unit::TestCase
     expected = \
         "TABLE `reserve`'s COUNT(*) = 4 for 'development'\n" \
       + "TABLE `reserve`'s COUNT(*) = 6 for 'production'"
-    assert_equal(expected, actual, "Row count of TABLE `#{table_name}`")
+    assert_equal(expected, actual, "Row count comparison of TABLE `#{table_name}`")
   end
 end
 
