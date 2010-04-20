@@ -266,5 +266,36 @@ class TestSchezer < Test::Unit::TestCase
     ]
     assert_equal(expected, actual, "Data comparison of TABLE `base_unit` and `field`")
   end
+
+  #TODO: Test to_s_pairs_with_unique_key_same(table_data)
+  #TODO: Test to_s_rows_only_in_either(table_data, is_self=true)
+
+  def test_to_disp_row_count_with_one_env
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
+
+    table_name = 'reserve'
+
+    actual = nil
+    schezer.instance_eval do
+      actual = to_disp_row_count(table_name, @conn)
+    end
+    expected = "TABLE `reserve`'s COUNT(*) = 4"
+    assert_equal(expected, actual, "Row count of TABLE `#{table_name}`")
+  end
+
+  def test_to_disp_row_count_with_two_envs
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development -g production data))
+
+    table_name = 'reserve'
+
+    actual = nil
+    schezer.instance_eval do
+      actual = to_disp_row_count(table_name, @conn, @conn2)
+    end
+    expected = \
+        "TABLE `reserve`'s COUNT(*) = 4 for 'development'\n" \
+      + "TABLE `reserve`'s COUNT(*) = 6 for 'production'"
+    assert_equal(expected, actual, "Row count of TABLE `#{table_name}`")
+  end
 end
 
