@@ -1144,8 +1144,9 @@ class Schezer
       return "'#{value}'"
     end
 
-    def to_disp_table_data(table_names, table_names2)
+    def to_disp_table_data(table_names, table_names2=nil)
       if @conn2
+        raise ArgumentError.new("Argument table_names2 is illegally nil") unless table_names2
         outs, table_names_both = compare_table_names(table_names, table_names2)
       else
         table_names_both = table_names

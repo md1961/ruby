@@ -136,7 +136,7 @@ class TestSchezer < Test::Unit::TestCase
   def test_value_in_sql
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
 
-    column = make_column_schema_stub('id', true)
+    column = make_column_schema_mock('id', true)
     actual = nil
     schezer.instance_eval do
       actual = value_in_sql({'id' => nil}, column)
@@ -149,7 +149,7 @@ class TestSchezer < Test::Unit::TestCase
     end
     assert_equal(23, actual)
 
-    column = make_column_schema_stub('type', false)
+    column = make_column_schema_mock('type', false)
     actual = nil
     schezer.instance_eval do
       actual = value_in_sql({'type' => 'field'}, column)
@@ -160,9 +160,9 @@ class TestSchezer < Test::Unit::TestCase
   def test_make_values_for_sql_insert
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
 
-    column_id   = make_column_schema_stub('id'  , true)
-    column_a_id = make_column_schema_stub('a_id', true)
-    column_b_id = make_column_schema_stub('b_id', true)
+    column_id   = make_column_schema_mock('id'  , true)
+    column_a_id = make_column_schema_mock('a_id', true)
+    column_b_id = make_column_schema_mock('b_id', true)
     columns = [column_id, column_a_id, column_b_id]
     hash_row = {'id' => 2, 'a_id' => 3, 'b_id' => 5}
     actual = nil
@@ -171,10 +171,10 @@ class TestSchezer < Test::Unit::TestCase
     end
     assert_equal([2, 3, 5], actual)
 
-    column_id   = make_column_schema_stub('id'  , true)
-    column_type = make_column_schema_stub('type', false)
-    column_name = make_column_schema_stub('name', false)
-    column_alt  = make_column_schema_stub('alt' , false)
+    column_id   = make_column_schema_mock('id'  , true)
+    column_type = make_column_schema_mock('type', false)
+    column_name = make_column_schema_mock('name', false)
+    column_alt  = make_column_schema_mock('alt' , false)
     columns = [column_id, column_type, column_name, column_alt]
     hash_row = {'id' => 23, 'type' => 'field', 'name' => 'Ghawar', 'alt' => nil}
     actual = nil
@@ -184,11 +184,11 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal([23, "'field'", "'Ghawar'", "NULL"], actual)
   end
 
-    def make_column_schema_stub(name, is_numerical)
-      stub = Object.new
-      stub.instance_variable_set(:@name  , name)
-      stub.instance_variable_set(:@is_num, is_numerical)
-      class << stub
+    def make_column_schema_mock(name, is_numerical)
+      mock = Object.new
+      mock.instance_variable_set(:@name  , name)
+      mock.instance_variable_set(:@is_num, is_numerical)
+      class << mock
         def name
           @name
         end
@@ -197,8 +197,45 @@ class TestSchezer < Test::Unit::TestCase
         end
       end
 
-      return stub
+      return mock
     end
-    private :make_column_schema_stub
+    private :make_column_schema_mock
+
+  def test_to_disp_table_data_with_one_env
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
+
+    table_names = ['reserve']
+    actual = nil
+    schezer.instance_eval do
+      actual = to_disp_table_data(table_names)
+    end
+    expected = [
+        "1\t1\t1\t1234.56\t1\n" \
+      + "2\t1\t2\t3456.78\t2\n" \
+      + "3\t2\t1\t5678.90\t1\n" \
+      + "4\t2\t2\t7890.12\t2\n" \
+      + "Total of 4 rows"
+    ]
+    assert_equal(expected, actual, "Data of TABLE reserve")
+
+    table_names = ['base_unit', 'field']
+    actual = nil
+    schezer.instance_eval do
+      actual = to_disp_table_data(table_names)
+    end
+    expected = [
+        "1\tKL\n" \
+      + "2\tm3\n" \
+      + "4\tSCF\n" \
+      + "3\tSTB\n" \
+      + "Total of 4 rows",
+        "14\tHigashi-Niigata\t東新潟\t\t\t\t840\n" \
+      + "20\tIwafune-Oki\t岩船沖\t\t\t\t2100\n" \
+      + "3\tSarukawa\t申川\t\t\t\t320\n" \
+      + "1\tYufutsu\t勇払\t\t\t\t140\n" \
+      + "Total of 4 rows"
+    ]
+    assert_equal(expected, actual, "Data of TABLE reserve")
+  end
 end
 
