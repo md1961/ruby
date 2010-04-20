@@ -158,6 +158,30 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_make_values_for_sql_insert
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
+
+    column_id   = make_column_schema_stub('id'  , true)
+    column_a_id = make_column_schema_stub('a_id', true)
+    column_b_id = make_column_schema_stub('b_id', true)
+    columns = [column_id, column_a_id, column_b_id]
+    hash_row = {'id' => 2, 'a_id' => 3, 'b_id' => 5}
+    actual = nil
+    schezer.instance_eval do
+      actual = make_values_for_sql_insert(hash_row, columns)
+    end
+    assert_equal([2, 3, 5], actual)
+
+    column_id   = make_column_schema_stub('id'  , true)
+    column_type = make_column_schema_stub('type', false)
+    column_name = make_column_schema_stub('name', false)
+    column_alt  = make_column_schema_stub('alt' , false)
+    columns = [column_id, column_type, column_name, column_alt]
+    hash_row = {'id' => 23, 'type' => 'field', 'name' => 'Ghawar', 'alt' => nil}
+    actual = nil
+    schezer.instance_eval do
+      actual = make_values_for_sql_insert(hash_row, columns)
+    end
+    assert_equal([23, "'field'", "'Ghawar'", "NULL"], actual)
   end
 
     def make_column_schema_stub(name, is_numerical)
