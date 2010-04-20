@@ -136,9 +136,7 @@ class TestSchezer < Test::Unit::TestCase
   def test_value_in_sql
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
 
-    column = Object.new
-    def column.name           ; return 'id'; end
-    def column.numerical_type?; return true; end
+    column = make_column_schema_stub('id', true)
     actual = nil
     schezer.instance_eval do
       actual = value_in_sql({'id' => nil}, column)
@@ -151,9 +149,7 @@ class TestSchezer < Test::Unit::TestCase
     end
     assert_equal(23, actual)
 
-    column = Object.new
-    def column.name           ; return 'type'; end
-    def column.numerical_type?; return false ; end
+    column = make_column_schema_stub('type', false)
     actual = nil
     schezer.instance_eval do
       actual = value_in_sql({'type' => 'field'}, column)
@@ -164,5 +160,21 @@ class TestSchezer < Test::Unit::TestCase
   def test_make_values_for_sql_insert
   end
 
+    def make_column_schema_stub(name, is_numerical)
+      stub = Object.new
+      stub.instance_variable_set(:@name  , name)
+      stub.instance_variable_set(:@is_num, is_numerical)
+      class << stub
+        def name
+          @name
+        end
+        def numerical_type?
+          @is_num
+        end
+      end
+
+      return stub
+    end
+    private :make_column_schema_stub
 end
 
