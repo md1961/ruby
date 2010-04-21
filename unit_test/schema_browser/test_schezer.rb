@@ -318,8 +318,8 @@ class TestSchezer < Test::Unit::TestCase
     schezer = make_schezer_instance(*%w(-e development data))
 
     table_name = 'non_existence'
-    msg = "ExitWithMessageException should have thrown with a TABLE which does not exist"
-    assert_raise(ExitWithMessageException, msg) do
+    msg = "InfrastructureException should have thrown with a TABLE which does not exist"
+    assert_raise(InfrastructureException, msg) do
       schezer.instance_eval do
         actual = parse_table_schema(table_name, @conn)
       end

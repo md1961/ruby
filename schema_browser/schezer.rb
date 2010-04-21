@@ -857,6 +857,7 @@ end
 
 
 class ExitWithMessageException < Exception; end
+class InfrastructureException  < Exception; end
 
 class Schezer
 
@@ -1299,7 +1300,7 @@ class Schezer
       begin
         result = conn.get_query_result(sql)
       rescue Mysql::Error => evar
-        raise ExitWithMessageException.new("Failed to get the schema of TABLE '#{name}'")
+        raise InfrastructureException.new("Failed to get the schema of TABLE '#{name}'")
       end
       return result
     end
@@ -1309,7 +1310,7 @@ class Schezer
       begin
         result = conn.get_query_result(sql)
       rescue Mysql::Error => evar
-        raise ExitWithMessageException.new("Failed to get the row count of TABLE '#{name}'")
+        raise InfrastructureException.new("Failed to get the row count of TABLE '#{name}'")
       end
       return result.fetch_hash['COUNT(*)'].to_i
     end
