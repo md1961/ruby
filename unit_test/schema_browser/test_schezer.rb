@@ -14,7 +14,7 @@ class TestSchezer < Test::Unit::TestCase
 
   def test_get_table_names_from_argv_raise_exception
     no_table_names_devel = %w(field_office reserve_commentary user role)
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
+    schezer = make_schezer_instance(*%w(-e development names))
 
     no_table_names_devel.each do |table_name|
       msg ="@argv = [\"#{table_name}\"] should have thrown an ExitWithMessageException"
@@ -27,6 +27,11 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+    def make_schezer_instance(*args)
+      return Schezer.new(['-f', CONF_FILE] + args)
+    end
+    private :make_schezer_instance
+
   def test_get_table_names_from_argv
     table_names = call_get_table_names_from_argv(:development)
     assert_equal(TABLE_NAMES_DEVEL, table_names)
@@ -36,7 +41,7 @@ class TestSchezer < Test::Unit::TestCase
   end
 
     def call_get_table_names_from_argv(environment)
-      schezer = Schezer.new(['-f', CONF_FILE, '-e', environment.to_s, 'names'])
+      schezer = make_schezer_instance('-e', environment.to_s, 'names')
 
       table_names = nil
       schezer.instance_eval do
@@ -49,8 +54,9 @@ class TestSchezer < Test::Unit::TestCase
     private :call_get_table_names_from_argv
 
   def test_table_name2str_regexp_raise_exception
+    schezer = make_schezer_instance(*%w(-e development names))
+
     illegal_patterns = %w('abc'de' "fg"hij" !klm!no!)
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
 
     illegal_patterns.each do |pattern|
       assert_raise(ExitWithMessageException, "Should have thrown an ExitWithMessageException") do
@@ -62,8 +68,9 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_table_name2str_regexp_return_nil
+    schezer = make_schezer_instance(*%w(-e development names))
+
     no_patterns = %w(abc reserve user)
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
 
     no_patterns.each do |pattern|
       actual = ''
@@ -75,8 +82,9 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_table_name2str_regexp
+    schezer = make_schezer_instance(*%w(-e development names))
+
     legal_patterns = %w('abcde' "fghij" !klmno! ab* a.b ^ab ab$ ab?)
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
 
     legal_patterns.each do |pattern|
       actual = nil
@@ -88,8 +96,9 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_do_command_raise_exception
+    schezer = make_schezer_instance(*%w(-e development names))
+
     no_commands = [:make, :delete, :remove]
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development names))
 
     no_commands.each do |command|
       msg = "do_command(:#{command}, [], []) should have thrown an ExitWithMessageException"
@@ -102,7 +111,8 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_to_disp_sql_to_sync_raise_exception
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
+    schezer = make_schezer_instance(*%w(-e development sql_sync))
+
     assert_raise(ExitWithMessageException, "Should have thrown an ExitWithMessageException") do
       schezer.instance_eval do
         to_disp_sql_to_sync([], [])
@@ -111,7 +121,7 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_to_disp_sql_to_sync
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development -g production sql_sync))
+    schezer = make_schezer_instance(*%w(-e development -g production sql_sync))
 
     table_names = %w(reserve_header)
     expected = ["INSERT INTO reserve_header VALUES (3, 1, '2002-12-31', 90, 0, '2001-03-01 00:00:00', NULL, 'S', ' 減退見直し');"]
@@ -134,7 +144,7 @@ class TestSchezer < Test::Unit::TestCase
     private :do_assert_to_disp_sql_to_sync
 
   def test_value_in_sql
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
+    schezer = make_schezer_instance(*%w(-e development sql_sync))
 
     column = make_column_schema_mock('id', true)
     actual = nil
@@ -158,7 +168,7 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_make_values_for_sql_insert
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development sql_sync))
+    schezer = make_schezer_instance(*%w(-e development sql_sync))
 
     column_id   = make_column_schema_mock('id'  , true)
     column_a_id = make_column_schema_mock('a_id', true)
@@ -202,9 +212,9 @@ class TestSchezer < Test::Unit::TestCase
     private :make_column_schema_mock
 
   def test_to_disp_table_data_with_one_env
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
+    schezer = make_schezer_instance(*%w(-e development data))
 
-    table_names = ['reserve']
+    table_names = %w(reserve)
     actual = nil
     schezer.instance_eval do
       actual = to_disp_table_data(table_names)
@@ -218,7 +228,7 @@ class TestSchezer < Test::Unit::TestCase
     ]
     assert_equal(expected, actual, "Data of TABLE `reserve`")
 
-    table_names = ['base_unit', 'field']
+    table_names = %w(base_unit field)
     actual = nil
     schezer.instance_eval do
       actual = to_disp_table_data(table_names)
@@ -239,9 +249,9 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_to_disp_table_data_with_two_envs
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development -g production data))
+    schezer = make_schezer_instance(*%w(-e development -g production data))
 
-    table_names = ['fluid']
+    table_names = %w(fluid)
     actual = nil
     schezer.instance_eval do
       actual = to_disp_table_data(table_names)
@@ -249,7 +259,7 @@ class TestSchezer < Test::Unit::TestCase
     msg = "to_disp_table_data() with TABLE `fluid` with two environments should return an emtpy array"
     assert(actual.empty?, msg)
 
-    table_names = ['reserve']
+    table_names = %w(reserve)
     actual = nil
     schezer.instance_eval do
       actual = to_disp_table_data(table_names)
@@ -271,7 +281,7 @@ class TestSchezer < Test::Unit::TestCase
   #TODO: Test to_s_rows_only_in_either(table_data, is_self=true)
 
   def test_to_disp_row_count_with_one_env
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
+    schezer = make_schezer_instance(*%w(-e development data))
 
     table_name = 'reserve'
     actual = nil
@@ -283,7 +293,7 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_to_disp_row_count_with_two_envs
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development -g production data))
+    schezer = make_schezer_instance(*%w(-e development -g production data))
 
     table_name = 'base_unit'
     actual = nil
@@ -305,7 +315,7 @@ class TestSchezer < Test::Unit::TestCase
 
   # def parse_table_schema(name, conn)
   def test_parse_table_schema
-    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
+    schezer = make_schezer_instance(*%w(-e development data))
 
     table_name = 'non_existence'
     msg = "ExitWithMessageException should have thrown with a TABLE which does not exist"
@@ -321,7 +331,7 @@ class TestSchezer < Test::Unit::TestCase
       actual = parse_table_schema(table_name, @conn)
     end
     h_expected = {
-      :name => 'fluid', :primary_keys => ['fluid_id'], :max_rows => nil, :engine => 'InnoDB',
+      :name => 'fluid', :primary_keys => %w(fluid_id), :max_rows => nil, :engine => 'InnoDB',
       :default_charset => 'utf8', :collate => nil, :comment => nil
     }
     assert_table_schema(h_expected, actual)
@@ -336,9 +346,16 @@ class TestSchezer < Test::Unit::TestCase
        :is_primary_key => false, :auto_increment => false, :set_options => nil},
     ]
     assert_column_schema_of_table_schema(array_of_h_expected, actual)
+    array_of_h_expected = [
+      {:name => 'fluid_id' , :column_names => %w(fluid_id) , :is_unique => true},
+      {:name => 'fluid'    , :column_names => %w(fluid)    , :is_unique => true},
+      {:name => 'fluid_zen', :column_names => %w(fluid_zen), :is_unique => true},
+    ]
+    assert_unique_keys_of_table_schema(array_of_h_expected, actual)
   end
 
     def assert_table_schema(h_expected, schema)
+      assert_not_nil(schema, "TableSchema should be non-null")
       assert_equal(h_expected[:name]           , schema.name           , "table name")
       assert_equal(h_expected[:primary_keys]   , schema.primary_keys   , "primary keys")
       assert_equal(h_expected[:max_rows]       , schema.max_rows       , "max rows")
@@ -350,6 +367,7 @@ class TestSchezer < Test::Unit::TestCase
     private :assert_table_schema
 
     def assert_column_schema_of_table_schema(array_of_h_expected, schema)
+      assert_not_nil(schema, "TableSchema should be non-null")
       columns = schema.columns
 
       actual_column_names   = columns.map { |column| column.name }
@@ -368,5 +386,22 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
     private :assert_column_schema_of_table_schema
+
+    def assert_unique_keys_of_table_schema(array_of_h_expected, schema)
+      assert_not_nil(schema, "TableSchema should be non-null")
+      unique_keys = schema.unique_keys
+
+      actual_key_names   = unique_keys.map { |key| key.name }
+      expected_key_names = array_of_h_expected.map { |h| h[:name] }
+      assert_equal(expected_key_names, actual_key_names, "key names")
+
+      unique_keys.zip(array_of_h_expected) do |key, h_expected|
+        name = key.name
+        assert_equal(h_expected[:name]        , name            , "key name")
+        assert_equal(h_expected[:column_names], key.column_names, "column names of key `#{name}`")
+        assert_equal(h_expected[:is_unique]   , key.unique?     , "unique? of key `#{name}`")
+      end
+    end
+    private :assert_unique_keys_of_table_schema
 end
 
