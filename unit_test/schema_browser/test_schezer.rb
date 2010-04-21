@@ -395,6 +395,49 @@ class TestSchezer < Test::Unit::TestCase
     assert_unique_keys_of_table_schema(array_of_h_expected, actual)
   end
 
+  def test_parse_table_schema_with_table_reserve_header
+    schezer = make_schezer_instance(*%w(-e development data))
+
+    table_name = 'reserve_header'
+    actual = nil
+    schezer.instance_eval do
+      actual = parse_table_schema(table_name, @conn)
+    end
+    h_expected = {
+      :name => 'reserve_header', :primary_keys => %w(reserve_id), :max_rows => nil, :engine => 'InnoDB',
+      :default_charset => 'utf8', :collate => nil, :comment => "埋蔵量のヘッダテーブル"
+    }
+    assert_table_schema(h_expected, actual)
+    array_of_h_expected = [
+      {:name => 'reserve_id', :type => 'int(10) unsigned', :not_null => true, :default => nil, :is_primary_key => true,
+       :auto_increment => true, :set_options => nil, :comment => "RDBMSが生成する一意のID番号"},
+      {:name => 'reservoir_id', :type => 'int(10) unsigned', :not_null => true, :default => '0', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => nil},
+      {:name => 'date_reserve', :type => 'date', :not_null => true, :default => '0000-00-00', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "鉱量の日付"},
+      {:name => 'possibility', :type => 'int(10) unsigned', :not_null => true, :default => '0', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "実現確率"},
+      {:name => 'is_by_completion', :type => 'tinyint(1) unsigned zerofill', :not_null => true, :default => '0',
+       :is_primary_key => false, :auto_increment => false, :set_options => nil,
+       :comment => "鉱量データとして 0 であれば reserve、1 であれば reserve_by_completion を使う"},
+      {:name => 'datetime_input', :type => 'datetime', :not_null => false, :default => 'NULL', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "入力した日時"},
+      {:name => 'username_input', :type => 'varchar(40)', :not_null => false, :default => 'NULL', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "入力したユーザー名"},
+      {:name => 'method_reserve', :type => 'varchar(20)', :not_null => false, :default => 'NULL', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => nil},
+      {:name => 'summary', :type => 'text', :not_null => false, :default => nil, :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => nil},
+    ]
+    assert_column_schema_of_table_schema(array_of_h_expected, actual)
+    array_of_h_expected = [
+      {:name => 'reserve_id', :column_names => %w(reserve_id), :is_unique => true},
+      {:name => 'id_date_possibility', :column_names => %w(reservoir_id date_reserve possibility), :is_unique => true},
+      {:name => 'reservoir_id', :column_names => %w(reservoir_id date_reserve possibility datetime_input), :is_unique => true},
+    ]
+    assert_unique_keys_of_table_schema(array_of_h_expected, actual)
+  end
+
     def assert_table_schema(h_expected, schema)
       assert_not_nil(schema, "TableSchema should be non-null")
       assert_equal(h_expected[:name]           , schema.name           , "table name")
