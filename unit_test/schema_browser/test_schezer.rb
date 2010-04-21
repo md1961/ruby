@@ -302,5 +302,17 @@ class TestSchezer < Test::Unit::TestCase
       + "TABLE `reserve`'s COUNT(*) = 6 for 'production'"
     assert_equal(expected, actual, "Row count comparison of TABLE `#{table_name}`")
   end
+
+  # def parse_table_schema(name, conn)
+  def test_parse_table_schema
+    schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
+
+    table_name = 'fluid'
+    actual = nil
+    schezer.instance_eval do
+      actual = parse_table_schema(table_name, @conn)
+    end
+    puts "\nactual = \n#{actual.inspect}"
+  end
 end
 
