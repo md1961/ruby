@@ -488,5 +488,21 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
     private :assert_unique_keys_of_table_schema
+
+  def test_get_table_names
+    schezer = make_schezer_instance(*%w(-e development -g production data))
+
+    actual_devel = nil
+    actual_prod  = nil
+    schezer.instance_eval do
+      actual_devel = get_table_names(@conn )
+      actual_prod  = get_table_names(@conn2)
+    end
+    expected_devel = %w(base_unit field fluid reserve reserve_header reserve_header_trash reservoir unit)
+    expected_prod  = %w(base_unit field fluid reserve reserve_header reservoir unit user)
+
+    assert_equal(expected_devel, actual_devel, "Table names for development")
+    assert_equal(expected_prod , actual_prod , "Table names for production")
+  end
 end
 
