@@ -307,12 +307,66 @@ class TestSchezer < Test::Unit::TestCase
   def test_parse_table_schema
     schezer = Schezer.new(['-f', CONF_FILE] + %w(-e development data))
 
+    table_name = 'non_existence'
+    msg = "ExitWithMessageException should have thrown with a TABLE which does not exist"
+    assert_raise(ExitWithMessageException, msg) do
+      schezer.instance_eval do
+        actual = parse_table_schema(table_name, @conn)
+      end
+    end
+
     table_name = 'fluid'
     actual = nil
     schezer.instance_eval do
       actual = parse_table_schema(table_name, @conn)
     end
-    puts "\nactual = \n#{actual.inspect}"
+    h_expected = {
+      :name => 'fluid', :primary_keys => ['fluid_id'], :max_rows => nil, :engine => 'InnoDB',
+      :default_charset => 'utf8', :collate => nil, :comment => nil
+    }
+    assert_table_schema(h_expected, actual)
+    array_of_h_expected = [
+      {:name => 'fluid_id', :type => 'int(10) unsigned', :not_null => true, :default => nil,
+       :is_primary_key => true, :auto_increment => true, :set_options => nil},
+      {:name => 'fluid', :type => 'varchar(20)', :not_null => true, :default => "''",
+       :is_primary_key => false, :auto_increment => false, :set_options => nil},
+      {:name => 'fluid_zen', :type => 'varchar(20)', :not_null => true, :default => "''",
+       :is_primary_key => false, :auto_increment => false, :set_options => nil},
+      {:name => 'fluid_order', :type => 'int(10)', :not_null => true, :default => nil,
+       :is_primary_key => false, :auto_increment => false, :set_options => nil},
+    ]
+    assert_column_schema_of_table_schema(array_of_h_expected, actual)
   end
+
+    def assert_table_schema(h_expected, schema)
+      assert_equal(h_expected[:name]           , schema.name           , "table name")
+      assert_equal(h_expected[:primary_keys]   , schema.primary_keys   , "primary keys")
+      assert_equal(h_expected[:max_rows]       , schema.max_rows       , "max rows")
+      assert_equal(h_expected[:engine]         , schema.engine         , "engine")
+      assert_equal(h_expected[:default_charset], schema.default_charset, "default charset")
+      assert_equal(h_expected[:collate]        , schema.collate        , "collate")
+      assert_equal(h_expected[:comment]        , schema.comment        , "comment")
+    end
+    private :assert_table_schema
+
+    def assert_column_schema_of_table_schema(array_of_h_expected, schema)
+      columns = schema.columns
+
+      actual_column_names   = columns.map { |column| column.name }
+      expected_column_names = array_of_h_expected.map { |h| h[:name] }
+      assert_equal(expected_column_names, actual_column_names, "column names")
+
+      columns.zip(array_of_h_expected) do |column, h_expected|
+        name = column.name
+        assert_equal(h_expected[:name]          , name                  , "column name")
+        assert_equal(h_expected[:type]          , column.type           , "data type of COLUMN `#{name}`")
+        assert_equal(h_expected[:not_null]      , column.not_null?      , "not null of COLUMN `#{name}`")
+        assert_equal(h_expected[:default]       , column.default        , "default of COLUMN `#{name}`")
+        assert_equal(h_expected[:is_primary_key], column.primary_key?   , "primary_key? of COLUMN `#{name}`")
+        assert_equal(h_expected[:auto_increment], column.auto_increment?, "auto_increment? of COLUMN `#{name}`")
+        assert_equal(h_expected[:set_options]   , column.set_options    , "set_options of COLUMN `#{name}`")
+      end
+    end
+    private :assert_column_schema_of_table_schema
 end
 

@@ -1299,7 +1299,7 @@ class Schezer
       begin
         result = conn.get_query_result(sql)
       rescue Mysql::Error => evar
-        exit_with_msg("Failed to get the schema of TABLE '#{name}'")
+        raise ExitWithMessageException.new("Failed to get the schema of TABLE '#{name}'")
       end
       return result
     end
@@ -1309,7 +1309,7 @@ class Schezer
       begin
         result = conn.get_query_result(sql)
       rescue Mysql::Error => evar
-        exit_with_msg("Failed to get the row count of TABLE '#{name}'")
+        raise ExitWithMessageException.new("Failed to get the row count of TABLE '#{name}'")
       end
       return result.fetch_hash['COUNT(*)'].to_i
     end
