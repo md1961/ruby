@@ -314,7 +314,7 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   # def parse_table_schema(name, conn)
-  def test_parse_table_schema
+  def test_parse_table_schema_with_non_existing_table
     schezer = make_schezer_instance(*%w(-e development data))
 
     table_name = 'non_existence'
@@ -324,6 +324,10 @@ class TestSchezer < Test::Unit::TestCase
         actual = parse_table_schema(table_name, @conn)
       end
     end
+  end
+
+  def test_parse_table_schema_with_table_reserve
+    schezer = make_schezer_instance(*%w(-e development data))
 
     table_name = 'fluid'
     actual = nil
@@ -336,20 +340,57 @@ class TestSchezer < Test::Unit::TestCase
     }
     assert_table_schema(h_expected, actual)
     array_of_h_expected = [
-      {:name => 'fluid_id', :type => 'int(10) unsigned', :not_null => true, :default => nil,
-       :is_primary_key => true, :auto_increment => true, :set_options => nil},
-      {:name => 'fluid', :type => 'varchar(20)', :not_null => true, :default => "''",
-       :is_primary_key => false, :auto_increment => false, :set_options => nil},
-      {:name => 'fluid_zen', :type => 'varchar(20)', :not_null => true, :default => "''",
-       :is_primary_key => false, :auto_increment => false, :set_options => nil},
-      {:name => 'fluid_order', :type => 'int(10)', :not_null => true, :default => nil,
-       :is_primary_key => false, :auto_increment => false, :set_options => nil},
+      {:name => 'fluid_id', :type => 'int(10) unsigned', :not_null => true, :default => nil, :is_primary_key => true,
+       :auto_increment => true, :set_options => nil, :comment => "RDBMSが生成する一意のID番号"},
+      {:name => 'fluid', :type => 'varchar(20)', :not_null => true, :default => "''", :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "全角文字を入力しないこと"},
+      {:name => 'fluid_zen', :type => 'varchar(20)', :not_null => true, :default => "''", :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "なるだけ全角文字のみ入力すること"},
+      {:name => 'fluid_order', :type => 'int(10)', :not_null => true, :default => nil, :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => nil},
     ]
     assert_column_schema_of_table_schema(array_of_h_expected, actual)
     array_of_h_expected = [
       {:name => 'fluid_id' , :column_names => %w(fluid_id) , :is_unique => true},
       {:name => 'fluid'    , :column_names => %w(fluid)    , :is_unique => true},
       {:name => 'fluid_zen', :column_names => %w(fluid_zen), :is_unique => true},
+    ]
+    assert_unique_keys_of_table_schema(array_of_h_expected, actual)
+  end
+
+  def test_parse_table_schema_with_table_field
+    schezer = make_schezer_instance(*%w(-e development data))
+
+    table_name = 'field'
+    actual = nil
+    schezer.instance_eval do
+      actual = parse_table_schema(table_name, @conn)
+    end
+    h_expected = {
+      :name => 'field', :primary_keys => %w(field_id), :max_rows => nil, :engine => 'InnoDB',
+      :default_charset => 'utf8', :collate => nil, :comment => nil
+    }
+    assert_table_schema(h_expected, actual)
+    array_of_h_expected = [
+      {:name => 'field_id', :type => 'int(10) unsigned', :not_null => true, :default => nil, :is_primary_key => true,
+       :auto_increment => true, :set_options => nil, :comment => "RDBMSが生成する一意のID番号"},
+      {:name => 'field', :type => 'varchar(40)', :not_null => true, :default => "''", :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "全角文字を入力しないこと"},
+      {:name => 'field_zen', :type => 'varchar(40)', :not_null => true, :default => "''", :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "なるだけ全角文字のみ入力すること"},
+      {:name => 'date_field_aban', :type => 'date', :not_null => false, :default => 'NULL', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "採収終了となった日付"},
+      {:name => 'date_added', :type => 'date', :not_null => false, :default => 'NULL', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => nil},
+      {:name => 'date_removed', :type => 'date', :not_null => false, :default => 'NULL', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => nil},
+      {:name => 'field_north', :type => 'int(10) unsigned', :not_null => true, :default => '0', :is_primary_key => false,
+       :auto_increment => false, :set_options => nil, :comment => "北に位置するほど小さい値になる"},
+    ]
+    assert_column_schema_of_table_schema(array_of_h_expected, actual)
+    array_of_h_expected = [
+      {:name => 'field_id' , :column_names => %w(field_id) , :is_unique => true},
+      {:name => 'field'    , :column_names => %w(field)    , :is_unique => true},
     ]
     assert_unique_keys_of_table_schema(array_of_h_expected, actual)
   end
@@ -383,6 +424,7 @@ class TestSchezer < Test::Unit::TestCase
         assert_equal(h_expected[:is_primary_key], column.primary_key?   , "primary_key? of COLUMN `#{name}`")
         assert_equal(h_expected[:auto_increment], column.auto_increment?, "auto_increment? of COLUMN `#{name}`")
         assert_equal(h_expected[:set_options]   , column.set_options    , "set_options of COLUMN `#{name}`")
+        assert_equal(h_expected[:comment]       , column.comment        , "comment of COLUMN `#{name}`")
       end
     end
     private :assert_column_schema_of_table_schema
