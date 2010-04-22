@@ -490,7 +490,7 @@ class TestSchezer < Test::Unit::TestCase
     private :assert_unique_keys_of_table_schema
 
   def test_get_table_names
-    schezer = make_schezer_instance(*%w(-e development -g production data))
+    schezer = make_schezer_instance(*%w(-e development -g production names))
 
     actual_devel = nil
     actual_prod  = nil
@@ -504,5 +504,25 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal(expected_devel, actual_devel, "Table names for development")
     assert_equal(expected_prod , actual_prod , "Table names for production")
   end
+
+  def test_get_table_names_with_regexp
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    do_test_get_table_names_with_regexp('reserve', %w(reserve reserve_header reserve_header_trash)          , schezer)
+    do_test_get_table_names_with_regexp('unit'   , %w(base_unit unit)                                       , schezer)
+    do_test_get_table_names_with_regexp('\Aunit' , %w(unit)                                                 , schezer)
+    do_test_get_table_names_with_regexp('r'      , %w(reserve reserve_header reserve_header_trash reservoir), schezer)
+    do_test_get_table_names_with_regexp('r\z'    , %w(reserve_header reservoir)                             , schezer)
+  end
+
+    def do_test_get_table_names_with_regexp(str_re, expected, schezer)
+      actual = nil
+      schezer.instance_eval do
+        actual = get_table_names_with_regexp(@conn, str_re)
+      end
+
+      assert_equal(expected, actual, "Table names for development")
+    end
+    private :do_test_get_table_names_with_regexp
 end
 
