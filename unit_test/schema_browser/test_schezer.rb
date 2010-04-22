@@ -489,6 +489,12 @@ class TestSchezer < Test::Unit::TestCase
     end
     private :assert_unique_keys_of_table_schema
 
+  ALL_TABLE_NAMES_IN_DEVELOPMENT = %w(base_unit field fluid reserve reserve_header reserve_header_trash reservoir unit)
+  ALL_TABLE_NAMES_IN_PRODUCTION  = %w(base_unit field fluid reserve reserve_header reservoir unit user)
+  ALL_VIEW_NAMES_IN_DEVELOPMENT  = %w(unit_with_base)
+  ALL_VIEW_NAMES_IN_PRODUCTION   = %w()
+
+
   def test_get_table_names
     schezer = make_schezer_instance(*%w(-e development -g production names))
 
@@ -498,8 +504,8 @@ class TestSchezer < Test::Unit::TestCase
       actual_devel = get_table_names(@conn )
       actual_prod  = get_table_names(@conn2)
     end
-    expected_devel = %w(base_unit field fluid reserve reserve_header reserve_header_trash reservoir unit)
-    expected_prod  = %w(base_unit field fluid reserve reserve_header reservoir unit user)
+    expected_devel = ALL_TABLE_NAMES_IN_DEVELOPMENT
+    expected_prod  = ALL_TABLE_NAMES_IN_PRODUCTION
 
     assert_equal(expected_devel, actual_devel, "Table names for development")
     assert_equal(expected_prod , actual_prod , "Table names for production")
@@ -526,7 +532,7 @@ class TestSchezer < Test::Unit::TestCase
     end
     private :do_test_get_table_names_with_regexp
 
-  def test_view_question_with_nil_name
+  def test_view_with_nil_name
     schezer = make_schezer_instance(*%w(-e development names))
 
     assert_raise(ArgumentError, "ArgumentError should have been raised") do
@@ -536,13 +542,33 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
-  def test_view_question_with_non_existing_name
+  def test_view_with_non_existing_name
     schezer = make_schezer_instance(*%w(-e development names))
 
     non_existing_view_name = "quackaboom"
     assert_raise(InfrastructureException, "InfrastructureException should have been raised") do
       schezer.instance_eval do
         assert(! view?(non_existing_view_name, @conn))
+      end
+    end
+  end
+
+  def test_view
+    schezer = make_schezer_instance(*%w(-e development -g production names))
+
+    assert = method(:assert)
+    schezer.instance_eval do
+      ALL_TABLE_NAMES_IN_DEVELOPMENT.each do |name|
+        assert.call(! view?(name, @conn ))
+      end
+      ALL_TABLE_NAMES_IN_PRODUCTION .each do |name|
+        assert.call(! view?(name, @conn2))
+      end
+      ALL_VIEW_NAMES_IN_DEVELOPMENT .each do |name|
+        assert.call(  view?(name, @conn ))
+      end
+      ALL_VIEW_NAMES_IN_PRODUCTION  .each do |name|
+        assert.call(  view?(name, @conn2))
       end
     end
   end
