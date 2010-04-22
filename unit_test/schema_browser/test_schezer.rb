@@ -642,5 +642,32 @@ class TestSchezer < Test::Unit::TestCase
       + ") ENGINE=InnoDB AUTO_INCREMENT=3710 DEFAULT CHARSET=utf8 COMMENT='埋蔵量のヘッダテーブル'"
     assert_equal(expected, actual, "Raw table schema for TABLE `#{table_name}`")
   end
+
+  # Do not test get_create_table_result().
+  # Testing get_raw_table_schema() should do.
+
+  def test_get_row_count
+    schezer = make_schezer_instance(*%w(-e development count))
+
+    map_expected = {
+      'base_unit' => 4,
+      'field' => 4,
+      'fluid' => 5,
+      'reserve' => 4,
+      'reserve_header' => 2,
+      'reserve_header_trash' => 0,
+      'reservoir' => 10,
+      'unit' => 7,
+    }
+
+    assert_equal = method(:assert_equal)
+    schezer.instance_eval do
+      ALL_TABLE_NAMES_IN_DEVELOPMENT.each do |name|
+        expected = map_expected[name]
+        actual   = get_row_count(name, @conn)
+        assert_equal.call(expected, actual, "Row count of TABLE `#{name}`")
+      end
+    end
+  end
 end
 
