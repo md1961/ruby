@@ -572,5 +572,19 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_get_raw_table_schema_with_view
+    schezer = make_schezer_instance(*%w(-e development -g production names))
+
+    assert_nil = method(:assert_nil)
+    schezer.instance_eval do
+      ALL_VIEW_NAMES_IN_DEVELOPMENT .each do |name|
+        assert_nil.call(get_raw_table_schema(name, @conn ))
+      end
+      ALL_VIEW_NAMES_IN_PRODUCTION  .each do |name|
+        assert_nil.call(get_raw_table_schema(name, @conn2))
+      end
+    end
+  end
 end
 
