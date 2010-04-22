@@ -574,17 +574,73 @@ class TestSchezer < Test::Unit::TestCase
   end
 
   def test_get_raw_table_schema_with_view
-    schezer = make_schezer_instance(*%w(-e development -g production names))
+    schezer = make_schezer_instance(*%w(-e development -g production raw))
 
     assert_nil = method(:assert_nil)
     schezer.instance_eval do
-      ALL_VIEW_NAMES_IN_DEVELOPMENT .each do |name|
+      ALL_VIEW_NAMES_IN_DEVELOPMENT.each do |name|
         assert_nil.call(get_raw_table_schema(name, @conn ))
       end
-      ALL_VIEW_NAMES_IN_PRODUCTION  .each do |name|
+      ALL_VIEW_NAMES_IN_PRODUCTION .each do |name|
         assert_nil.call(get_raw_table_schema(name, @conn2))
       end
     end
+  end
+
+  def test_get_raw_table_schema_with_table_reserve
+    schezer = make_schezer_instance(*%w(-e development raw))
+
+    table_name = 'reserve'
+    actual = nil
+    schezer.instance_eval do
+      actual = get_raw_table_schema(table_name, @conn)
+    end
+    expected = \
+        "CREATE TABLE `reserve` (\n" \
+      + "  `synthetic_id` int(10) unsigned NOT NULL auto_increment,\n" \
+      + "  `reserve_id` int(10) unsigned NOT NULL,\n" \
+      + "  `fluid_id` int(10) unsigned NOT NULL default '0',\n" \
+      + "  `reserve` decimal(15,2) default NULL,\n" \
+      + "  `unit_id` int(10) unsigned NOT NULL default '0',\n" \
+      + "  PRIMARY KEY  (`synthetic_id`),\n" \
+      + "  UNIQUE KEY `reserve_fluid` (`reserve_id`,`fluid_id`),\n" \
+      + "  KEY `fluid_id` (`fluid_id`),\n" \
+      + "  KEY `unit_id` (`unit_id`),\n" \
+      + "  CONSTRAINT `reserve_ibfk_2` FOREIGN KEY (`fluid_id`) REFERENCES `fluid` (`fluid_id`) ON UPDATE CASCADE,\n" \
+      + "  CONSTRAINT `reserve_ibfk_3` FOREIGN KEY (`unit_id`) REFERENCES `unit` (`unit_id`) ON UPDATE CASCADE,\n" \
+      + "  CONSTRAINT `reserve_ibfk_4` FOREIGN KEY (`reserve_id`) REFERENCES `reserve_header` (`reserve_id`)" \
+      +    " ON DELETE CASCADE ON UPDATE CASCADE\n" \
+      + ") ENGINE=InnoDB AUTO_INCREMENT=6945 DEFAULT CHARSET=utf8"
+    assert_equal(expected, actual, "Raw table schema for TABLE `#{table_name}`")
+  end
+
+  def test_get_raw_table_schema_with_table_reserve_header
+    schezer = make_schezer_instance(*%w(-e development raw))
+
+    table_name = 'reserve_header'
+    actual = nil
+    schezer.instance_eval do
+      actual = get_raw_table_schema(table_name, @conn)
+    end
+    expected = \
+      "CREATE TABLE `reserve_header` (\n" \
+      + "  `reserve_id` int(10) unsigned NOT NULL auto_increment,\n" \
+      + "  `reservoir_id` int(10) unsigned NOT NULL default '0',\n" \
+      + "  `date_reserve` date NOT NULL default '0000-00-00' COMMENT '鉱量の日付',\n" \
+      + "  `possibility` int(10) unsigned NOT NULL default '0' COMMENT '実現確率',\n" \
+      + "  `is_by_completion` tinyint(1) unsigned zerofill NOT NULL default '0'" \
+      +   " COMMENT '鉱量データとして 0 であれば reserve、1 であれば reserve_by_completion を使う',\n" \
+      + "  `datetime_input` datetime default NULL COMMENT '入力した日時',\n" \
+      + "  `username_input` varchar(40) default NULL COMMENT '入力したユーザー名',\n" \
+      + "  `method_reserve` varchar(20) default NULL,\n" \
+      + "  `summary` text,\n" \
+      + "  PRIMARY KEY  (`reserve_id`),\n" \
+      + "  UNIQUE KEY `reserve_id` (`reserve_id`),\n" \
+      + "  UNIQUE KEY `id_date_possibility` (`reservoir_id`,`date_reserve`,`possibility`),\n" \
+      + "  UNIQUE KEY `reservoir_id` (`reservoir_id`,`date_reserve`,`possibility`,`datetime_input`),\n" \
+      + "  CONSTRAINT `reserve_header_ibfk_1` FOREIGN KEY (`reservoir_id`) REFERENCES `reservoir` (`reservoir_id`) ON UPDATE CASCADE\n" \
+      + ") ENGINE=InnoDB AUTO_INCREMENT=3710 DEFAULT CHARSET=utf8 COMMENT='埋蔵量のヘッダテーブル'"
+    assert_equal(expected, actual, "Raw table schema for TABLE `#{table_name}`")
   end
 end
 
