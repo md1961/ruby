@@ -23,3 +23,15 @@ CREATE TABLE `reserve_header_trash` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COMMENT='reserve_header テーブルからの廃棄レコード';
 SET character_set_client = @saved_cs_client;
 
+
+DROP VIEW IF EXISTS `unit_with_base`;
+CREATE VIEW `unit_with_base` AS
+  SELECT
+      `unit_id`
+    , `unit`
+    , `unit_zen`
+    , `base_unit`
+    , `unit_order`
+  FROM `unit` u, `base_unit` bu
+  WHERE u.`base_unit_id` = bu.`base_unit_id`;
+

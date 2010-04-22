@@ -508,9 +508,10 @@ class TestSchezer < Test::Unit::TestCase
   def test_get_table_names_with_regexp
     schezer = make_schezer_instance(*%w(-e development names))
 
-    do_test_get_table_names_with_regexp('reserve', %w(reserve reserve_header reserve_header_trash)          , schezer)
+    do_test_get_table_names_with_regexp('div'    , %w()                                                     , schezer)
     do_test_get_table_names_with_regexp('unit'   , %w(base_unit unit)                                       , schezer)
     do_test_get_table_names_with_regexp('\Aunit' , %w(unit)                                                 , schezer)
+    do_test_get_table_names_with_regexp('reserve', %w(reserve reserve_header reserve_header_trash)          , schezer)
     do_test_get_table_names_with_regexp('r'      , %w(reserve reserve_header reserve_header_trash reservoir), schezer)
     do_test_get_table_names_with_regexp('r\z'    , %w(reserve_header reservoir)                             , schezer)
   end
@@ -524,5 +525,26 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal(expected, actual, "Table names for development")
     end
     private :do_test_get_table_names_with_regexp
+
+  def test_view_question_with_nil_name
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    assert_raise(ArgumentError, "ArgumentError should have been raised") do
+      schezer.instance_eval do
+        assert(! view?(nil, @conn))
+      end
+    end
+  end
+
+  def test_view_question_with_non_existing_name
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    non_existing_view_name = "quackaboom"
+    assert_raise(InfrastructureException, "InfrastructureException should have been raised") do
+      schezer.instance_eval do
+        assert(! view?(non_existing_view_name, @conn))
+      end
+    end
+  end
 end
 

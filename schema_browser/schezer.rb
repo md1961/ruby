@@ -1296,11 +1296,13 @@ class Schezer
     end
 
     def get_create_table_result(name, conn)
+      raise ArgumentError.new("Argument name must be non-null") unless name
+
       sql = "SHOW CREATE TABLE #{name}"
       begin
         result = conn.get_query_result(sql)
       rescue Mysql::Error => evar
-        raise InfrastructureException.new("Failed to get the schema of TABLE '#{name}'")
+        raise InfrastructureException.new("Failed to get the schema of TABLE '#{name}' due to Mysql::Error('#{evar}')")
       end
       return result
     end
