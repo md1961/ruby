@@ -4,6 +4,14 @@
 # 列見出し自体は set_data() の引数 data の最初の要素として与えるか、あるいは同メソッドの
 # 引数 first_is_indexes を false とした場合は、コンストラクタの引数 index_names で与えた
 # 列名がそのまま用いられる
+#
+# 使用例）
+#   indexes = %w(id name salary)
+#   table_items = [{'id'=>1, 'name'=>'太郎', 'salary'=>1000}, {'id'=>2, 'name'=>'花子', 'salary'=>2000}]
+#   table = TableOnCUI.new(indexes, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
+#   table.set_data(table_items)
+#   puts table.to_table
+#
 class TableOnCUI
 
   class NoSuchIndexException     < Exception; end
@@ -95,6 +103,7 @@ class TableOnCUI
     return "+#{hr_items.join('+')}+"
   end
 
+  # 表に表示するデータを設定する
   # <em>data</em> :: 表示順（上から下）に整列された、列名をキー、表示文字列を値とした Hash の Array
   # <em>first_is_indexes</em> :: 引数 data の最初の要素が列見出しであれは true。デフォルトは false
   def set_data(data, first_is_indexes=false)
@@ -118,10 +127,17 @@ class TableOnCUI
     ary_map_whole_table.each do |map_items|
       s = '| '
       index_names_to_display.each do |index|
+        is_right_align = false
         item = map_items[index]
+        if item.kind_of?(Fixnum)
+          is_right_align = true
+          item = item.to_s
+        end
         width = @map_max_lengths[index]
         length = @func_length.call(item)
-        s += item + (' ' * (width - length)) + ' | '
+        blanks = ' ' * (width - length)
+        item_display = is_right_align ? (blanks + item) : (item + blanks)
+        s += item_display + ' | '
       end
       strs << s
       strs << hr if is_index

@@ -1012,12 +1012,19 @@ class Schezer
         xml_doc.write($stdout, indent)
         puts
       when :count
+        num_rows_per_table = 10
+        Kuma::ArrayUtil.split(table_names, num_rows_per_table).each do |sub_table_names|
+          outs << to_table_row_count(sub_table_names, @conn)
+        end
+        joint = "\n"
+=begin
         table_names = table_names - (table_names - table_names2) if @conn2
         table_names.each do |table_name|
           s = to_disp_row_count(table_name, @conn, @conn2)
           outs << s if s
         end
         joint = "\n"
+=end
       when :data
         outs = to_disp_table_data(table_names, table_names2)
       when :sql_sync
@@ -1222,8 +1229,21 @@ class Schezer
       return outs
     end
 
+    def to_table_row_count(table_names, conn)
+      indexes = %w(Table Rows)
+      table_items = Array.new
+      table_names.each do |table_name|
+        row_count = get_row_count(table_name, conn)
+        table_items << {'Table' => table_name, 'Rows' => row_count}
+      end
+
+      table = TableOnCUI.new(indexes)
+      table.set_data(table_items)
+      return table.to_table
+    end
+
     def to_disp_row_count(table_name, conn, conn2=nil)
-      row_count  = get_row_count(table_name, conn )
+      row_count = get_row_count(table_name, conn)
       row_count2 = 0
       if conn2
         row_count2 = get_row_count(table_name, conn2)

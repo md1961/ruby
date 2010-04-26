@@ -29,5 +29,21 @@ module Kuma
       return (str.split(//).length + str.length) / 2
     end
   end
+
+
+  class ArrayUtil
+
+    # Array を同サイズの Array に非破壊的に分割し、１つの Array に入れて返す
+    # <em>array</em> :: 分割する Array
+    # <em>size</em> :: 分割後の各々の Array の要素数
+    # 返り値 :: 分割した二次元の Array
+    def self.split(array, size)
+      retArray = Array.new
+      0.step(array.size - 1, size) do |index|
+        retArray << array[index, size]
+      end
+      return retArray
+    end
+  end
 end
 
