@@ -886,13 +886,13 @@ class Schezer
 
   SPC_ALL_T = ' ' * ALL_TABLES.length
   COMMAND_HELPS = [
-    "names    [table name(s)|#{ALL_TABLES}]: Output table names",
-    "raw      [table name(s)|#{ALL_TABLES}]: Output raw table schema (No '#{ALL_TABLES}' with -g)",
-    "table    [table name(s)|#{ALL_TABLES}]: Output parsed table schema",
-    "xml      [table name(s)|#{ALL_TABLES}]: Output schema in XML (No '#{ALL_TABLES}' with -g)",
-    "count    [table name(s)|#{ALL_TABLES}]: Output row count of the table",
-    "data     [table name(s)|#{ALL_TABLES}]: Output data of the table",
-    "sql_sync [table name(s)|#{ALL_TABLES}]: Generate SQL's to synchronize data of '-e' to '-g'",
+    "names    : Output table names",
+    "raw      : Output raw table schema (No '#{ALL_TABLES}' allowed with -g)",
+    "table    : Output parsed table schema",
+    "xml      : Output schema in XML (No '#{ALL_TABLES}' allowed with -g)",
+    "count    : Output row count of the table",
+    "data     : Output data of the table",
+    "sql_sync : Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
