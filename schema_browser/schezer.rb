@@ -887,16 +887,16 @@ class Schezer
   SPC_ALL_T = ' ' * ALL_TABLES.length
   COMMAND_HELPS = [
     "names    : Output table names",
-    "raw      : Output raw table schema (No '#{ALL_TABLES}' allowed with -g)",
+    "raw      : Output raw table schema ('#{ALL_TABLES}' not allowed with -g)",
     "table    : Output parsed table schema",
-    "xml      : Output schema in XML (No '#{ALL_TABLES}' allowed with -g)",
+    "xml      : Output schema in XML ('#{ALL_TABLES}' not allowed with -g)",
     "count    : Output row count of the table",
     "data     : Output data of the table",
     "sql_sync : Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
-  DEFAULT_TABLE_NAME = 'all'
+  DEFAULT_TABLE_NAME = ALL_TABLES
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
 
@@ -1013,10 +1013,14 @@ class Schezer
         puts
       when :count
         num_rows_per_table = 10
-        Kuma::ArrayUtil.split(table_names, num_rows_per_table).each do |sub_table_names|
-          outs << to_table_row_count(sub_table_names, @conn)
+        unless @conn2
+          Kuma::ArrayUtil.split(table_names, num_rows_per_table).each do |sub_table_names|
+            outs << to_table_row_count(sub_table_names, @conn)
+          end
+          joint = "\n"
+        else
+          table_names = table_names - (table_names - table_names2) if @conn2
         end
-        joint = "\n"
 =begin
         table_names = table_names - (table_names - table_names2) if @conn2
         table_names.each do |table_name|
