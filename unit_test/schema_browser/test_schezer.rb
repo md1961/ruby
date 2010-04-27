@@ -669,5 +669,51 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_row_count_equal_with_table_not_exist
+    schezer = make_schezer_instance(*%w(-e development -g production count))
+
+    table_name = 'no_exist'
+    assert_raise(InfrastructureException, "InfrastructureException should have been raised") do
+      schezer.instance_eval do
+        puts "actual = " + row_count_equal?(table_name, @conn, @conn2)
+      end
+    end
+  end
+
+  def test_row_count_equal_with_table_in_either_only
+    schezer = make_schezer_instance(*%w(-e development -g production count))
+
+    table_names_devel = ALL_TABLE_NAMES_IN_DEVELOPMENT
+    table_names_prod  = ALL_TABLE_NAMES_IN_PRODUCTION
+    table_names_either = (table_names_devel - table_names_prod) + (table_names_prod - table_names_devel)
+    table_names_either.each do |table_name|
+      assert_raise(InfrastructureException, "InfrastructureException should have been raised") do
+        schezer.instance_eval do
+          puts "actual = " + row_count_equal?(table_name, @conn, @conn2)
+        end
+      end
+    end
+  end
+
+  def test_row_count_equal
+    schezer = make_schezer_instance(*%w(-e development -g production count))
+
+    table_names_devel = ALL_TABLE_NAMES_IN_DEVELOPMENT
+    table_names_prod  = ALL_TABLE_NAMES_IN_PRODUCTION
+    table_names_common = table_names_devel - (table_names_devel - table_names_prod)
+    table_names_false = %w(reserve_header reserve)
+    table_names_true  = table_names_common - table_names_false
+
+    assert = method(:assert)
+    schezer.instance_eval do
+      table_names_true .each do |table_name|
+        assert.call(  row_count_equal?(table_name, @conn, @conn2), "TABLE `#{table_name}`")
+      end
+      table_names_false.each do |table_name|
+        assert.call(! row_count_equal?(table_name, @conn, @conn2), "TABLE `#{table_name}`")
+      end
+    end
+  end
 end
 

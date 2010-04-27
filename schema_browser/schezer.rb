@@ -1256,7 +1256,7 @@ class Schezer
       return table.to_table
     end
 
-    # Being deprecated...
+    # Not used.  Being deprecated...
     def to_disp_row_count(table_name, conn, conn2=nil)
       row_count = get_row_count(table_name, conn)
       row_count2 = 0
