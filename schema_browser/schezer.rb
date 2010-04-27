@@ -717,6 +717,11 @@ class TableData
     return is_self ? @table_schema.name : @other.table_name
   end
 
+  def database(is_self=true)
+    check_other_table_data unless is_self
+    return is_self ? @conn.database : @other.database
+  end
+
   def environment(is_self=true)
     check_other_table_data unless is_self
     return is_self ? @conn.environment : @other.environment
@@ -725,7 +730,7 @@ class TableData
   def identity(is_self=true)
     check_other_table_data unless is_self
     table_data = is_self ? self : @other
-    return "TABLE `#{table_data.table_name}` of '#{table_data.environment}'"
+    return "TABLE `#{table_data.table_name}` of DB `#{table_data.database}`"
   end
 
     def check_other_table_data
@@ -1196,9 +1201,9 @@ class Schezer
     def to_s_pairs_with_unique_key_same(table_data)
       outs = Array.new
 
-      env_self  = table_data.environment(true )
-      env_other = table_data.environment(false)
-      index = "[Pair of rows different but same with unique keys ('#{env_self}', then '#{env_other}')"
+      env_self  = table_data.database(true )
+      env_other = table_data.database(false)
+      index = "[Pair of rows different but same with unique keys (DB `#{env_self}`, then DB `#{env_other}`)"
       pair_hash_rows = table_data.pair_hash_rows_with_unique_key_same
       if pair_hash_rows.empty?
         outs << NO_ROWS
@@ -1216,7 +1221,7 @@ class Schezer
     def to_s_rows_only_in_either(table_data, is_self=true)
       outs = Array.new
 
-      outs << "[Rows which appears only in #{table_data.environment(is_self)}]:"
+      outs << "[Rows which appears only in DB `#{table_data.database(is_self)}`]:"
       hash_rows = table_data.hash_rows_only_in_self_or_other(is_self)
       if hash_rows.empty?
         outs << NO_ROWS
@@ -1271,11 +1276,11 @@ class Schezer
       for_env  = ""
       for_env2 = nil
       if conn2
-        for_env = " for '#{conn.environment}'"
+        for_env = " for DB `#{conn.database}`"
         if row_count == row_count2
           for_env = " for both"
         else
-          for_env2 = " for '#{conn2.environment}'"
+          for_env2 = " for DB `#{conn2.database}`"
         end
       end
 
@@ -1400,14 +1405,14 @@ class Schezer
           column_names_both  = schema_diff.column_names_both
 
           outs2 << "TABLE `#{table_name}`"
-          outs2.concat(to_s_array_to_display_names(column_names_only1, @conn .environment, 'columns'))
-          outs2.concat(to_s_array_to_display_names(column_names_only2, @conn2.environment, 'columns'))
+          outs2.concat(to_s_array_to_display_names(column_names_only1, @conn .database, 'columns'))
+          outs2.concat(to_s_array_to_display_names(column_names_only2, @conn2.database, 'columns'))
           outs2.concat(to_s_array_to_display_names(column_names_both , nil               , 'columns'))
         end
 
         if ! schema_diff.primary_keys_equals? || @verbose
-          outs2 << "[Primary keys for '#{@conn .environment}']: (#{schema_diff.primary_keys1.join(', ')})"
-          outs2 << "[Primary keys for '#{@conn2.environment}']: (#{schema_diff.primary_keys2.join(', ')})"
+          outs2 << "[Primary keys for DB `#{@conn .database}`]: (#{schema_diff.primary_keys1.join(', ')})"
+          outs2 << "[Primary keys for DB `#{@conn2.database}`]: (#{schema_diff.primary_keys2.join(', ')})"
         end
 
         #TODO: More diff output might be comming
@@ -1426,18 +1431,18 @@ class Schezer
       names_only2 = names2 - names1
 
       outs_diff = Array.new
-      outs_diff.concat(to_s_array_to_display_names(names_only1, @conn .environment, 'tables'))
-      outs_diff.concat(to_s_array_to_display_names(names_only2, @conn2.environment, 'tables'))
+      outs_diff.concat(to_s_array_to_display_names(names_only1, @conn .database, 'tables'))
+      outs_diff.concat(to_s_array_to_display_names(names_only2, @conn2.database, 'tables'))
 
       names_both = names1 - names_only1
       return outs_diff, names_both
     end
 
-    def to_s_array_to_display_names(names, environment_name, subject_name)
+    def to_s_array_to_display_names(names, database_name, subject_name)
       outs = Array.new
       return outs if ! @verbose && names.empty?
 
-      where = environment_name ? "only in '#{environment_name}'" : "in both environments"
+      where = database_name ? "only in DB `#{database_name}`" : "in both databases"
       outs << "[#{subject_name.capitalize} which appears #{where} (Total of #{names.size})]:"
       outs << (names.empty? ? "(none)" : names.join(JOINT_COLUMN_NAME_OUTPUTS))
 

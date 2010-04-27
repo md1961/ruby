@@ -266,11 +266,11 @@ class TestSchezer < Test::Unit::TestCase
     end
     expected = [
         "TABLE `reserve`:\n" \
-      + "[Pair of rows different but same with unique keys ('development', then 'production')\n" \
+      + "[Pair of rows different but same with unique keys (DB `schezer_test`, then DB `schezer_test2`)\n" \
       + "(none)\n" \
-      + "[Rows which appears only in development]:\n" \
+      + "[Rows which appears only in DB `schezer_test`]:\n" \
       + "(none)\n" \
-      + "[Rows which appears only in production]:\n" \
+      + "[Rows which appears only in DB `schezer_test2`]:\n" \
       + "5\t3\t1\t6543.21\t1\n" \
       + "6\t3\t2\t8765.43\t2"
     ]
@@ -308,8 +308,8 @@ class TestSchezer < Test::Unit::TestCase
       actual = to_disp_row_count(table_name, @conn, @conn2)
     end
     expected = \
-        "TABLE `reserve`'s COUNT(*) = 4 for 'development'\n" \
-      + "TABLE `reserve`'s COUNT(*) = 6 for 'production'"
+        "TABLE `reserve`'s COUNT(*) = 4 for DB `schezer_test`\n" \
+      + "TABLE `reserve`'s COUNT(*) = 6 for DB `schezer_test2`"
     assert_equal(expected, actual, "Row count comparison of TABLE `#{table_name}`")
   end
 
@@ -716,25 +716,54 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
-  def test_compare_table_names
-    schezer = make_schezer_instance(*%w(-e development -g production count))
+  def test_compare_table_names_with_no_tables
+    table_names  = []
+    table_names2 = []
+
+    outs_diff_expected = []
+    names_both_expected = []
+
+    do_test_compare_table_names(table_names, table_names2, outs_diff_expected, names_both_expected)
+  end
+
+  def test_compare_table_names_with_conn_only
+    table_names  = %w(base_unit field reserve_header_trash)
+    table_names2 = %w(base_unit field)
 
     outs_diff_expected = [
-      "[Tables which appears only in 'development' (Total of 1)]:",
+      "[Tables which appears only in DB `schezer_test` (Total of 1)]:",
       "reserve_header_trash",
-      "[Tables which appears only in 'production' (Total of 1)]:",
+    ]
+    names_both_expected = %w(base_unit field)
+
+    do_test_compare_table_names(table_names, table_names2, outs_diff_expected, names_both_expected)
+  end
+
+  def test_compare_table_names_with_all_tables
+    table_names  = ALL_TABLE_NAMES_IN_DEVELOPMENT
+    table_names2 = ALL_TABLE_NAMES_IN_PRODUCTION
+
+    outs_diff_expected = [
+      "[Tables which appears only in DB `schezer_test` (Total of 1)]:",
+      "reserve_header_trash",
+      "[Tables which appears only in DB `schezer_test2` (Total of 1)]:",
       "user"
     ]
     names_both_expected = %w(base_unit field fluid reserve reserve_header reservoir unit)
 
-    table_names  = ALL_TABLE_NAMES_IN_DEVELOPMENT
-    table_names2 = ALL_TABLE_NAMES_IN_PRODUCTION
-    assert_equal = method(:assert_equal)
-    schezer.instance_eval do
-      outs_diff_actual, names_both_actual = compare_table_names(table_names, table_names2)
-      assert_equal.call(outs_diff_expected , outs_diff_actual , "outs_diff (1st return value)")
-      assert_equal.call(names_both_expected, names_both_actual, "table_names_both (2nd return value)")
-    end
+    do_test_compare_table_names(table_names, table_names2, outs_diff_expected, names_both_expected)
   end
+
+    def do_test_compare_table_names(table_names, table_names2, outs_diff_expected, names_both_expected)
+      schezer = make_schezer_instance(*%w(-e development -g production count))
+
+      assert_equal = method(:assert_equal)
+      schezer.instance_eval do
+        outs_diff_actual, names_both_actual = compare_table_names(table_names, table_names2)
+        assert_equal.call(outs_diff_expected , outs_diff_actual , "outs_diff (1st return value)")
+        assert_equal.call(names_both_expected, names_both_actual, "table_names_both (2nd return value)")
+      end
+    end
+    private :do_test_compare_table_names
 end
 
