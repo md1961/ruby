@@ -991,7 +991,7 @@ class Schezer
 
       case command
       when :names
-        if @conn2.nil?
+        unless @conn2
           outs = table_names.sort
           joint = JOINT_TABLE_NAME_OUTPUTS
         else
@@ -1012,23 +1012,19 @@ class Schezer
         xml_doc.write($stdout, indent)
         puts
       when :count
-        num_rows_per_table = 10
         unless @conn2
+          num_rows_per_table = 10
           Kuma::ArrayUtil.split(table_names, num_rows_per_table).each do |sub_table_names|
             outs << to_table_row_count(sub_table_names, @conn)
           end
-          joint = "\n"
         else
-          table_names = table_names - (table_names - table_names2) if @conn2
-        end
-=begin
-        table_names = table_names - (table_names - table_names2) if @conn2
-        table_names.each do |table_name|
-          s = to_disp_row_count(table_name, @conn, @conn2)
-          outs << s if s
+          table_names = table_names - (table_names - table_names2)
+          table_names.each do |table_name|
+            next if row_count_equal?(table_name, @conn, @conn2) && ! @verbose
+            outs << to_table_row_count_comparison(table_name, @conn, @conn2)
+          end
         end
         joint = "\n"
-=end
       when :data
         outs = to_disp_table_data(table_names, table_names2)
       when :sql_sync
@@ -1246,6 +1242,21 @@ class Schezer
       return table.to_table
     end
 
+    def to_table_row_count_comparison(table_name, conn, conn2)
+      indexes = %w(Table Database Rows)
+      table_items = Array.new
+      [conn, conn2].each do |conn|
+        row_count = get_row_count(table_name, conn)
+        name = conn == conn2 ? '' : table_name
+        table_items << {'Table' => name, 'Database' => conn.database, 'Rows' => row_count}
+      end
+
+      table = TableOnCUI.new(indexes)
+      table.set_data(table_items)
+      return table.to_table
+    end
+
+    # Being deprecated...
     def to_disp_row_count(table_name, conn, conn2=nil)
       row_count = get_row_count(table_name, conn)
       row_count2 = 0
@@ -1269,8 +1280,8 @@ class Schezer
       end
 
       outs = Array.new
-      outs << (sprintf(format, table_name, row_count ) + for_env  )
-      outs << (sprintf(format, table_name, row_count2) + for_env2 ) if for_env2
+      outs << (sprintf(format, table_name, row_count ) + for_env )
+      outs << (sprintf(format, table_name, row_count2) + for_env2) if for_env2
 
       return outs.join("\n")
     end
@@ -1331,14 +1342,20 @@ class Schezer
       return result
     end
 
-    def get_row_count(name, conn)
-      sql = "SELECT COUNT(*) FROM #{name}"
+    def get_row_count(table_name, conn)
+      sql = "SELECT COUNT(*) FROM #{table_name}"
       begin
         result = conn.get_query_result(sql)
       rescue Mysql::Error => evar
-        raise InfrastructureException.new("Failed to get the row count of TABLE '#{name}'")
+        raise InfrastructureException.new("Failed to get the row count of TABLE '#{table_name}'")
       end
       return result.fetch_hash['COUNT(*)'].to_i
+    end
+
+    def row_count_equal?(table_name, conn, conn2)
+      row_count  = get_row_count(table_name, conn )
+      row_count2 = get_row_count(table_name, conn2)
+      return row_count == row_count2
     end
 
     def to_disp_schema(table_names, is_raw)
