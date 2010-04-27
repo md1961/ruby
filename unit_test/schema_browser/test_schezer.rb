@@ -715,5 +715,26 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_compare_table_names
+    schezer = make_schezer_instance(*%w(-e development -g production count))
+
+    outs_diff_expected = [
+      "[Tables which appears only in 'development' (Total of 1)]:",
+      "reserve_header_trash",
+      "[Tables which appears only in 'production' (Total of 1)]:",
+      "user"
+    ]
+    names_both_expected = %w(base_unit field fluid reserve reserve_header reservoir unit)
+
+    table_names  = ALL_TABLE_NAMES_IN_DEVELOPMENT
+    table_names2 = ALL_TABLE_NAMES_IN_PRODUCTION
+    assert_equal = method(:assert_equal)
+    schezer.instance_eval do
+      outs_diff_actual, names_both_actual = compare_table_names(table_names, table_names2)
+      assert_equal.call(outs_diff_expected , outs_diff_actual , "outs_diff (1st return value)")
+      assert_equal.call(names_both_expected, names_both_actual, "table_names_both (2nd return value)")
+    end
+  end
 end
 
