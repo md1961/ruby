@@ -845,5 +845,16 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal.call(expected, actual, "initialize_xml_doc()")
     end
   end
+
+  def test_configure_with_nil_name
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    assert_nil = method(:assert_nil)
+    filename = 'not used'
+    name     = nil
+    schezer.instance_eval do
+      assert_nil.call(configure(filename, name), "configure() with nil name")
+    end
+  end
 end
 

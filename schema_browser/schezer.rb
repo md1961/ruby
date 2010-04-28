@@ -871,16 +871,20 @@ class Schezer
 
     exit_with_help("No command specified") if argv.empty?
 
-    @conn = configure(@config_filename, @config_name)
-    unless @conn && @conn.configuration_suffices?
-      exit_with_msg("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
-    end
+    begin
+      @conn = configure(@config_filename, @config_name)
+      unless @conn && @conn.configuration_suffices?
+        raise ExitWithMessageException.new("Cannot read necessary configuration from '#{@config_name}'\n#{self.to_s}")
+      end
 
-    exit_with_msg("Specify different names for option -e and -g") if @config_name == @config_name2
+      raise ExitWithMessageException.new("Specify different names for option -e and -g") if @config_name == @config_name2
 
-    @conn2 = configure(@config_filename, @config_name2)
-    if (@config_name2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
-      exit_with_msg("Cannot read necessary configuration from '#{@config_name2}'\n#{self.to_s}")
+      @conn2 = configure(@config_filename, @config_name2)
+      if (@config_name2 && @conn2.nil?) || (@conn2 && ! @conn2.configuration_suffices?)
+        raise ExitWithMessageException.new("Cannot read necessary configuration from '#{@config_name2}'\n#{self.to_s}")
+      end
+    rescue ExitWithMessageException => e
+      exit_with_msg(e.message)
     end
 
     $KCODE = @conn.encoding  # $KCODE は代入値の最初の文字のみによって決定される
@@ -1482,8 +1486,8 @@ class Schezer
     # name:     接続情報の名称。Rails の環境名にあたる
     def configure(filename, name)
       return nil unless name
+      raise ExitWithMessageException.new("Specify DB_config_filename") unless filename
 
-      exit_with_usage("Specify DB_config_filename") unless filename
       begin
         yaml = YAML.load_file(filename)
       rescue
