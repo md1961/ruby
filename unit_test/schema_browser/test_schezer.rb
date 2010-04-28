@@ -739,6 +739,19 @@ class TestSchezer < Test::Unit::TestCase
     do_test_compare_table_names(table_names, table_names2, outs_diff_expected, names_both_expected)
   end
 
+  def test_compare_table_names_with_conn2_only
+    table_names  = %w(reserve_header reserve)
+    table_names2 = %w(reserve_header reserve user)
+
+    outs_diff_expected = [
+      "[Tables which appears only in DB `schezer_test2` (Total of 1)]:",
+      "user",
+    ]
+    names_both_expected = %w(reserve_header reserve)
+
+    do_test_compare_table_names(table_names, table_names2, outs_diff_expected, names_both_expected)
+  end
+
   def test_compare_table_names_with_all_tables
     table_names  = ALL_TABLE_NAMES_IN_DEVELOPMENT
     table_names2 = ALL_TABLE_NAMES_IN_PRODUCTION
@@ -760,10 +773,48 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal = method(:assert_equal)
       schezer.instance_eval do
         outs_diff_actual, names_both_actual = compare_table_names(table_names, table_names2)
-        assert_equal.call(outs_diff_expected , outs_diff_actual , "outs_diff (1st return value)")
+        assert_equal.call( outs_diff_expected,  outs_diff_actual, "outs_diff (1st return value)")
         assert_equal.call(names_both_expected, names_both_actual, "table_names_both (2nd return value)")
       end
     end
     private :do_test_compare_table_names
+
+  def test_to_xml
+    schezer = make_schezer_instance(*%w(-e development xml))
+
+    assert_equal = method(:assert_equal)
+    table_names = %w(base_unit)
+    expected = \
+        "<?xml version='1.0' encoding='UTF-8'?>" \
+      + "<table_schema>" \
+      +   "<table name='base_unit'>" \
+      +     "<column name='base_unit_id' primary_key='true' not_null='true' auto_increment='true'>" \
+      +       "<type>int(10) unsigned</type>" \
+      +       "<default/>" \
+      +       "<comment><![CDATA[RDBMSが生成する一意のID番号]]></comment>" \
+      +     "</column>" \
+      +     "<column name='base_unit' primary_key='false' not_null='true' auto_increment='false'>" \
+      +       "<type>varchar(40)</type>" \
+      +       "<default/>" \
+      +       "<comment><![CDATA[]]></comment>" \
+      +     "</column>" \
+      +     "<unique_key name='unique_base_unit_1' unique='true'>" \
+      +       "<column_name>base_unit_id</column_name>" \
+      +     "</unique_key>" \
+      +     "<set_options/>" \
+      +     "<table_options>" \
+      +       "<engine>InnoDB</engine>" \
+      +       "<default_charset>utf8</default_charset>" \
+      +       "<collate/>" \
+      +       "<max_rows/>" \
+      +       "<comment><![CDATA[]]></comment>" \
+      +     "</table_options>" \
+      +   "</table>" \
+      + "</table_schema>"
+    schezer.instance_eval do
+      actual = to_xml(table_names).to_s
+      assert_equal.call(expected, actual, "to_xml(#{table_names.inspect})")
+    end
+  end
 end
 
