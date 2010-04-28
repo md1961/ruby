@@ -779,6 +779,20 @@ class TestSchezer < Test::Unit::TestCase
     end
     private :do_test_compare_table_names
 
+  def test_to_xml_with_empty_table_names
+    schezer = make_schezer_instance(*%w(-e development xml))
+
+    assert_equal = method(:assert_equal)
+    table_names = []
+    expected = \
+        "<?xml version='1.0' encoding='UTF-8'?>" \
+      + "<table_schema/>"
+    schezer.instance_eval do
+      actual = to_xml(table_names).to_s
+      assert_equal.call(expected, actual, "to_xml(#{table_names.inspect})")
+    end
+  end
+
   def test_to_xml
     schezer = make_schezer_instance(*%w(-e development xml))
 
@@ -814,6 +828,21 @@ class TestSchezer < Test::Unit::TestCase
     schezer.instance_eval do
       actual = to_xml(table_names).to_s
       assert_equal.call(expected, actual, "to_xml(#{table_names.inspect})")
+    end
+  end
+
+  def test_initialize_xml_doc
+    schezer = make_schezer_instance(*%w(-e development xml))
+
+    assert_equal = method(:assert_equal)
+    expected = \
+        "<?xml version='1.0' encoding='UTF-8'?>" \
+      + "<table_schema host='pluto' database='resman2'/>"
+    schezer.instance_eval do
+      @host     = 'pluto'
+      @database = 'resman2'
+      actual = initialize_xml_doc.to_s
+      assert_equal.call(expected, actual, "initialize_xml_doc()")
     end
   end
 end
