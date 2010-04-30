@@ -882,5 +882,57 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_configure
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    assert_not_nil = method(:assert_not_nil)
+    assert_equal   = method(:assert_equal)
+    filename = 'unit_test/schema_browser/db/schezer_test.yml'
+    name     = 'development'
+    schezer.instance_eval do
+      conn = configure(filename, name)
+      assert_not_nil.call(conn, "DBConnection")
+      assert_equal.call('localhost'   , conn.host       , "host")
+      assert_equal.call('schezer_test', conn.username   , "username")
+      assert_equal.call('schezer_test', conn.database   , "database")
+      assert_equal.call('utf8'        , conn.encoding   , "encoding")
+      assert_equal.call('development' , conn.environment, "environment")
+    end
+  end
+
+  def test_dbconnection_configuration_suffices
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    dbconn = nil
+
+    schezer.instance_eval do
+      dbconn = @conn.dup
+    end
+    assert(dbconn.kind_of?(Schezer::DBConnection), "class Schezer::DBConnection?")
+    assert(dbconn.configuration_suffices?, "configuration_suffices?")
+    dbconn.instance_eval do
+      @host = ''
+    end
+    assert(! dbconn.configuration_suffices?, "configuration_suffices?")
+
+    schezer.instance_eval do
+      dbconn = @conn.dup
+    end
+    assert(dbconn.configuration_suffices?, "configuration_suffices?")
+    dbconn.instance_eval do
+      @username = ''
+    end
+    assert(! dbconn.configuration_suffices?, "configuration_suffices?")
+
+    schezer.instance_eval do
+      dbconn = @conn.dup
+    end
+    assert(dbconn.configuration_suffices?, "configuration_suffices?")
+    dbconn.instance_eval do
+      @database = ''
+    end
+    assert(! dbconn.configuration_suffices?, "configuration_suffices?")
+  end
 end
 
