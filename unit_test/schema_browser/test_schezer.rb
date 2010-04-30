@@ -12,6 +12,8 @@ class TestSchezer < Test::Unit::TestCase
   TABLE_NAMES_DEVEL = %w(base_unit field fluid reserve reserve_header reserve_header_trash reservoir unit)
   TABLE_NAMES_PROD  = %w(base_unit field fluid reserve reserve_header reservoir unit user)
 
+  # ===== Test class Schezer =====
+
   def test_get_table_names_from_argv_raise_exception
     no_table_names_devel = %w(field_office reserve_commentary user role)
     schezer = make_schezer_instance(*%w(-e development names))
@@ -901,6 +903,8 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+  # ===== Test class Schezer::DBConnection =====
+
     def make_dbconnection_instance(schezer)
       schezer.instance_eval do
         return @conn.dup
@@ -908,7 +912,7 @@ class TestSchezer < Test::Unit::TestCase
     end
     private :make_dbconnection_instance
 
-  def test_dbconnection_configuration_suffices
+  def test_configuration_suffices_of_class_dbconnection
     schezer = make_schezer_instance(*%w(-e development names))
 
     dbconn = make_dbconnection_instance(schezer)
@@ -932,7 +936,7 @@ class TestSchezer < Test::Unit::TestCase
     assert(! dbconn.configuration_suffices?, "configuration_suffices?")
   end
 
-  def test_get_query_result
+  def test_get_query_result_of_class_dbconnection
     schezer = make_schezer_instance(*%w(-e development names))
     dbconn = make_dbconnection_instance(schezer)
 
@@ -955,6 +959,60 @@ class TestSchezer < Test::Unit::TestCase
     sqls_right.each do |sql|
       assert_not_nil(dbconn.get_query_result(sql), "SQL \"#{sql}\"")
     end
+  end
+
+  # ===== Test class ForeignKey =====
+
+  def test_initialize_of_class_foreign_key
+    name            = 'name'
+    column_name     = 'colname'
+    ref_table_name  = 'reftablename'
+    ref_column_name = 'refcolumnname'
+    on_delete       = 'ondelete'
+    on_update       = 'onupdate'
+
+    fk = ForeignKey.new(name, column_name, ref_table_name, ref_column_name, on_delete, on_update)
+    assert_equal(name           , fk.name           , "name")
+    assert_equal(column_name    , fk.column_name    , "column_name")
+    assert_equal(ref_table_name , fk.ref_table_name , "ref_table_name")
+    assert_equal(ref_column_name, fk.ref_column_name, "ref_column_name")
+    assert_equal(on_delete      , fk.on_delete      , "on_delete")
+    assert_equal(on_update      , fk.on_update      , "on_update")
+  end
+
+  def test_to_xml_of_class_foreign_key
+    name            = 'name'
+    column_name     = 'colname'
+    ref_table_name  = 'reftablename'
+    ref_column_name = 'refcolumnname'
+    on_delete       = 'ondelete'
+    on_update       = 'onupdate'
+
+    fk = ForeignKey.new(name, column_name, ref_table_name, ref_column_name, on_delete, on_update)
+
+    expected = 
+        "<foreign_key name='name'>" \
+      +   "<column_name>colname</column_name>" \
+      +   "<reference_table_name>reftablename</reference_table_name>" \
+      +   "<reference_column_name>refcolumnname</reference_column_name>" \
+      +   "<on_delete>ondelete</on_delete>" \
+      +   "<on_update>onupdate</on_update>" \
+      + "</foreign_key>"
+    assert_equal(expected, fk.to_xml.to_s, "ForeignKey#to_xml")
+  end
+
+  def test_parse_of_class_foreign_key
+    input = "  CONSTRAINT `reserve_ibfk_4` FOREIGN KEY (`reserve_id`)" \
+          + " REFERENCES `reserve_header` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE  "
+    fk = ForeignKey.parse(input)
+    
+    assert_not_nil(fk, "ForeignKey instance")
+    assert_equal('reserve_ibfk_4', fk.name           , "name")
+    assert_equal('reserve_id'    , fk.column_name    , "column_name")
+    assert_equal('reserve_header', fk.ref_table_name , "ref_table_name")
+    assert_equal('id'            , fk.ref_column_name, "ref_column_name")
+    assert_equal('RESTRICT'      , fk.on_delete      , "on_delete")
+    assert_equal('CASCADE'       , fk.on_update      , "on_update")
   end
 end
 
