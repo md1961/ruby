@@ -901,14 +901,17 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+    def make_dbconnection_instance(schezer)
+      schezer.instance_eval do
+        return @conn.dup
+      end
+    end
+    private :make_dbconnection_instance
+
   def test_dbconnection_configuration_suffices
     schezer = make_schezer_instance(*%w(-e development names))
 
-    dbconn = nil
-
-    schezer.instance_eval do
-      dbconn = @conn.dup
-    end
+    dbconn = make_dbconnection_instance(schezer)
     assert(dbconn.kind_of?(Schezer::DBConnection), "class Schezer::DBConnection?")
     assert(dbconn.configuration_suffices?, "configuration_suffices?")
     dbconn.instance_eval do
@@ -916,23 +919,42 @@ class TestSchezer < Test::Unit::TestCase
     end
     assert(! dbconn.configuration_suffices?, "configuration_suffices?")
 
-    schezer.instance_eval do
-      dbconn = @conn.dup
-    end
-    assert(dbconn.configuration_suffices?, "configuration_suffices?")
+    dbconn = make_dbconnection_instance(schezer)
     dbconn.instance_eval do
       @username = ''
     end
     assert(! dbconn.configuration_suffices?, "configuration_suffices?")
 
-    schezer.instance_eval do
-      dbconn = @conn.dup
-    end
-    assert(dbconn.configuration_suffices?, "configuration_suffices?")
+    dbconn = make_dbconnection_instance(schezer)
     dbconn.instance_eval do
       @database = ''
     end
     assert(! dbconn.configuration_suffices?, "configuration_suffices?")
+  end
+
+  def test_get_query_result
+    schezer = make_schezer_instance(*%w(-e development names))
+    dbconn = make_dbconnection_instance(schezer)
+
+    sqls_wrong = [
+      "SHOW DATABASE",
+      "SHOW TABLE",
+      "SELECT * FROM",
+    ]
+    sqls_wrong.each do |sql|
+      assert_raise(Mysql::Error, "SQL \"#{sql}\"") do
+        dbconn.get_query_result(sql)
+      end
+    end
+
+    sqls_right = [
+      "SHOW DATABASES",
+      "SHOW TABLES",
+      "SELECT * FROM reserve",
+    ]
+    sqls_right.each do |sql|
+      assert_not_nil(dbconn.get_query_result(sql), "SQL \"#{sql}\"")
+    end
   end
 end
 
