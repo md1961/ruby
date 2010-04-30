@@ -1014,5 +1014,21 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal('RESTRICT'      , fk.on_delete      , "on_delete")
     assert_equal('CASCADE'       , fk.on_update      , "on_update")
   end
+
+  # ===== Test class Key =====
+
+  def test_initialize_of_class_key
+    name         = 'name'
+    column_names = %w(colA colB colC)
+    is_unique    = true
+
+    key = Key.new(name, column_names, is_unique)
+    assert_equal(name        , key.name        , "names")
+    assert_equal(column_names, key.column_names, "column_names")
+    assert_equal(is_unique   , key.unique?     , "is_unique")
+  end
+
+  #TODO: def self.parse(line)
+
 end
 

@@ -563,9 +563,9 @@ class Key
   end
 
   def initialize(name, column_names, is_unique)
-    @name = name
+    @name         = name
     @column_names = column_names
-    @is_unique = is_unique
+    @is_unique    = is_unique
   end
 
   def unique?
@@ -625,12 +625,12 @@ class ForeignKey
   end
 
   def initialize(name, column_name, ref_table_name, ref_column_name, on_delete, on_update)
-    @name = name
-    @column_name = column_name
-    @ref_table_name = ref_table_name
+    @name            = name
+    @column_name     = column_name
+    @ref_table_name  = ref_table_name
     @ref_column_name = ref_column_name
-    @on_delete = on_delete
-    @on_update = on_update
+    @on_delete       = on_delete
+    @on_update       = on_update
   end
 
   def to_s
