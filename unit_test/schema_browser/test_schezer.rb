@@ -856,5 +856,31 @@ class TestSchezer < Test::Unit::TestCase
       assert_nil.call(configure(filename, name), "configure() with nil name")
     end
   end
+
+  def test_configure_with_nil_filename
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    filename = nil
+    name     = 'development'
+    msg = "ExitWithMessageException should have been raised"
+    assert_raise(ExitWithMessageException, msg) do
+      schezer.instance_eval do
+        configure(filename, name)
+      end
+    end
+  end
+
+  def test_configure_with_non_exisiting_filename
+    schezer = make_schezer_instance(*%w(-e development names))
+
+    filename = 'non_existing_filename'
+    name     = 'development'
+    msg = "ExitWithMessageException should have been raised"
+    assert_raise(ExitWithMessageException, msg) do
+      schezer.instance_eval do
+        configure(filename, name)
+      end
+    end
+  end
 end
 

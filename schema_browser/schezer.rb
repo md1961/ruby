@@ -1491,7 +1491,7 @@ class Schezer
       begin
         yaml = YAML.load_file(filename)
       rescue
-        exit_with_msg("Cannot open file '#{filename}'")
+        raise ExitWithMessageException.new("Cannot open file '#{filename}'")
       end
 
       hash_conf = yaml
