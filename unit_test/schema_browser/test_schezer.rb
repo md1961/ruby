@@ -1100,6 +1100,28 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+  def test_auto_increment_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    [true, false].each do |auto_increment|
+      column_schema.instance_eval do
+        @auto_increment = auto_increment
+      end
+      assert_equal(auto_increment, column_schema.auto_increment?, "ColumnSchema#auto_increment?")
+    end
+  end
+
+  def test_primary_key_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    [true, false].each do |is_primary_key|
+      column_schema.instance_eval do
+        @is_primary_key = is_primary_key
+      end
+      assert_equal(is_primary_key, column_schema.primary_key?, "ColumnSchema#primary_key?")
+    end
+  end
+
   #TODO: test self.parse(line, capitalizes_types)
 
 end
