@@ -556,7 +556,7 @@ class Key
   def self.parse(line)
     m = Regexp.compile(RE).match(line)
     return nil unless m
-    is_unique = m[1] && ! (/UNIQUE +/ =~ m[1]).nil?
+    is_unique = ! m[1].nil?
     name = m[2]
     column_names = m[3].split(/`,\s*`/)
     return Key.new(name, column_names, is_unique)

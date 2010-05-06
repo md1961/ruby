@@ -1063,7 +1063,19 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
-  #TODO: def self.parse(line)
+  def test_parse_of_class_key
+    [
+      ["  KEY `name1` (`col1`)"                     , 'name1', %w(col1)          , false],
+      ["  KEY `name2` (`col1`,`col2`)"              , 'name2', %w(col1 col2)     , false],
+      ["  UNIQUE KEY `name3` (`col1`)"              , 'name3', %w(col1)          , true ],
+      ["  UNIQUE KEY `name4` (`col1`,`col2`,`col3`)", 'name4', %w(col1 col2 col3), true ],
+    ].each do |input, name, column_names, is_unique|
+      key = Key.parse(input)
+      assert_equal(name        , key.name        , "names")
+      assert_equal(column_names, key.column_names, "column_names")
+      assert_equal(is_unique   , key.unique?     , "is_unique")
+    end
+  end
 
 end
 
