@@ -374,7 +374,7 @@ class ColumnSchema
   def initialize(name, definition, comment, capitalizes_types)
     @name    = name
     @comment = comment
-    parse_definition(definition, capitalizes_types)
+    parse_definition(definition, capitalizes_types) if definition
     @is_primary_key = false
   end
 

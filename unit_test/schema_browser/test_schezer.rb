@@ -1077,5 +1077,30 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+  # ===== Test class ColumnSchema =====
+
+  def test_initialize_of_class_column_schema_not_nil
+    column_schema = make_empty_column_schema
+    assert_not_nil(column_schema, "ColumnSchema.new")
+  end
+
+    def make_empty_column_schema(name='name')
+      return ColumnSchema.new(name, nil, nil, false)
+    end
+    private :make_empty_column_schema
+
+  def test_not_null_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    [true, false].each do |not_null|
+      column_schema.instance_eval do
+        @not_null = not_null
+      end
+      assert_equal(not_null, column_schema.not_null?, "ColumnSchema#not_null?")
+    end
+  end
+
+  #TODO: test self.parse(line, capitalizes_types)
+
 end
 
