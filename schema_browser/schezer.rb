@@ -409,6 +409,12 @@ class ColumnSchema
     return type?(TYPES_TOO_LONG_TO_DISPLAY)
   end
 
+  NUMERICAL_TYPES = %w(NUMERIC DECIMAL INTEGER SMALLINT TINYINT FLOAT REAL DOUBLE INT DEC)
+
+  def numerical_type?
+    return type?(NUMERICAL_TYPES)
+  end
+
     def type?(types)
       types.each do |type|
         return true if @type[0, type.length].upcase == type.upcase
@@ -416,15 +422,6 @@ class ColumnSchema
       return false
     end
     private :type?
-
-  NUMERICAL_TYPES = %w(NUMERIC DECIMAL INTEGER SMALLINT TINYINT FLOAT REAL DOUBLE INT DEC)
-
-  def numerical_type?
-    NUMERICAL_TYPES.each do |num_type|
-      return true if @type[0, num_type.length].upcase == num_type.upcase
-    end
-    return false
-  end
 
   def ==(other)
     return self.name == other.name && self.type == other.type

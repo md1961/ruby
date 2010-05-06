@@ -1201,6 +1201,29 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+  def test_numerical_type_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    types_true  = %w!NUMERIC DECIMAL INTEGER SMALLINT TINYINT FLOAT REAL DOUBLE INT DEC
+                     numeric decimal integer smallint tinyint float real double int dec
+                     NUMERIC(1) DECIMAL(1) INTEGER(1) SMALLINT(1) TINYINT(1) FLOAT(1) REAL(1) DOUBLE(1) INT(1) DEC(1)!
+    types_false = %w!CHAR VARCHAR DATE TIME DATETIME BLOB MEDIUMBLOB LONGBLOB TEXT MEDIUMTEXT LONGTEXT
+                     CHAR(1) VARCHAR(1) DATE(1) TIME(1) DATETIME(1) BLOB(1) MEDIUMBLOB(1) LONGBLOB(1)
+                     TEXT(1) MEDIUMTEXT(1) LONGTEXT(1)!
+
+    [
+      [types_true , true ],
+      [types_false, false],
+    ].each do |types, expected|
+      types.each do |type|
+        column_schema.instance_eval do
+          @type = type
+        end
+        assert_equal(expected, column_schema.numerical_type?, "ColumnSchema#numerical_type?")
+      end
+    end
+  end
+
   #TODO: test self.parse(line, capitalizes_types)
 
 end
