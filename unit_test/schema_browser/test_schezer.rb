@@ -1147,6 +1147,60 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+  def test_hard_to_sort_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    [
+      ['BLOB'         , true ],
+      ['MEDIUMBLOB'   , true ],
+      ['LONGBLOB'     , true ],
+      ['blob'         , true ],
+      ['mediumblob'   , true ],
+      ['longblob'     , true ],
+      ['BLOB(1)'      , true ],
+      ['MEDIUMBLOB(1)', true ],
+      ['LONGBLOB(1)'  , true ],
+      ['BLO'          , false],
+      ['MEDIUMBLO'    , false],
+      ['LONGBLO'      , false],
+      ['TEXT'         , false],
+      ['MEDIUMTEXT'   , false],
+      ['LONGTEXT'     , false],
+    ].each do |type, expected|
+      column_schema.instance_eval do
+        @type = type
+      end
+      assert_equal(expected, column_schema.hard_to_sort?, "ColumnSchema#hard_to_sort?")
+    end
+  end
+
+  def test_too_long_to_display_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    [
+      ['TEXT'         , true ],
+      ['MEDIUMTEXT'   , true ],
+      ['LONGTEXT'     , true ],
+      ['text'         , true ],
+      ['mediumtext'   , true ],
+      ['longtext'     , true ],
+      ['TEXT(1)'      , true ],
+      ['MEDIUMTEXT(1)', true ],
+      ['LONGTEXT(1)'  , true ],
+      ['TEX'          , false],
+      ['MEDIUMTEX'    , false],
+      ['LONGTEX'      , false],
+      ['BLOB'         , false],
+      ['MEDIUMBLOB'   , false],
+      ['LONGBLOB'     , false],
+    ].each do |type, expected|
+      column_schema.instance_eval do
+        @type = type
+      end
+      assert_equal(expected, column_schema.too_long_to_display?, "ColumnSchema#too_long_to_display?")
+    end
+  end
+
   #TODO: test self.parse(line, capitalizes_types)
 
 end
