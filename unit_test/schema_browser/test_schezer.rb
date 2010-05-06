@@ -1028,6 +1028,41 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal(is_unique   , key.unique?     , "is_unique")
   end
 
+  def test_unique_of_class_key
+    [true, false].each do |is_unique|
+      key = Key.new('', [], is_unique)
+      assert_equal(is_unique, key.unique?, "Key#unique? of #{is_unique}")
+    end
+  end
+
+  def test_key_name_of_class_key
+    [
+      [true , 'unique_key'],
+      [false, 'key'],
+    ].each do |is_unique, expected|
+      key = Key.new('', [], is_unique)
+      assert_equal(expected, key.key_name, "Key#key_name for unique? of #{is_unique}")
+    end
+  end
+
+  def test_to_xml_of_class_key
+    name         = 'name'
+    column_names = %w(colA colB colC)
+
+    format_expected =
+        "<%1$s name='name' unique='%2$s'>" \
+      +   "<column_name>colA</column_name>" \
+      +   "<column_name>colB</column_name>" \
+      +   "<column_name>colC</column_name>" \
+      + "</%1$s>"
+
+    [true, false].each do |is_unique|
+      key = Key.new(name, column_names, is_unique)
+      expected = sprintf(format_expected, key.key_name, key.unique?)
+      assert_equal(expected, key.to_xml.to_s, "Key#to_xml for unique? of #{is_unique}")
+    end
+  end
+
   #TODO: def self.parse(line)
 
 end
