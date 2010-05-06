@@ -1122,6 +1122,31 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+  def test_is_primary_key_assign_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    [true, false].each do |is_primary_key|
+      column_schema.is_primary_key = is_primary_key
+      assert_equal(is_primary_key, column_schema.primary_key?, "ColumnSchema#primary_key?")
+    end
+  end
+
+  def test_comment_blank_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    [
+      [nil        , true ],
+      [""         , true ],
+      ["a"        , false],
+      ["A comment", false],
+    ].each do |comment, expected|
+      column_schema.instance_eval do
+        @comment = comment
+      end
+      assert_equal(expected, column_schema.comment_blank?, "ColumnSchema#comment_blank?")
+    end
+  end
+
   #TODO: test self.parse(line, capitalizes_types)
 
 end
