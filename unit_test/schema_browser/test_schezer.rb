@@ -1296,6 +1296,29 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
+  def test_get_type_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    assert_equal = method(:assert_equal)
+    [
+      [[]                         , ""],
+      [%w(int)                    , "int"],
+      [%w(int unsigned)           , "int unsigned"],
+      [%w(int unsign)             , "int"],
+      [%w(int unsigned zerofill)  , "int unsigned zerofill"],
+      [%w(int unsigned zerofil)   , "int unsigned"],
+    ].each do |terms, expected|
+      column_schema.instance_eval do
+        [false, true].each do |capitalizes_types|
+          msg = "get_type(#{terms.inspect}, #{capitalizes_types})"
+          expected.upcase! if capitalizes_types
+          actual = get_type(terms.dup, capitalizes_types)
+          assert_equal.call(expected, actual, msg)
+        end
+      end
+    end
+  end
+
   #TODO: test self.parse(line, capitalizes_types)
 
 end

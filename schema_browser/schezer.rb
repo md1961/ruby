@@ -501,9 +501,15 @@ class ColumnSchema
       type_elements << terms.shift
       while terms.size > 0 && TERMS_TO_SUPPLEMENT_TYPE.include?(terms[0])
         term = terms.shift
-        term.upcase! if capitalizes_types
         type_elements << term
       end
+
+      if capitalizes_types
+        type_elements.each do |element|
+          element.upcase! if element
+        end
+      end
+
       return type_elements.join(' ')
     end
 
