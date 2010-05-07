@@ -1351,11 +1351,11 @@ class TestSchezer < Test::Unit::TestCase
       [%w(default '0')   , [false, '0'   , false]],
       [%w(default '00-0'), [false, '00-0', false]],
       [%w(auto_increment), [false, nil   , true ]],
-      [%w(null default '0')       , [false, '0', false]],
+      [%w(null     default '0')   , [false, '0', false]],
       [%w(not null default '0')   , [true , '0', false]],
-      [%w(null auto_increment)    , [false, nil, true ]],
+      [%w(null     auto_increment), [false, nil, true ]],
       [%w(not null auto_increment), [true , nil, true ]],
-      [%w(null default '0' auto_increment)    , [false, '0', true]],
+      [%w(null     default '0' auto_increment), [false, '0', true]],
       [%w(not null default '0' auto_increment), [true , '0', true]],
     ].each do |terms, expected|
       column_schema.instance_eval do
@@ -1371,7 +1371,43 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
-  #TODO: test self.parse(line, capitalizes_types)
+  def test_parse_of_class_column_schema_returns_nil
+    [
+      "",
+      "id int(4)",
+    ].each do |line|
+      assert_nil(ColumnSchema.parse(line, true ), "ColumnSchema.parse(\"#{line}\", true)")
+      assert_nil(ColumnSchema.parse(line, false), "ColumnSchema.parse(\"#{line}\", false)")
+    end
+  end
 
+  def test_parse_of_class_column_schema
+    [
+      ["`id` int(10) unsigned NOT NULL auto_increment COMMENT '自動生成されたID'",
+          'id', 'int(10) unsigned', true, nil, true, "自動生成されたID", nil],
+      [" `date_reserve` date default '0000-00-00'",
+          'date_reserve', 'date', false, '0000-00-00', false, nil, nil],
+      ["`method_reserve` set('volumetic','decline','simulation') default NULL COMMENT '評価方法'",
+          'method_reserve', 'set', false, 'NULL', false, "評価方法", "('volumetic','decline','simulation')"],
+    ].each do |line, name, type, not_null, default, auto_inc, comment, set_options|
+      column_schema = ColumnSchema.parse(line, true)
+      assert_equal(name       , column_schema.name           , "name")
+      assert_equal(type.upcase, column_schema.type           , "type")
+      assert_equal(not_null   , column_schema.not_null?      , "not_null?")
+      assert_equal(default    , column_schema.default        , "default")
+      assert_equal(auto_inc   , column_schema.auto_increment?, "auto_increment?")
+      assert_equal(comment    , column_schema.comment        , "comment")
+      assert_equal(set_options, column_schema.set_options    , "set_options")
+
+      column_schema = ColumnSchema.parse(line, false)
+      assert_equal(name       , column_schema.name           , "name")
+      assert_equal(type       , column_schema.type           , "type")
+      assert_equal(not_null   , column_schema.not_null?      , "not_null?")
+      assert_equal(default    , column_schema.default        , "default")
+      assert_equal(auto_inc   , column_schema.auto_increment?, "auto_increment?")
+      assert_equal(comment    , column_schema.comment        , "comment")
+      assert_equal(set_options, column_schema.set_options    , "set_options")
+    end
+  end
 end
 
