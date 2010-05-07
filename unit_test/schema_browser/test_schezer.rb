@@ -1301,12 +1301,15 @@ class TestSchezer < Test::Unit::TestCase
 
     assert_equal = method(:assert_equal)
     [
-      [[]                         , ""],
-      [%w(int)                    , "int"],
-      [%w(int unsigned)           , "int unsigned"],
-      [%w(int unsign)             , "int"],
-      [%w(int unsigned zerofill)  , "int unsigned zerofill"],
-      [%w(int unsigned zerofil)   , "int unsigned"],
+      [[]                       , ""],
+      [%w(int)                  , "int"],
+      [%w(int unsigned)         , "int unsigned"],
+      [%w(int unsign)           , "int"],
+      [%w(int unsigned zerofill), "int unsigned zerofill"],
+      [%w(int unsigned zerofil) , "int unsigned"],
+      [%w(char)                 , "char"],
+      [%w(char unicode)         , "char unicode"],
+      [%w(char utf8_unicode_ci) , "char utf8_unicode_ci"],
     ].each do |terms, expected|
       column_schema.instance_eval do
         [false, true].each do |capitalizes_types|
@@ -1315,6 +1318,55 @@ class TestSchezer < Test::Unit::TestCase
           actual = get_type(terms.dup, capitalizes_types)
           assert_equal.call(expected, actual, msg)
         end
+      end
+    end
+  end
+
+  def test_get_null_default_and_auto_increment_of_class_column_schema_raise_exception
+    column_schema = make_empty_column_schema
+
+    msg = "UnsupportedColumnDefinitionException should have been raised"
+    [
+      %w(type),
+      %w(null not),
+      %w(not null auto),
+    ].each do |terms|
+      assert_raise(UnsupportedColumnDefinitionException, msg) do
+        column_schema.instance_eval do
+          get_null_default_and_auto_increment(terms)
+        end
+      end
+    end
+  end
+
+  def test_get_null_default_and_auto_increment_of_class_column_schema
+    column_schema = make_empty_column_schema
+
+    assert_equal = method(:assert_equal)
+    [
+      [[]                , [false, nil   , false]],
+      [%w(null)          , [false, nil   , false]],
+      [%w(not null)      , [true , nil   , false]],
+      [%w(default '')    , [false, "''"  , false]],
+      [%w(default '0')   , [false, '0'   , false]],
+      [%w(default '00-0'), [false, '00-0', false]],
+      [%w(auto_increment), [false, nil   , true ]],
+      [%w(null default '0')       , [false, '0', false]],
+      [%w(not null default '0')   , [true , '0', false]],
+      [%w(null auto_increment)    , [false, nil, true ]],
+      [%w(not null auto_increment), [true , nil, true ]],
+      [%w(null default '0' auto_increment)    , [false, '0', true]],
+      [%w(not null default '0' auto_increment), [true , '0', true]],
+    ].each do |terms, expected|
+      column_schema.instance_eval do
+        msg = "get_null_default_and_auto_increment(#{terms.inspect})"
+        actual = get_null_default_and_auto_increment(terms.dup)
+        assert_equal.call(expected, actual, msg)
+
+        terms = terms.map { |term| term.upcase }
+        msg = "get_null_default_and_auto_increment(#{terms.inspect})"
+        actual = get_null_default_and_auto_increment(terms.dup)
+        assert_equal.call(expected, actual, msg)
       end
     end
   end

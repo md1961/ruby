@@ -520,10 +520,15 @@ class ColumnSchema
       default = nil
       auto_increment = false
       while terms.size > 0
-        if terms[0] == 'NOT' && terms[1] == 'NULL'
+        term0 = terms[0] && terms[0].upcase
+        term1 = terms[1] && terms[1].upcase
+        if term0 == 'NULL'
+          not_null = false
+          terms.shift
+        elsif term0 == 'NOT' && term1 == 'NULL'
           not_null = true
           terms.shift; terms.shift
-        elsif terms[0] == 'default'
+        elsif term0 == 'DEFAULT'
           terms.shift
           default = terms.shift
           if /^'[^']+$/ =~ default # unclosed quotation
@@ -534,7 +539,7 @@ class ColumnSchema
           if /^'([^']+)'$/ =~ default # removed single quotations
             default = $1
           end
-        elsif terms[0] == 'auto_increment'
+        elsif term0 == 'AUTO_INCREMENT'
           auto_increment = true
           terms.shift
         else
