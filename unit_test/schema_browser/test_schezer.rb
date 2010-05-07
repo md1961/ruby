@@ -1439,5 +1439,61 @@ class TestSchezer < Test::Unit::TestCase
     def make_empty_table_schema
       return TableSchema.new("", 0)
     end
+    private :make_empty_table_schema
+
+    def set_columns_to_table_schema(table_schema, *columns)
+      table_schema.instance_eval do
+        @columns = columns
+      end
+    end
+    private :set_columns_to_table_schema
+
+  def test_columns_with_primary_key_of_class_table_schema
+    table_schema = make_empty_table_schema
+
+    column_id   = make_empty_column_schema('id'  , 'int' )
+    column_name = make_empty_column_schema('name', 'char')
+    column_addr = make_empty_column_schema('addr', 'char')
+    column_pid  = make_empty_column_schema('pid' , 'int' )
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_pid)
+
+    table_schema.instance_eval do
+      @primary_keys = %w(id)
+    end
+    assert_equal([column_id], table_schema.columns_with_primary_key, "TableSchema#columns_with_primary_key")
+
+    table_schema.instance_eval do
+      @primary_keys = %w(id pid)
+    end
+    assert_equal([column_id, column_pid], table_schema.columns_with_primary_key, "TableSchema#columns_with_primary_key")
+  end
+
+  def test_has_columns_hard_to_sort_of_class_table_schema
+    table_schema = make_empty_table_schema
+
+    column_id    = make_empty_column_schema('id'   , 'int' )
+    column_name  = make_empty_column_schema('name' , 'char')
+    column_addr  = make_empty_column_schema('addr' , 'char')
+    column_pid   = make_empty_column_schema('pid'  , 'int' )
+    column_blob  = make_empty_column_schema('blob' , 'blob')
+    column_mblob = make_empty_column_schema('mblob', 'mediumblob')
+    column_lblob = make_empty_column_schema('lblob', 'longblob')
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_pid)
+    assert(! table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_pid)
+    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_mblob, column_addr, column_pid)
+    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+
+    set_columns_to_table_schema(table_schema, column_lblob, column_id, column_name, column_addr, column_pid)
+    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_mblob, column_lblob, column_addr, column_pid)
+    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+  end
+
 end
 
