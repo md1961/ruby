@@ -183,7 +183,7 @@ class TestSchezer < Test::Unit::TestCase
     end
     assert_equal([2, 3, 5], actual)
 
-    column_id   = make_column_schema_mock('id'  , true)
+    column_id   = make_column_schema_mock('id'  , true )
     column_type = make_column_schema_mock('type', false)
     column_name = make_column_schema_mock('name', false)
     column_alt  = make_column_schema_mock('alt' , false)
@@ -196,13 +196,17 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal([23, "'field'", "'Ghawar'", "NULL"], actual)
   end
 
-    def make_column_schema_mock(name, is_numerical)
+    def make_column_schema_mock(name, is_numerical, type='type')
       mock = Object.new
       mock.instance_variable_set(:@name  , name)
+      mock.instance_variable_set(:@type  , type)
       mock.instance_variable_set(:@is_num, is_numerical)
       class << mock
         def name
           @name
+        end
+        def type
+          @type
         end
         def numerical_type?
           @is_num
@@ -1084,8 +1088,12 @@ class TestSchezer < Test::Unit::TestCase
     assert_not_nil(column_schema, "ColumnSchema.new")
   end
 
-    def make_empty_column_schema(name='name')
-      return ColumnSchema.new(name, nil, nil, false)
+    def make_empty_column_schema(name='name', type='type')
+      column_schema = ColumnSchema.new(name, nil, nil, false)
+      column_schema.instance_eval do
+        @type = type
+      end
+      return column_schema
     end
     private :make_empty_column_schema
 
@@ -1409,5 +1417,27 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal(set_options, column_schema.set_options    , "set_options")
     end
   end
+
+  # ===== Test class TableSchema =====
+
+  #TODO: Test initialize() and/or parse_raw_schema()?
+
+  def test_column_names_of_class_table_schema
+    table_schema = make_empty_table_schema
+
+    make_column_schema_mock = method(:make_column_schema_mock)
+    table_schema.instance_eval do
+      @columns = Array.new
+      @columns << make_column_schema_mock.call('id'  , true )
+      @columns << make_column_schema_mock.call('name', false)
+      @columns << make_column_schema_mock.call('addr', false)
+      @columns << make_column_schema_mock.call('pid' , true )
+    end
+    assert_equal(%w(id name addr pid), table_schema.column_names, "TableSchema#column_names")
+  end
+
+    def make_empty_table_schema
+      return TableSchema.new("", 0)
+    end
 end
 
