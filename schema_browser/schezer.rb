@@ -874,8 +874,13 @@ class InfrastructureException  < Exception; end
 
 class Schezer
 
+  DEFAULT_CONFIG_FILENAME = 'config/database.yml'
+  DEFAULT_CONFIG_ENV_NAME = 'development'
+
   def initialize(argv)
     prepare_command_line_options(argv)
+    @config_filename = DEFAULT_CONFIG_FILENAME unless @config_filename
+    @config_name     = DEFAULT_CONFIG_ENV_NAME unless @config_name
 
     exit_with_help("No command specified") if argv.empty?
 
