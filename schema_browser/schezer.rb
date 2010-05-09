@@ -197,7 +197,8 @@ class TableSchema
       table_items << to_map_table_items(column)
     end
 
-    table = TableOnCUI.new(INDEXES, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
+    indexes = INDEXES - (all_columns_comments_blank? ? [INDEX_COMMENT] : [])
+    table = TableOnCUI.new(indexes, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
     table.set_data(table_items)
     if table.width <= @terminal_width
       return table.to_table
@@ -212,6 +213,10 @@ class TableSchema
   end
 
   private
+
+    def all_columns_comments_blank?
+      return @columns.all? { |column| column.comment_blank? }
+    end
 
     ITEMS_NOT_NULL = 'NO'
     ITEMS_AUTO_INCREMENT = 'auto inc.'
@@ -290,7 +295,7 @@ class TableSchema
 
     def set_default_column_comment_for_id
       return if @primary_keys.size > 1
-      return if @columns.all? { |column| column.comment_blank? }
+      return if all_columns_comments_blank?
       column = @columns.find { |column| column.name == @primary_keys[0] }
       return if column.nil? || ! column.auto_increment?
       column.comment = DEFAULT_COLUMN_COMMENT_FOR_ID if column.comment_blank?
