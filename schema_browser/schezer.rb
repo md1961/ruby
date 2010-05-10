@@ -129,7 +129,7 @@ class TableSchema
 
   def to_s
     schemas = Array.new
-    schemas << "TABLE `#{@name}`, comment「#{@comment || '(n/a)'}」"
+    schemas << "TABLE `#{@name}`: Comment \"#{@comment || '(n/a)'}\""
 
     schemas << to_columns_table
 
