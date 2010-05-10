@@ -811,7 +811,7 @@ class TestSchezer < Test::Unit::TestCase
       +     "<column name='base_unit_id' primary_key='true' not_null='true' auto_increment='true'>" \
       +       "<type>int(10) unsigned</type>" \
       +       "<default/>" \
-      +       "<comment><![CDATA[RDBMSが生成する一意のID番号]]></comment>" \
+      +       "<comment><![CDATA[]]></comment>" \
       +     "</column>" \
       +     "<column name='base_unit' primary_key='false' not_null='true' auto_increment='false'>" \
       +       "<type>varchar(40)</type>" \
@@ -1471,6 +1471,8 @@ class TestSchezer < Test::Unit::TestCase
   def test_has_columns_hard_to_sort_of_class_table_schema
     table_schema = make_empty_table_schema
 
+    assert(! table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+
     column_id    = make_empty_column_schema('id'   , 'int' )
     column_name  = make_empty_column_schema('name' , 'char')
     column_addr  = make_empty_column_schema('addr' , 'char')
@@ -1483,16 +1485,16 @@ class TestSchezer < Test::Unit::TestCase
     assert(! table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_pid)
-    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+    assert(  table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_mblob, column_addr, column_pid)
-    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+    assert(  table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
 
     set_columns_to_table_schema(table_schema, column_lblob, column_id, column_name, column_addr, column_pid)
-    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+    assert(  table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_mblob, column_lblob, column_addr, column_pid)
-    assert(table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+    assert(  table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
   end
 
 end
