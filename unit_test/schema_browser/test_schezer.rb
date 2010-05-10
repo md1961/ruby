@@ -1564,5 +1564,37 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal.call('table2', @schema2.name, "Table name of @schema2 of the TableSchemaDifference")
     end
   end
+
+  def test_equals_of_class_table_schema
+    table_schema1 = make_empty_table_schema('table1')
+    table_schema2 = make_empty_table_schema('table2')
+
+    column_id    = make_empty_column_schema('id'   , 'int' , auto_increment=true)
+    column_name  = make_empty_column_schema('name' , 'char')
+    column_addr  = make_empty_column_schema('addr' , 'char')
+    column_pid   = make_empty_column_schema('pid'  , 'int' )
+
+    [
+      [[]                                               , []],
+      [[column_id]                                      , [column_id]],
+      [[column_id, column_name]                         , [column_id, column_name]],
+      [[column_id, column_name, column_addr, column_pid], [column_id, column_name, column_addr, column_pid]],
+    ].each do |columns1, columns2|
+      set_columns_to_table_schema(table_schema1, *columns1)
+      set_columns_to_table_schema(table_schema2, *columns2)
+      assert(table_schema1 == table_schema2, "== should be true if both columns equals")
+    end
+
+    [
+      [[]                                   , [column_id]],
+      [[column_id]                          , [column_id, column_name]],
+      [[column_name, column_id]             , [column_id, column_name]],
+      [[column_id, column_name, column_addr], [column_id, column_name, column_addr, column_pid]],
+    ].each do |columns1, columns2|
+      set_columns_to_table_schema(table_schema1, *columns1)
+      set_columns_to_table_schema(table_schema2, *columns2)
+      assert(table_schema1 != table_schema2, "== should be false if both columns different")
+    end
+  end
 end
 
