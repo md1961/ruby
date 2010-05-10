@@ -1437,8 +1437,12 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal(%w(id name addr pid), table_schema.column_names, "TableSchema#column_names")
   end
 
-    def make_empty_table_schema
-      return TableSchema.new("", 0)
+    def make_empty_table_schema(table_name=nil)
+      table_schema = TableSchema.new("", 0)
+      table_schema.instance_eval do
+        @name = table_name
+      end
+      return table_schema
     end
     private :make_empty_table_schema
 
@@ -1533,5 +1537,32 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
   end
 
+  def test_difference_of_class_table_schema_raises_exception
+    table_schema = make_empty_table_schema
+
+    assert_raise(ArgumentError, "ArgumentError should have been raised") do
+      table_schema.difference(nil)
+    end
+    assert_raise(ArgumentError, "ArgumentError should have been raised") do
+      table_schema.difference(Object.new)
+    end
+    assert_raise(ArgumentError, "ArgumentError should have been raised") do
+      table_schema.difference(make_empty_column_schema)
+    end
+  end
+
+  def test_difference_of_class_table_schema
+    table_schema1 = make_empty_table_schema('table1')
+    table_schema2 = make_empty_table_schema('table2')
+
+    diff = table_schema1.difference(table_schema2)
+    assert(diff.kind_of?(TableSchemaDifference), "Class of return value of TableSchema#difference()")
+
+    assert_equal = method(:assert_equal)
+    diff.instance_eval do
+      assert_equal.call('table1', @schema1.name, "Table name of @schema1 of the TableSchemaDifference")
+      assert_equal.call('table2', @schema2.name, "Table name of @schema2 of the TableSchemaDifference")
+    end
+  end
 end
 
