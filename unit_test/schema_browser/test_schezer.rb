@@ -1088,10 +1088,11 @@ class TestSchezer < Test::Unit::TestCase
     assert_not_nil(column_schema, "ColumnSchema.new")
   end
 
-    def make_empty_column_schema(name='name', type='type')
+    def make_empty_column_schema(name='name', type='type', auto_increment=false)
       column_schema = ColumnSchema.new(name, nil, nil, false)
       column_schema.instance_eval do
         @type = type
+        @auto_increment = auto_increment
       end
       return column_schema
     end
@@ -1495,6 +1496,41 @@ class TestSchezer < Test::Unit::TestCase
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_mblob, column_lblob, column_addr, column_pid)
     assert(  table_schema.has_columns_hard_to_sort?, "TableSchema#hard_to_sort?")
+  end
+
+  def test_column_names_to_sort_of_class_table_schema
+    table_schema = make_empty_table_schema
+
+    assert_equal([], table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    column_id    = make_empty_column_schema('id'   , 'int' , auto_increment=true)
+    column_name  = make_empty_column_schema('name' , 'char')
+    column_addr  = make_empty_column_schema('addr' , 'char')
+    column_pid   = make_empty_column_schema('pid'  , 'int' )
+    column_blob  = make_empty_column_schema('blob' , 'blob')
+    column_mblob = make_empty_column_schema('mblob', 'mediumblob')
+    column_lblob = make_empty_column_schema('lblob', 'longblob')
+
+    set_columns_to_table_schema(table_schema, column_name)
+    assert_equal(%w(name), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name)
+    assert_equal(%w(name), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr)
+    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_pid)
+    assert_equal(%w(name addr pid), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob)
+    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_mblob)
+    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_mblob, column_lblob)
+    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
   end
 
 end
