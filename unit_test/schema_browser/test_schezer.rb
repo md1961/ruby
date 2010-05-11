@@ -1596,5 +1596,95 @@ class TestSchezer < Test::Unit::TestCase
       assert(table_schema1 != table_schema2, "== should be false if both columns different")
     end
   end
+
+  def test_to_s_of_class_table_schema
+    raw_schema = \
+      "CREATE TABLE `base_unit` (
+        `base_unit_id` int(10) unsigned NOT NULL auto_increment,
+        `base_unit` varchar(40) NOT NULL,
+        PRIMARY KEY  (`base_unit_id`),
+        UNIQUE KEY `unique_base_unit_1` (`base_unit_id`)
+      ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8"
+    expected = \
+        "TABLE `base_unit`: Comment \"(n/a)\"\n" \
+      + "+--------------+------------------+------+-----+---------+-----------+\n" \
+      + "| Field        | Type             | Null | Key | Default | Extra     |\n" \
+      + "+--------------+------------------+------+-----+---------+-----------+\n" \
+      + "| base_unit_id | int(10) unsigned | NO   | PRI |         | auto inc. |\n" \
+      + "| base_unit    | varchar(40)      | NO   |     |         |           |\n" \
+      + "+--------------+------------------+------+-----+---------+-----------+\n" \
+      + "primary key = `base_unit_id`\n" \
+      + "unique_key `unique_base_unit_1` (`base_unit_id`)\n" \
+      + "engine=InnoDB\n" \
+      + "default_charset=utf8\n" \
+      + "collate=(n/a)\n" \
+      + "max_rows=(n/a)"
+    do_test_to_s_of_class_table_schema(raw_schema, expected)
+
+    raw_schema = \
+      "CREATE TABLE `reserve_header` (
+        `reserve_id` int(10) unsigned NOT NULL auto_increment,
+        `reservoir_id` int(10) unsigned NOT NULL default '0',
+        `date_reserve` date NOT NULL default '0000-00-00' COMMENT '鉱量の日付',
+        `possibility` int(10) unsigned NOT NULL default '0' COMMENT '実現確率',
+        `is_by_completion` tinyint(1) unsigned zerofill NOT NULL default '0' COMMENT '鉱量データとして 0 であれば reserve、1 であれば reserve_by_completion を使う',
+        `datetime_input` datetime default NULL COMMENT '入力した日時',
+        `username_input` varchar(40) default NULL COMMENT '入力したユーザー名',
+        `method_reserve` varchar(20) default NULL,
+        `summary` text,
+        PRIMARY KEY  (`reserve_id`),
+        UNIQUE KEY `reserve_id` (`reserve_id`),
+        UNIQUE KEY `id_date_possibility` (`reservoir_id`,`date_reserve`,`possibility`),
+        UNIQUE KEY `reservoir_id` (`reservoir_id`,`date_reserve`,`possibility`,`datetime_input`),
+          CONSTRAINT `reserve_header_ibfk_1` FOREIGN KEY (`reservoir_id`) REFERENCES `reservoir` (`reservoir_id`) ON UPDATE CASCADE
+      ) ENGINE=InnoDB AUTO_INCREMENT=3710 DEFAULT CHARSET=utf8 COMMENT='埋蔵量のヘッダテーブル'"
+    expected = \
+        "TABLE `reserve_header`: Comment \"埋蔵量のヘッダテーブル\"\n" \
+      + "+------------------+------------------------------+------+-----+------------+-----------+\n" \
+      + "| Field            | Type                         | Null | Key | Default    | Extra     |\n" \
+      + "+------------------+------------------------------+------+-----+------------+-----------+\n" \
+      + "| reserve_id       | int(10) unsigned             | NO   | PRI |            | auto inc. |\n" \
+      + "| reservoir_id     | int(10) unsigned             | NO   |     | 0          |           |\n" \
+      + "| date_reserve     | date                         | NO   |     | 0000-00-00 |           |\n" \
+      + "| possibility      | int(10) unsigned             | NO   |     | 0          |           |\n" \
+      + "| is_by_completion | tinyint(1) unsigned zerofill | NO   |     | 0          |           |\n" \
+      + "| datetime_input   | datetime                     |      |     | NULL       |           |\n" \
+      + "| username_input   | varchar(40)                  |      |     | NULL       |           |\n" \
+      + "| method_reserve   | varchar(20)                  |      |     | NULL       |           |\n" \
+      + "| summary          | text                         |      |     |            |           |\n" \
+      + "+------------------+------------------------------+------+-----+------------+-----------+\n" \
+      + "+------------------+------------------------------------------------------------------------------+\n" \
+      + "| Field            | Comment                                                                      |\n" \
+      + "+------------------+------------------------------------------------------------------------------+\n" \
+      + "| reserve_id       | RDBMSが生成する一意のID番号                                                  |\n" \
+      + "| reservoir_id     |                                                                              |\n" \
+      + "| date_reserve     | 鉱量の日付                                                                   |\n" \
+      + "| possibility      | 実現確率                                                                     |\n" \
+      + "| is_by_completion | 鉱量データとして 0 であれば reserve、1 であれば reserve_by_completion を使う |\n" \
+      + "| datetime_input   | 入力した日時                                                                 |\n" \
+      + "| username_input   | 入力したユーザー名                                                           |\n" \
+      + "| method_reserve   |                                                                              |\n" \
+      + "| summary          |                                                                              |\n" \
+      + "+------------------+------------------------------------------------------------------------------+\n" \
+      + "primary key = `reserve_id`\n" \
+      + "unique_key `reserve_id` (`reserve_id`)\n" \
+      + "unique_key `id_date_possibility` (`reservoir_id`,`date_reserve`,`possibility`)\n" \
+      + "unique_key `reservoir_id` (`reservoir_id`,`date_reserve`,`possibility`,`datetime_input`)\n" \
+      + "foreign key `reserve_header_ibfk_1` (`reservoir_id`) refs `reservoir` (`reservoir_id`)\n" \
+      + "    on update CASCADE on delete RESTRICT\n" \
+      + "engine=InnoDB\n" \
+      + "default_charset=utf8\n" \
+      + "collate=(n/a)\n" \
+      + "max_rows=(n/a)"
+    do_test_to_s_of_class_table_schema(raw_schema, expected)
+  end
+
+    TERMINAL_WIDTH = 80
+
+    def do_test_to_s_of_class_table_schema(raw_schema, expected)
+      table_schema = TableSchema.new(raw_schema, TERMINAL_WIDTH)
+      assert_equal(expected, table_schema.to_s, "TableSchema#to_s with TABLE `#{table_schema.name}`")
+    end
+
 end
 

@@ -125,7 +125,7 @@ class TableOnCUI
 
     is_index = @shows_indexes
     ary_map_whole_table.each do |map_items|
-      s = '| '
+      s = '|'
       index_names_to_display.each do |index|
         is_right_align = false
         item = map_items[index]
@@ -137,7 +137,7 @@ class TableOnCUI
         length = @func_length.call(item)
         blanks = ' ' * (width - length)
         item_display = is_right_align ? (blanks + item) : (item + blanks)
-        s += item_display + ' | '
+        s += ' ' + item_display + ' |'
       end
       strs << s
       strs << hr if is_index
