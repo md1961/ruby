@@ -71,6 +71,13 @@ class TableSchema
   DEFAULT_COLUMN_COMMENT_FOR_ID = "RDBMSが生成する一意のID番号"
 
   def initialize(raw_schema, terminal_width, capitalizes_types=false)
+    unless raw_schema.kind_of?(String)
+      raise ArgumentError.new("Argument raw_schema must be a String")
+    end
+    unless terminal_width.kind_of?(Fixnum)
+      raise ArgumentError.new("Argument terminal_width must be a Fixnum")
+    end
+
     @name         = nil
     @columns      = Array.new
     @primary_keys = Array.new

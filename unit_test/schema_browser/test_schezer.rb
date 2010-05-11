@@ -1442,7 +1442,21 @@ class TestSchezer < Test::Unit::TestCase
 
   # ===== Test class TableSchema =====
 
-  #TODO: Test initialize() and/or parse_raw_schema()?
+  def test_initialize_of_class_table_schema_raises_exception
+    assert_raise(ArgumentError, "ArgumentError should have been raised") do
+      TableSchema.new(nil, 80)
+    end
+    assert_raise(ArgumentError, "ArgumentError should have been raised") do
+      TableSchema.new("", nil)
+    end
+  end
+
+  def test_initialize_of_class_table_schema
+    table_schema = TableSchema.new("", 80)
+    assert_not_nil(table_schema, "TableSchema.new")
+  end
+
+  #TODO: Test parse_raw_schema()?
 
   def test_column_names_of_class_table_schema
     table_schema = make_empty_table_schema
@@ -1710,5 +1724,41 @@ class TestSchezer < Test::Unit::TestCase
       assert_in_lines(expected_lines, actual_lines, "TableSchema#to_s with TABLE `#{table_schema.name}`")
     end
 
+  def test_to_xml_of_class_table_schema
+    table_schema = make_table_schema_for_test_to_xml
+    actual = Array.new
+    table_schema.to_xml.write(actual, 1)
+    actual_lines = actual.join.split("\n")
+
+    puts "\n#{actual_lines.inspect}"
+  end
+
+    def make_table_schema_for_test_to_xml
+      def make_column_mock(name)
+        mock = Object.new
+        mock.instance_variable_set(:@name, name)
+        def mock.to_xml
+          xml = REXML::Element.new('column')
+          xml.add_attribute('name', @name)
+          xml
+        end
+        def mock.set_options
+          nil
+        end
+        return mock
+      end
+      make_column_mock = method(:make_column_mock)
+
+      table_schema = make_empty_table_schema('table1')
+      table_schema.instance_eval do
+        @columns = Array.new
+        3.times do |i|
+          @columns << make_column_mock.call("column#{i}")
+        end
+      end
+
+      return table_schema
+    end
+    private :make_table_schema_for_test_to_xml
 end
 
