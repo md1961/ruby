@@ -225,34 +225,46 @@ class TestSchezer < Test::Unit::TestCase
     schezer.instance_eval do
       actual = to_disp_table_data(table_names)
     end
-    expected = [
-        "1\t1\t1\t1234.56\t1\n" \
-      + "2\t1\t2\t3456.78\t2\n" \
-      + "3\t2\t1\t5678.90\t1\n" \
-      + "4\t2\t2\t7890.12\t2\n" \
-      + "Total of 4 rows"
+    actual_lines = actual.join("\n").split("\n")
+    expected_lines = [
+      "1\t1\t1\t1234.56\t1",
+      "2\t1\t2\t3456.78\t2",
+      "3\t2\t1\t5678.90\t1",
+      "4\t2\t2\t7890.12\t2",
+      "Total of 4 rows"
     ]
-    assert_equal(expected, actual, "Data of TABLE `reserve`")
+    assert_in_lines(expected_lines, actual_lines, "Data in TABLE `reserve`")
 
     table_names = %w(base_unit field)
     actual = nil
     schezer.instance_eval do
       actual = to_disp_table_data(table_names)
     end
-    expected = [
-        "1\tKL\n" \
-      + "2\tm3\n" \
-      + "4\tSCF\n" \
-      + "3\tSTB\n" \
-      + "Total of 4 rows",
-        "14\tHigashi-Niigata\t東新潟\t\t\t\t840\n" \
-      + "20\tIwafune-Oki\t岩船沖\t\t\t\t2100\n" \
-      + "3\tSarukawa\t申川\t\t\t\t320\n" \
-      + "1\tYufutsu\t勇払\t\t\t\t140\n" \
-      + "Total of 4 rows"
+    actual_lines = actual.join("\n").split("\n")
+    expected_lines = [
+      "1\tKL",
+      "2\tm3",
+      "4\tSCF",
+      "3\tSTB",
+      "Total of 4 rows",
+      "14\tHigashi-Niigata\t東新潟\t\t\t\t840",
+      "20\tIwafune-Oki\t岩船沖\t\t\t\t2100",
+      "3\tSarukawa\t申川\t\t\t\t320",
+      "1\tYufutsu\t勇払\t\t\t\t140",
+      "Total of 4 rows"
     ]
-    assert_equal(expected, actual, "Data of TABLE `base_unit` and `field`")
+    assert_in_lines(expected_lines, actual_lines, "Data of TABLE `base_unit` and `field`")
   end
+
+    def assert_in_lines(expected_lines, actual_lines, message=nil)
+      assert_equal(expected_lines.size, actual_lines.size, message && "#{message} (No. of lines)")
+      line_no = 1
+      expected_lines.zip(actual_lines) do |expected, actual|
+        assert_equal(expected, actual, message && "#{message} (line ##{line_no})")
+        line_no += 1
+      end
+    end
+    private :assert_in_lines
 
   def test_to_disp_table_data_with_two_envs
     schezer = make_schezer_instance(*%w(-e development -g production data))
@@ -270,17 +282,18 @@ class TestSchezer < Test::Unit::TestCase
     schezer.instance_eval do
       actual = to_disp_table_data(table_names)
     end
-    expected = [
-        "TABLE `reserve`:\n" \
-      + "[Pair of rows different but same with unique keys (DB `schezer_test`, then DB `schezer_test2`)\n" \
-      + "(none)\n" \
-      + "[Rows which appears only in DB `schezer_test`]:\n" \
-      + "(none)\n" \
-      + "[Rows which appears only in DB `schezer_test2`]:\n" \
-      + "5\t3\t1\t6543.21\t1\n" \
-      + "6\t3\t2\t8765.43\t2"
+    actual_lines = actual.join("\n").split("\n")
+    expected_lines = [
+      "TABLE `reserve`:",
+      "[Pair of rows different but same with unique keys (DB `schezer_test`, then DB `schezer_test2`)",
+      "(none)",
+      "[Rows which appears only in DB `schezer_test`]:",
+      "(none)",
+      "[Rows which appears only in DB `schezer_test2`]:",
+      "5\t3\t1\t6543.21\t1",
+      "6\t3\t2\t8765.43\t2",
     ]
-    assert_equal(expected, actual, "Data comparison of TABLE `base_unit` and `field`")
+    assert_in_lines(expected_lines, actual_lines, "Data comparison of TABLE `base_unit` and `field`")
   end
 
   #TODO: Test to_s_pairs_with_unique_key_same(table_data)
@@ -601,23 +614,25 @@ class TestSchezer < Test::Unit::TestCase
     schezer.instance_eval do
       actual = get_raw_table_schema(table_name, @conn)
     end
-    expected = \
-        "CREATE TABLE `reserve` (\n" \
-      + "  `synthetic_id` int(10) unsigned NOT NULL auto_increment,\n" \
-      + "  `reserve_id` int(10) unsigned NOT NULL,\n" \
-      + "  `fluid_id` int(10) unsigned NOT NULL default '0',\n" \
-      + "  `reserve` decimal(15,2) default NULL,\n" \
-      + "  `unit_id` int(10) unsigned NOT NULL default '0',\n" \
-      + "  PRIMARY KEY  (`synthetic_id`),\n" \
-      + "  UNIQUE KEY `reserve_fluid` (`reserve_id`,`fluid_id`),\n" \
-      + "  KEY `fluid_id` (`fluid_id`),\n" \
-      + "  KEY `unit_id` (`unit_id`),\n" \
-      + "  CONSTRAINT `reserve_ibfk_2` FOREIGN KEY (`fluid_id`) REFERENCES `fluid` (`fluid_id`) ON UPDATE CASCADE,\n" \
-      + "  CONSTRAINT `reserve_ibfk_3` FOREIGN KEY (`unit_id`) REFERENCES `unit` (`unit_id`) ON UPDATE CASCADE,\n" \
-      + "  CONSTRAINT `reserve_ibfk_4` FOREIGN KEY (`reserve_id`) REFERENCES `reserve_header` (`reserve_id`)" \
-      +    " ON DELETE CASCADE ON UPDATE CASCADE\n" \
-      + ") ENGINE=InnoDB AUTO_INCREMENT=6945 DEFAULT CHARSET=utf8"
-    assert_equal(expected, actual, "Raw table schema for TABLE `#{table_name}`")
+    actual_lines = actual.split("\n")
+    expected_lines = [
+      "CREATE TABLE `reserve` (",
+      "  `synthetic_id` int(10) unsigned NOT NULL auto_increment,",
+      "  `reserve_id` int(10) unsigned NOT NULL,",
+      "  `fluid_id` int(10) unsigned NOT NULL default '0',",
+      "  `reserve` decimal(15,2) default NULL,",
+      "  `unit_id` int(10) unsigned NOT NULL default '0',",
+      "  PRIMARY KEY  (`synthetic_id`),",
+      "  UNIQUE KEY `reserve_fluid` (`reserve_id`,`fluid_id`),",
+      "  KEY `fluid_id` (`fluid_id`),",
+      "  KEY `unit_id` (`unit_id`),",
+      "  CONSTRAINT `reserve_ibfk_2` FOREIGN KEY (`fluid_id`) REFERENCES `fluid` (`fluid_id`) ON UPDATE CASCADE,",
+      "  CONSTRAINT `reserve_ibfk_3` FOREIGN KEY (`unit_id`) REFERENCES `unit` (`unit_id`) ON UPDATE CASCADE,",
+      "  CONSTRAINT `reserve_ibfk_4` FOREIGN KEY (`reserve_id`) REFERENCES `reserve_header` (`reserve_id`)" \
+      +    " ON DELETE CASCADE ON UPDATE CASCADE",
+      ") ENGINE=InnoDB AUTO_INCREMENT=6945 DEFAULT CHARSET=utf8"
+    ]
+    assert_in_lines(expected_lines, actual_lines, "Raw table schema for TABLE `#{table_name}`")
   end
 
   def test_get_raw_table_schema_with_table_reserve_header
@@ -628,25 +643,27 @@ class TestSchezer < Test::Unit::TestCase
     schezer.instance_eval do
       actual = get_raw_table_schema(table_name, @conn)
     end
-    expected = \
-      "CREATE TABLE `reserve_header` (\n" \
-      + "  `reserve_id` int(10) unsigned NOT NULL auto_increment,\n" \
-      + "  `reservoir_id` int(10) unsigned NOT NULL default '0',\n" \
-      + "  `date_reserve` date NOT NULL default '0000-00-00' COMMENT '鉱量の日付',\n" \
-      + "  `possibility` int(10) unsigned NOT NULL default '0' COMMENT '実現確率',\n" \
-      + "  `is_by_completion` tinyint(1) unsigned zerofill NOT NULL default '0'" \
-      +   " COMMENT '鉱量データとして 0 であれば reserve、1 であれば reserve_by_completion を使う',\n" \
-      + "  `datetime_input` datetime default NULL COMMENT '入力した日時',\n" \
-      + "  `username_input` varchar(40) default NULL COMMENT '入力したユーザー名',\n" \
-      + "  `method_reserve` varchar(20) default NULL,\n" \
-      + "  `summary` text,\n" \
-      + "  PRIMARY KEY  (`reserve_id`),\n" \
-      + "  UNIQUE KEY `reserve_id` (`reserve_id`),\n" \
-      + "  UNIQUE KEY `id_date_possibility` (`reservoir_id`,`date_reserve`,`possibility`),\n" \
-      + "  UNIQUE KEY `reservoir_id` (`reservoir_id`,`date_reserve`,`possibility`,`datetime_input`),\n" \
-      + "  CONSTRAINT `reserve_header_ibfk_1` FOREIGN KEY (`reservoir_id`) REFERENCES `reservoir` (`reservoir_id`) ON UPDATE CASCADE\n" \
-      + ") ENGINE=InnoDB AUTO_INCREMENT=3710 DEFAULT CHARSET=utf8 COMMENT='埋蔵量のヘッダテーブル'"
-    assert_equal(expected, actual, "Raw table schema for TABLE `#{table_name}`")
+    actual_lines = actual.split("\n")
+    expected_lines = [
+      "CREATE TABLE `reserve_header` (",
+      "  `reserve_id` int(10) unsigned NOT NULL auto_increment,",
+      "  `reservoir_id` int(10) unsigned NOT NULL default '0',",
+      "  `date_reserve` date NOT NULL default '0000-00-00' COMMENT '鉱量の日付',",
+      "  `possibility` int(10) unsigned NOT NULL default '0' COMMENT '実現確率',",
+      "  `is_by_completion` tinyint(1) unsigned zerofill NOT NULL default '0'" \
+      +   " COMMENT '鉱量データとして 0 であれば reserve、1 であれば reserve_by_completion を使う',",
+      "  `datetime_input` datetime default NULL COMMENT '入力した日時',",
+      "  `username_input` varchar(40) default NULL COMMENT '入力したユーザー名',",
+      "  `method_reserve` varchar(20) default NULL,",
+      "  `summary` text,",
+      "  PRIMARY KEY  (`reserve_id`),",
+      "  UNIQUE KEY `reserve_id` (`reserve_id`),",
+      "  UNIQUE KEY `id_date_possibility` (`reservoir_id`,`date_reserve`,`possibility`),",
+      "  UNIQUE KEY `reservoir_id` (`reservoir_id`,`date_reserve`,`possibility`,`datetime_input`),",
+      "  CONSTRAINT `reserve_header_ibfk_1` FOREIGN KEY (`reservoir_id`) REFERENCES `reservoir` (`reservoir_id`) ON UPDATE CASCADE",
+      ") ENGINE=InnoDB AUTO_INCREMENT=3710 DEFAULT CHARSET=utf8 COMMENT='埋蔵量のヘッダテーブル'"
+    ]
+    assert_in_lines(expected_lines, actual_lines, "Raw table schema for TABLE `#{table_name}`")
   end
 
   # Do not test get_create_table_result().
@@ -832,14 +849,12 @@ class TestSchezer < Test::Unit::TestCase
       "    </table>",
       "  </table_schema>"
     ]
+    assert_in_lines = method(:assert_in_lines)
     schezer.instance_eval do
       actual = Array.new
       to_xml(table_names).write(actual, indent=1)
       actual_lines = actual.join.split("\n")
-      assert_equal.call(expected_lines.size, actual_lines.size, "No. of lines in to_xml(#{table_names.inspect})")
-      expected_lines.zip(actual_lines) do |expected, actual|
-        assert_equal.call(expected, actual, "to_xml(#{table_names.inspect})")
-      end
+      assert_in_lines.call(expected_lines, actual_lines, "to_xml(#{table_names.inspect})")
     end
   end
 
@@ -1692,10 +1707,7 @@ class TestSchezer < Test::Unit::TestCase
     def do_test_to_s_of_class_table_schema(expected_lines, raw_schema)
       table_schema = TableSchema.new(raw_schema, TERMINAL_WIDTH)
       actual_lines = table_schema.to_s.split("\n")
-      assert_equal(expected_lines.size, actual_lines.size, "No. of lines in TableSchema#to_s with TABLE `#{table_schema.name}`")
-      expected_lines.zip(actual_lines) do |expected, actual|
-        assert_equal(expected, actual, "TableSchema#to_s with TABLE `#{table_schema.name}`")
-      end
+      assert_in_lines(expected_lines, actual_lines, "TableSchema#to_s with TABLE `#{table_schema.name}`")
     end
 
 end
