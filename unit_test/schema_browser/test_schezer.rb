@@ -1730,15 +1730,38 @@ class TestSchezer < Test::Unit::TestCase
     table_schema.to_xml.write(actual, 1)
     actual_lines = actual.join.split("\n")
 
-    puts "\n#{actual_lines.inspect}"
+    assert_in_lines(EXPECTED_LINES_FOR_TEST_TO_XML, actual_lines, "TableSchema#to_xml")
   end
 
+    EXPECTED_LINES_FOR_TEST_TO_XML = [
+      "<table name='table1'>",
+      "    <col name='col0'/>",
+      "    <col name='col1'/>",
+      "    <col name='col2'/>",
+      "    <unq name='unq0'/>",
+      "    <unq name='unq1'/>",
+      "    <frg name='frg0'/>",
+      "    <frg name='frg1'/>",
+      "    <key name='key0'/>",
+      "    <key name='key1'/>",
+      "    <set_options/>",
+      "    <table_options>",
+      "      <engine>oracle</engine>",
+      "      <default_charset>euc-jp</default_charset>",
+      "      <collate>jaJp</collate>",
+      "      <max_rows>876</max_rows>",
+      "      <comment><![CDATA[Virtual schema for tests]]></comment>",
+      "    </table_options>",
+      "  </table>"
+    ]
+
     def make_table_schema_for_test_to_xml
-      def make_column_mock(name)
+      def make_element_mock(type, name)
         mock = Object.new
+        mock.instance_variable_set(:@type, type)
         mock.instance_variable_set(:@name, name)
         def mock.to_xml
-          xml = REXML::Element.new('column')
+          xml = REXML::Element.new(@type)
           xml.add_attribute('name', @name)
           xml
         end
@@ -1747,18 +1770,59 @@ class TestSchezer < Test::Unit::TestCase
         end
         return mock
       end
-      make_column_mock = method(:make_column_mock)
+      def make_array_of_element_mocks(type, num_elements)
+        mocks = Array.new
+        num_elements.times do |i|
+          mocks << make_element_mock(type, type + i.to_s)
+        end
+        mocks
+      end
+      make_array_of_element_mocks = method(:make_array_of_element_mocks)
 
       table_schema = make_empty_table_schema('table1')
       table_schema.instance_eval do
-        @columns = Array.new
-        3.times do |i|
-          @columns << make_column_mock.call("column#{i}")
-        end
+        @columns      = make_array_of_element_mocks.call('col', 3)
+        @unique_keys  = make_array_of_element_mocks.call('unq', 2)
+        @foreign_keys = make_array_of_element_mocks.call('frg', 2)
+        @keys         = make_array_of_element_mocks.call('key', 2)
+        @engine          = 'oracle'
+        @default_charset = 'euc-jp'
+        @collate         = 'jaJp'
+        @max_rows        = '876'
+        @comment         = 'Virtual schema for tests'
       end
 
       return table_schema
     end
     private :make_table_schema_for_test_to_xml
+
+  def test_all_columns_comments_blank_of_class_table_schema
+    do_test_all_columns_comments_blank_of_class_table_schema([false]            , false)
+    do_test_all_columns_comments_blank_of_class_table_schema([true, false]      , false)
+    do_test_all_columns_comments_blank_of_class_table_schema([true, true, false], false)
+    do_test_all_columns_comments_blank_of_class_table_schema([true]             , true)
+    do_test_all_columns_comments_blank_of_class_table_schema([true, true]       , true)
+    do_test_all_columns_comments_blank_of_class_table_schema([true, true, true] , true)
+  end
+
+    def do_test_all_columns_comments_blank_of_class_table_schema(bools, expected)
+      assert_equal = method(:assert_equal)
+
+      table_schema = make_empty_table_schema
+      table_schema.instance_eval do
+        @columns = Array.new
+        bools.map do |bool|
+          column_mock = Object.new
+          column_mock.instance_variable_set(:@is_comment_blank, bool)
+          def column_mock.comment_blank?
+            @is_comment_blank
+          end
+          @columns << column_mock
+        end
+
+        assert_equal.call(expected, all_columns_comments_blank?, "TableSchema#all_columns_comments_blank?")
+      end
+    end
+    private :do_test_all_columns_comments_blank_of_class_table_schema
 end
 

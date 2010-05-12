@@ -237,9 +237,9 @@ class TableSchema
       keys = Array.new
       keys << 'PRI' if @primary_keys.include?(column.name)
       keys << 'FK'  if @foreign_keys.map {|key| key.name }.include?(column.name)
-      map_items[INDEX_KEYS] =  keys.join(',')
+      map_items[INDEX_KEYS] = keys.join(',')
       map_items[INDEX_DEFAULT] = column.default || ''
-      map_items[INDEX_EXTRA] = column.auto_increment? ? ITEMS_AUTO_INCREMENT : ''
+      map_items[INDEX_EXTRA]   = column.auto_increment? ? ITEMS_AUTO_INCREMENT : ''
       map_items[INDEX_COMMENT] = column.comment || ""
 
       return map_items
