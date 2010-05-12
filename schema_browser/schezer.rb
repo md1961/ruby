@@ -246,7 +246,7 @@ class TableSchema
     end
 
     def parse_raw_line(line, capitalizes_types)
-      if @name.nil?
+      unless @name
         @name = get_table_name_at_top(line)
         return
       end

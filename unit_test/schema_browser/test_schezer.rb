@@ -1885,4 +1885,21 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal("virutal column 'columnB'",
                          map_items[TableSchema::INDEX_COMMENT], "TableSchema#to_map_table_items[:comment]")
   end
+
+  def test_parse_raw_line_of_class_table_schema
+    table_schema = make_empty_table_schema
+    def table_schema.get_table_name_at_top(line)
+      return /name/ =~ line ? 'table1' : nil
+    end
+
+    assert_equal = method(:assert_equal)
+    table_schema.instance_eval do
+      @name = nil
+      parse_raw_line('name', nil)
+      assert_equal.call('table1', @name, "Table name from parse_raw_line()")
+    end
+
+    #TODO: override ColumnSchema.parse()
+  end
+
 end
