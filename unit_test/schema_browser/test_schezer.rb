@@ -1824,5 +1824,65 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
     private :do_test_all_columns_comments_blank_of_class_table_schema
-end
 
+  def test_to_map_table_items_of_class_table_schema
+    name = 'columnA'
+    column_schema = make_empty_column_schema(name, type='int', auto_increment=true)
+
+    column_schema.instance_eval do
+      @not_null = true
+      @default = '9999'
+      @comment = "virutal column 'columnA'"
+    end
+
+    table_schema = make_empty_table_schema
+    map_items = nil
+    table_schema.instance_eval do
+      @primary_keys = [name]
+      f_key = Object.new
+      f_key.instance_variable_set(:@name, name)
+      def f_key.name; @name; end
+      @foreign_keys = [f_key]
+      map_items = to_map_table_items(column_schema)
+    end
+
+    expected_not_null = TableSchema::ITEMS_NOT_NULL
+    expected_auto_inc = TableSchema::ITEMS_AUTO_INCREMENT
+    assert_equal(name                      , map_items[TableSchema::INDEX_NAME]   , "TableSchema#to_map_table_items[:name]")
+    assert_equal(type                      , map_items[TableSchema::INDEX_TYPE]   , "TableSchema#to_map_table_items[:type]")
+    assert_equal(expected_not_null         , map_items[TableSchema::INDEX_NULL]   , "TableSchema#to_map_table_items[:null]")
+    assert_equal("PRI,FK"                  , map_items[TableSchema::INDEX_KEYS]   , "TableSchema#to_map_table_items[:keys]")
+    assert_equal('9999'                    , map_items[TableSchema::INDEX_DEFAULT], "TableSchema#to_map_table_items[:default]")
+    assert_equal(expected_auto_inc         , map_items[TableSchema::INDEX_EXTRA]  , "TableSchema#to_map_table_items[:extra]")
+    assert_equal("virutal column 'columnA'", map_items[TableSchema::INDEX_COMMENT], "TableSchema#to_map_table_items[:comment]")
+
+    name = 'columnB'
+    column_schema = make_empty_column_schema(name, type='char', auto_increment=false)
+
+    column_schema.instance_eval do
+      @not_null = false
+      @default = '9999'
+      @comment = "virutal column 'columnB'"
+    end
+
+    table_schema = make_empty_table_schema
+    map_items = nil
+    table_schema.instance_eval do
+      @primary_keys = ['column_other']
+      f_key = Object.new
+      f_key.instance_variable_set(:@name, 'column_other')
+      def f_key.name; @name; end
+      @foreign_keys = [f_key]
+      map_items = to_map_table_items(column_schema)
+    end
+
+    assert_equal(name  , map_items[TableSchema::INDEX_NAME]   , "TableSchema#to_map_table_items[:name]")
+    assert_equal(type  , map_items[TableSchema::INDEX_TYPE]   , "TableSchema#to_map_table_items[:type]")
+    assert_equal(''    , map_items[TableSchema::INDEX_NULL]   , "TableSchema#to_map_table_items[:null]")
+    assert_equal(""    , map_items[TableSchema::INDEX_KEYS]   , "TableSchema#to_map_table_items[:keys]")
+    assert_equal('9999', map_items[TableSchema::INDEX_DEFAULT], "TableSchema#to_map_table_items[:default]")
+    assert_equal(''    , map_items[TableSchema::INDEX_EXTRA]  , "TableSchema#to_map_table_items[:extra]")
+    assert_equal("virutal column 'columnB'",
+                         map_items[TableSchema::INDEX_COMMENT], "TableSchema#to_map_table_items[:comment]")
+  end
+end
