@@ -260,6 +260,9 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal(expected_lines.size, actual_lines.size, message && "#{message} (No. of lines)")
       line_no = 1
       expected_lines.zip(actual_lines) do |expected, actual|
+        [expected, actual].each do |line|
+          line.gsub!(/(AUTO_INCREMENT=)(\d+)/i, '\\1')
+        end
         assert_equal(expected, actual, message && "#{message} (line ##{line_no})")
         line_no += 1
       end
@@ -1899,7 +1902,15 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal.call('table1', @name, "Table name from parse_raw_line()")
     end
 
-    #TODO: override ColumnSchema.parse()
+    raw_line = "`column2` int"
+    table_schema.instance_eval do
+      column1 = Object.new
+      def column1.name; 'column1'; end
+      @columns = [column1]
+
+      parse_raw_line(raw_line, false)
+      assert_equal.call(%w(column1 column2), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+    end
   end
 
 end
