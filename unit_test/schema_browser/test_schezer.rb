@@ -1916,7 +1916,7 @@ class TestSchezer < Test::Unit::TestCase
     assert       = method(:assert)
 
     table_schema.instance_eval do
-      parse_raw_line('table_name', nil)
+      parse_raw_line('table_name', capitalizes_types=false)
       assert_equal.call('table1', @name, "Table name from parse_raw_line()")
       assert_equal.call(%w(column1), @columns.map { |c| c.name })
       assert.call(! @has_key)
@@ -1925,28 +1925,136 @@ class TestSchezer < Test::Unit::TestCase
 
     raw_line = "`column2` int"
     table_schema.instance_eval do
-      parse_raw_line(raw_line, false)
+      parse_raw_line(raw_line, capitalizes_types=false)
       assert_equal.call('table1', @name, "Table name from parse_raw_line()")
       assert_equal.call(%w(column1 column2), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+      assert_equal.call('int', @columns[-1].type, "Type of the column added last")
+      assert.call(! @has_key)
+      assert.call(! @has_table_options)
+    end
+
+    raw_line = "`column3` int"
+    table_schema.instance_eval do
+      parse_raw_line(raw_line, capitalizes_types=true)
+      assert_equal.call('table1', @name, "Table name from parse_raw_line()")
+      assert_equal.call(%w(column1 column2 column3), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+      assert_equal.call('INT', @columns[-1].type, "Type of the column added last")
       assert.call(! @has_key)
       assert.call(! @has_table_options)
     end
 
     table_schema.instance_eval do
-      parse_raw_line('key', false)
+      parse_raw_line('key', capitalizes_types=false)
       assert_equal.call('table1', @name, "Table name from parse_raw_line()")
-      assert_equal.call(%w(column1 column2), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+      assert_equal.call(%w(column1 column2 column3), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
       assert.call(@has_key)
       assert.call(! @has_table_options)
     end
 
     table_schema.instance_eval do
-      parse_raw_line('options', false)
+      parse_raw_line('options', capitalizes_types=false)
       assert_equal.call('table1', @name, "Table name from parse_raw_line()")
-      assert_equal.call(%w(column1 column2), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+      assert_equal.call(%w(column1 column2 column3), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
       assert.call(@has_key)
       assert.call(@has_table_options)
     end
   end
 
+  def test_get_key_raises_exception
+    table_schema = make_empty_table_schema
+
+    line = "  PRIMARY KEY (`columnA`),"
+    msg = "DuplicatePrimaryKeyException should have been raised"
+    assert_raise(DuplicatePrimaryKeyException, msg) do
+      table_schema.instance_eval do
+        @primary_keys = %w(pk)
+        get_key(line)
+      end
+    end
+
+    line = "  PRIMARY KEY (`columnA`,`columnB`),"
+    msg = "DuplicatePrimaryKeyException should have been raised"
+    assert_raise(DuplicatePrimaryKeyException, msg) do
+      table_schema.instance_eval do
+        @primary_keys = %w(pk)
+        get_key(line)
+      end
+    end
+  end
+
+  def test_get_key_for_primary_keys
+    table_schema = make_empty_table_schema
+
+    assert_equal = method(:assert_equal)
+
+    line = "  PRIMARY KEY (`columnA`),"
+    table_schema.instance_eval do
+      get_key(line)
+      assert_equal.call(%w(columnA), @primary_keys, "@primary_keys")
+    end
+
+    line = "  PRIMARY KEY (`columnA`,`columnB`,`columnC`),"
+    table_schema.instance_eval do
+      @primary_keys = Array.new
+      get_key(line)
+      assert_equal.call(%w(columnA columnB columnC), @primary_keys, "@primary_keys")
+    end
+  end
+
+  def test_get_key_for_keys
+    table_schema = make_empty_table_schema
+
+    assert_equal = method(:assert_equal)
+
+    line = "  KEY `key1` (`columnA`),"
+    table_schema.instance_eval do
+      @primary_keys = %w(pk)
+      get_key(line)
+      assert_equal.call(1, @keys.size, "No. of keys")
+      assert_equal.call('key1', @keys[0].name, "key name")
+      column_names = @keys[0].column_names
+      assert_equal.call(1, column_names.size, "No. of keys")
+      assert_equal.call('columnA', column_names[0], "column name")
+    end
+
+    line = "  KEY `key2` (`columnA`,`columnB`,`columnC`),"
+    table_schema.instance_eval do
+      get_key(line)
+      assert_equal.call(2, @keys.size, "No. of keys")
+      assert_equal.call('key1', @keys[0].name, "key name")
+      assert_equal.call('key2', @keys[1].name, "key name")
+      column_names = @keys[0].column_names
+      assert_equal.call(1, column_names.size, "No. of keys")
+      assert_equal.call('columnA', column_names[0], "column name")
+      column_names = @keys[1].column_names
+      assert_equal.call(3, column_names.size, "No. of keys")
+      assert_equal.call(%w(columnA columnB columnC), column_names, "column names")
+    end
+
+    line = "  UNIQUE KEY `unique1` (`columnI`),"
+    table_schema.instance_eval do
+      @primary_keys = %w(pk)
+      get_key(line)
+      assert_equal.call(1, @unique_keys.size, "No. of unique keys")
+      assert_equal.call('unique1', @unique_keys[0].name, "key name")
+      column_names = @unique_keys[0].column_names
+      assert_equal.call(1, column_names.size, "No. of unique keys")
+      assert_equal.call('columnI', column_names[0], "column name")
+    end
+
+    line = "  UNIQUE KEY `unique2` (`columnI`,`columnJ`,`columnK`),"
+    table_schema.instance_eval do
+      get_key(line)
+      assert_equal.call(2, @unique_keys.size, "No. of unique keys")
+      assert_equal.call('unique1', @unique_keys[0].name, "key name")
+      assert_equal.call('unique2', @unique_keys[1].name, "key name")
+      column_names = @unique_keys[0].column_names
+      assert_equal.call(1, column_names.size, "No. of unique keys")
+      assert_equal.call('columnI', column_names[0], "column name")
+      column_names = @unique_keys[1].column_names
+      assert_equal.call(3, column_names.size, "No. of unique keys")
+      assert_equal.call(%w(columnI columnJ columnK), column_names, "column names")
+    end
+  end
 end
+
