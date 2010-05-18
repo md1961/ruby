@@ -2010,6 +2010,7 @@ class TestSchezer < Test::Unit::TestCase
     table_schema.instance_eval do
       @primary_keys = %w(pk)
       get_key(line)
+      assert_equal.call(%w(pk), @primary_keys, "primary keys")
       assert_equal.call(1, @keys.size, "No. of keys")
       assert_equal.call('key1', @keys[0].name, "key name")
       column_names = @keys[0].column_names
@@ -2020,6 +2021,7 @@ class TestSchezer < Test::Unit::TestCase
     line = "  KEY `key2` (`columnA`,`columnB`,`columnC`),"
     table_schema.instance_eval do
       get_key(line)
+      assert_equal.call(%w(pk), @primary_keys, "primary keys")
       assert_equal.call(2, @keys.size, "No. of keys")
       assert_equal.call('key1', @keys[0].name, "key name")
       assert_equal.call('key2', @keys[1].name, "key name")
@@ -2033,8 +2035,8 @@ class TestSchezer < Test::Unit::TestCase
 
     line = "  UNIQUE KEY `unique1` (`columnI`),"
     table_schema.instance_eval do
-      @primary_keys = %w(pk)
       get_key(line)
+      assert_equal.call(%w(pk), @primary_keys, "primary keys")
       assert_equal.call(1, @unique_keys.size, "No. of unique keys")
       assert_equal.call('unique1', @unique_keys[0].name, "key name")
       column_names = @unique_keys[0].column_names
@@ -2045,6 +2047,7 @@ class TestSchezer < Test::Unit::TestCase
     line = "  UNIQUE KEY `unique2` (`columnI`,`columnJ`,`columnK`),"
     table_schema.instance_eval do
       get_key(line)
+      assert_equal.call(%w(pk), @primary_keys, "primary keys")
       assert_equal.call(2, @unique_keys.size, "No. of unique keys")
       assert_equal.call('unique1', @unique_keys[0].name, "key name")
       assert_equal.call('unique2', @unique_keys[1].name, "key name")
@@ -2054,6 +2057,54 @@ class TestSchezer < Test::Unit::TestCase
       column_names = @unique_keys[1].column_names
       assert_equal.call(3, column_names.size, "No. of unique keys")
       assert_equal.call(%w(columnI columnJ columnK), column_names, "column names")
+    end
+  end
+
+  def test_get_key_for_foreign_keys
+    table_schema = make_empty_table_schema
+
+    assert_equal = method(:assert_equal)
+
+    line = "  CONSTRAINT `fk1` FOREIGN KEY (`ext_id`) REFERENCES `ext` (`id`),  "
+    table_schema.instance_eval do
+      @primary_keys = %w(pk)
+      get_key(line)
+      assert_equal.call(%w(pk), @primary_keys, "primary keys")
+      assert_equal.call(1, @foreign_keys.size, "No. of foreign keys")
+      foreign_key = @foreign_keys[0]
+      assert_equal.call('fk1'   , foreign_key.name, "foreign key name")
+      assert_equal.call('ext_id', foreign_key.column_name, "column name of foreign key")
+      assert_equal.call('ext'   , foreign_key.ref_table_name, "ref. table name of foreign key")
+      assert_equal.call('id'    , foreign_key.ref_column_name, "ref. column name of foreign key")
+    end
+
+    line = "  CONSTRAINT `fk2` FOREIGN KEY (`out_id`) REFERENCES `out` (`id`),  "
+    table_schema.instance_eval do
+      @primary_keys = %w(pk)
+      get_key(line)
+      assert_equal.call(%w(pk), @primary_keys, "primary keys")
+      assert_equal.call(2, @foreign_keys.size, "No. of foreign keys")
+      foreign_key = @foreign_keys[0]
+      assert_equal.call('fk1'   , foreign_key.name, "foreign key name")
+      assert_equal.call('ext_id', foreign_key.column_name, "column name of foreign key")
+      assert_equal.call('ext'   , foreign_key.ref_table_name, "ref. table name of foreign key")
+      assert_equal.call('id'    , foreign_key.ref_column_name, "ref. column name of foreign key")
+      foreign_key = @foreign_keys[1]
+      assert_equal.call('fk2'   , foreign_key.name, "foreign key name")
+      assert_equal.call('out_id', foreign_key.column_name, "column name of foreign key")
+      assert_equal.call('out'   , foreign_key.ref_table_name, "ref. table name of foreign key")
+      assert_equal.call('id'    , foreign_key.ref_column_name, "ref. column name of foreign key")
+    end
+  end
+
+  def test_get_key_with_no_match
+    table_schema = make_empty_table_schema
+
+    assert = method(:assert)
+
+    line = "  No match  "
+    table_schema.instance_eval do
+      assert.call(! get_key(line))
     end
   end
 end

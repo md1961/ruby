@@ -622,6 +622,8 @@ class ForeignKey
   DEFAULT_ON_UPDATE = "RESTRICT"
   DEFAULT_ON_DELETE = "RESTRICT"
 
+  #TODO: :column_name => column_names, use \s+\(`([\w`,\ ]+)`\) in RE
+
   RE = %r!
     ^\s*CONSTRAINT\s+`(\w+)`
     \s+FOREIGN\ KEY\s+\(`(\w+)`\)
