@@ -1891,25 +1891,61 @@ class TestSchezer < Test::Unit::TestCase
 
   def test_parse_raw_line_of_class_table_schema
     table_schema = make_empty_table_schema
-    def table_schema.get_table_name_at_top(line)
-      return /name/ =~ line ? 'table1' : nil
-    end
 
-    assert_equal = method(:assert_equal)
-    table_schema.instance_eval do
-      @name = nil
-      parse_raw_line('name', nil)
-      assert_equal.call('table1', @name, "Table name from parse_raw_line()")
-    end
-
-    raw_line = "`column2` int"
     table_schema.instance_eval do
       column1 = Object.new
       def column1.name; 'column1'; end
       @columns = [column1]
+      @has_key = false
+      @has_table_options = false
+    end
 
+    def table_schema.get_table_name_at_top(line)
+      return line == 'table_name' ? 'table1' : nil
+    end
+
+    def table_schema.get_key(line)
+      @has_key = true if line == 'key'
+    end
+
+    def table_schema.get_table_options(line)
+      @has_table_options = true
+    end
+
+    assert_equal = method(:assert_equal)
+    assert       = method(:assert)
+
+    table_schema.instance_eval do
+      parse_raw_line('table_name', nil)
+      assert_equal.call('table1', @name, "Table name from parse_raw_line()")
+      assert_equal.call(%w(column1), @columns.map { |c| c.name })
+      assert.call(! @has_key)
+      assert.call(! @has_table_options)
+    end
+
+    raw_line = "`column2` int"
+    table_schema.instance_eval do
       parse_raw_line(raw_line, false)
+      assert_equal.call('table1', @name, "Table name from parse_raw_line()")
       assert_equal.call(%w(column1 column2), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+      assert.call(! @has_key)
+      assert.call(! @has_table_options)
+    end
+
+    table_schema.instance_eval do
+      parse_raw_line('key', false)
+      assert_equal.call('table1', @name, "Table name from parse_raw_line()")
+      assert_equal.call(%w(column1 column2), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+      assert.call(@has_key)
+      assert.call(! @has_table_options)
+    end
+
+    table_schema.instance_eval do
+      parse_raw_line('options', false)
+      assert_equal.call('table1', @name, "Table name from parse_raw_line()")
+      assert_equal.call(%w(column1 column2), @columns.map { |c| c.name }, "@columns update after parse_raw_line()")
+      assert.call(@has_key)
+      assert.call(@has_table_options)
     end
   end
 
