@@ -959,6 +959,17 @@ class Schezer
     end
   end
 
+  def close_connections
+    begin
+      @conn .close if @conn
+    rescue
+    end
+    begin
+      @conn2.close if @conn2
+    rescue
+    end
+  end
+
   def to_s
     return "host = #{@host}, username = #{@username}, " \
          + "password = #{Kuma::StrUtil.non_empty_string?(@password) ? '*' * 8 : '(none)'}, database = #{@database}, " \
@@ -1534,6 +1545,8 @@ class Schezer
           "-f DB_config_filename -e environment [-g environment_2] [options] command [table_name(s)|all]"
 
     def exit_with_help(msg=nil)
+      close_connections
+
       puts msg if msg
       puts
       puts @opt_parser.help
@@ -1542,6 +1555,8 @@ class Schezer
     end
 
     def exit_with_msg(msg=nil, exit_no=1)
+      close_connections
+
       $stderr.puts msg if msg
       exit(exit_no)
     end
@@ -1645,7 +1660,11 @@ end
 if __FILE__ == $0
   schezer = Schezer.new(ARGV)
 
-  schezer.execute
+  begin
+    schezer.execute
+  ensure
+    schezer.close_connections
+  end
 end
 
 

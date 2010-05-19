@@ -2102,9 +2102,52 @@ class TestSchezer < Test::Unit::TestCase
 
     assert = method(:assert)
 
-    line = "  No match  "
+    line = ""
     table_schema.instance_eval do
       assert.call(! get_key(line))
+    end
+  end
+
+  def test_set_primary_keys_to_columns
+    table_schema = make_empty_table_schema
+
+    columns = Array.new
+    columns << make_empty_column_schema('columnA')
+    columns << make_empty_column_schema('columnB')
+    columns << make_empty_column_schema('columnC')
+    columns << make_empty_column_schema('columnD')
+    table_schema.instance_eval do
+      @columns = columns
+    end
+
+    assert = method(:assert)
+
+    table_schema.instance_eval do
+      @primary_keys = %w(columnE columnF)
+      set_primary_keys_to_columns
+      @columns.each do |column|
+        assert.call(! column.primary_key?)
+      end
+    end
+
+    table_schema.instance_eval do
+      @primary_keys = %w(columnA columnE columnF)
+      set_primary_keys_to_columns
+      @columns.each do |column|
+        if column.name == 'columnA'
+          assert.call(  column.primary_key?)
+        else
+          assert.call(! column.primary_key?)
+        end
+      end
+    end
+
+    table_schema.instance_eval do
+      @primary_keys = %w(columnB columnC columnD)
+      set_primary_keys_to_columns
+      @columns.each do |column|
+        assert.call(column.primary_key?)
+      end
     end
   end
 end
