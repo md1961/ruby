@@ -2150,5 +2150,52 @@ class TestSchezer < Test::Unit::TestCase
       end
     end
   end
+
+  def test_sort_foreign_keys_by_column_order_with_empty
+    table_schema = make_empty_table_schema
+
+    assert_equal = method(:assert_equal)
+
+    table_schema.instance_eval do
+      @foreign_keys = Array.new
+      sort_foreign_keys_by_column_order
+      assert_equal.call([], @foreign_keys, "Empty @foreign_keys should have been unchanged")
+    end
+  end
+
+  def test_sort_foreign_keys_by_column_order_with_empty
+    table_schema = make_empty_table_schema
+
+    make_fk      = method(:make_foreign_key_mock_with_column_name)
+    make_column  = method(:make_empty_column_schema)
+    assert_equal = method(:assert_equal)
+
+    table_schema.instance_eval do
+      @foreign_keys = Array.new
+      %w(C B D A).each do |ch|
+        @foreign_keys << make_fk.call('column' + ch)
+      end
+
+      @columns = Array.new
+      %w(A B C D).each do |ch|
+        @columns << make_column.call('column' + ch)
+      end
+
+      sort_foreign_keys_by_column_order
+      expected = %w(A B C D).map { |ch| 'column' + ch }
+      actual   = @foreign_keys.map { |fk| fk.column_name }
+      assert_equal.call(expected, actual, "@foreign_keys sorted according to @columns")
+    end
+  end
+
+    def make_foreign_key_mock_with_column_name(column_name)
+      mock = Object.new
+      mock.instance_variable_set(:@column_name, column_name)
+      def mock.column_name
+        @column_name
+      end
+      return mock
+    end
+    private :make_foreign_key_mock_with_column_name
 end
 
