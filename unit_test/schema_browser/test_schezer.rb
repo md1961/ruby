@@ -2235,7 +2235,44 @@ class TestSchezer < Test::Unit::TestCase
       assert.call(! @columns[0].comment_blank?, "Should be added with a comment if primary key with auto_increment")
       assert_equal.call(TableSchema::DEFAULT_COLUMN_COMMENT_FOR_ID, @columns[0].comment, "Added comment")
     end
+  end
 
+  def test_get_table_name_at_top_no_match
+    table_schema = make_empty_table_schema
+
+    [
+      "CREATE TABLE `name` ",
+      "CREATE TABLE `table name` (",
+      "CREATE TABLE 'name' (",
+    ].each do |line|
+      msg = "Match for '#{line}'"
+      assert_raise(CannotGetTableNameException, msg) do
+        table_schema.instance_eval do
+          get_table_name_at_top(line)
+        end
+      end
+    end
+  end
+
+  def test_get_table_name_at_top
+    table_schema = make_empty_table_schema
+
+    assert_equal = method(:assert_equal)
+
+    [
+      "CREATE TABLE `name` (",
+      "create table `name` (",
+      "  CREATE   TABLE   `name`   (  ",
+    ].each do |line|
+      begin
+        table_schema.instance_eval do
+          name = get_table_name_at_top(line)
+          assert_equal.call('name', name, "Table name from '#{line}'")
+        end
+      rescue CannotGetTableNameException
+        flunk("No match for '#{line}'")
+      end
+    end
   end
 
 end

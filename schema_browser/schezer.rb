@@ -308,7 +308,7 @@ class TableSchema
       column.comment = DEFAULT_COLUMN_COMMENT_FOR_ID if column.comment_blank?
     end
 
-    RE_TABLE_NAME = /^\s*CREATE TABLE `(\w+)` \(\s*$/
+    RE_TABLE_NAME = /^\s*CREATE +TABLE +`(\w+)` +\(\s*$/i
 
     def get_table_name_at_top(line)
       m = Regexp.compile(RE_TABLE_NAME).match(line)
