@@ -259,7 +259,7 @@ class TableSchema
       get_table_options(line)
     end
 
-    RE_PK = /^\s*PRIMARY KEY\s+\(`([\w`, ]+)`\),?\s*$/
+    RE_PK = /^\s*PRIMARY KEY\s+\(`([\w`, ]+)`\),?\s*$/i
 
     def get_key(line)
       if m = Regexp.compile(RE_PK).match(line)
@@ -323,7 +323,7 @@ class TableSchema
       (?:\s+COLLATE=(\w+))?
       (?:\s+MAX_ROWS=(\d+))?
       (?:\s+COMMENT='(.+)')?\s*$
-    !x
+    !xi
 
     def get_table_options(line)
       m = Regexp.compile(RE_TABLE_OPTIONS).match(line)

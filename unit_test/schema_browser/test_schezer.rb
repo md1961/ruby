@@ -2245,7 +2245,7 @@ class TestSchezer < Test::Unit::TestCase
       "CREATE TABLE `table name` (",
       "CREATE TABLE 'name' (",
     ].each do |line|
-      msg = "Match for '#{line}'"
+      msg = "Unexpected match for line \"#{line}\""
       assert_raise(CannotGetTableNameException, msg) do
         table_schema.instance_eval do
           get_table_name_at_top(line)
@@ -2267,13 +2267,45 @@ class TestSchezer < Test::Unit::TestCase
       begin
         table_schema.instance_eval do
           name = get_table_name_at_top(line)
-          assert_equal.call('name', name, "Table name from '#{line}'")
+          assert_equal.call('name', name, "Table name from line \"#{line}\"")
         end
       rescue CannotGetTableNameException
-        flunk("No match for '#{line}'")
+        flunk("No match for line \"#{line}\"")
       end
     end
   end
 
+  def test_get_table_options_no_match
+    table_schema = make_empty_table_schema
+
+    msg = "CannotGetTableOptionsException should have been raised"
+    assert_raise(CannotGetTableOptionsException, msg) do
+      table_schema.instance_eval do
+        get_table_options("")
+      end
+    end
+  end
+
+  def test_get_table_options
+    table_schema = make_empty_table_schema
+
+    assert_equal = method(:assert_equal)
+
+    line = "  )  engine=Honda  auto_increment=23  default charset=jis97" \
+         + "  collate=england  max_rows=999  comment='No comment'  "
+    begin
+      table_schema.instance_eval do
+        get_table_options(line)
+        assert_equal.call('Honda'     , @engine         , "Engine")
+        assert_equal.call('23'        , @auto_increment , "AUTO_INCREMENT")
+        assert_equal.call('jis97'     , @default_charset, "Default charset")
+        assert_equal.call('england'   , @collate        , "Collate")
+        assert_equal.call('999'       , @max_rows       , "MAX_ROWS")
+        assert_equal.call('No comment', @comment        , "Comment")
+      end
+    rescue CannotGetTableOptionsException
+      flunk("No match for line \"#{line}\"")
+    end
+  end
 end
 
