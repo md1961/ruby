@@ -2197,5 +2197,46 @@ class TestSchezer < Test::Unit::TestCase
       return mock
     end
     private :make_foreign_key_mock_with_column_name
+
+  def test_set_default_column_comment_for_id
+    table_schema = make_empty_table_schema
+
+    assert = method(:assert)
+
+    columns = Array.new
+    columns << make_empty_column_schema('id'  , 'no type', auto_increment=true )
+    columns << make_empty_column_schema('name', 'no type', auto_increment=false)
+    table_schema.instance_eval do
+      @columns = columns
+      assert.call(all_columns_comments_blank?, "Confirmation of the initial status")
+      set_default_column_comment_for_id
+      assert.call(all_columns_comments_blank?, "Should be no change if @primary_keys.size > 1")
+    end
+
+    table_schema.instance_eval do
+      @primary_keys = %w(1 2)
+      set_default_column_comment_for_id
+      assert.call(all_columns_comments_blank?, "Should be no change if all_columns_comments_blank?")
+      @columns[1].comment = "This is COLUMN `name`"
+      assert.call(! all_columns_comments_blank?, "Confirmation of the column comment addition")
+    end
+
+    table_schema.instance_eval do
+      @primary_keys = %w(name)
+      set_default_column_comment_for_id
+      assert.call(@columns[0].comment_blank?, "Should be no change if primary key is not auto_increment")
+    end
+
+    assert_equal = method(:assert_equal)
+
+    table_schema.instance_eval do
+      @primary_keys = %w(id)
+      set_default_column_comment_for_id
+      assert.call(! @columns[0].comment_blank?, "Should be added with a comment if primary key with auto_increment")
+      assert_equal.call(TableSchema::DEFAULT_COLUMN_COMMENT_FOR_ID, @columns[0].comment, "Added comment")
+    end
+
+  end
+
 end
 
