@@ -2278,15 +2278,38 @@ class TestSchezer < Test::Unit::TestCase
   def test_get_table_options_no_match
     table_schema = make_empty_table_schema
 
+    line = ""
     msg = "CannotGetTableOptionsException should have been raised"
     assert_raise(CannotGetTableOptionsException, msg) do
       table_schema.instance_eval do
-        get_table_options("")
+        get_table_options(line)
       end
     end
   end
 
   def test_get_table_options
+    table_schema = make_empty_table_schema
+
+    assert_equal = method(:assert_equal)
+    assert_nil   = method(:assert_nil  )
+
+    line = ") engine=Honda auto_increment=23 default charset=jis97"
+    begin
+      table_schema.instance_eval do
+        get_table_options(line)
+        assert_equal.call('Honda', @engine         , "Engine")
+        assert_equal.call('23'   , @auto_increment , "AUTO_INCREMENT")
+        assert_equal.call('jis97', @default_charset, "Default charset")
+        assert_nil  .call(         @collate        , "Collate")
+        assert_nil  .call(         @max_rows       , "MAX_ROWS")
+        assert_nil  .call(         @comment        , "Comment")
+      end
+    rescue CannotGetTableOptionsException
+      flunk("No match for line \"#{line}\"")
+    end
+  end
+
+  def test_get_table_options_full
     table_schema = make_empty_table_schema
 
     assert_equal = method(:assert_equal)
@@ -2307,5 +2330,52 @@ class TestSchezer < Test::Unit::TestCase
       flunk("No match for line \"#{line}\"")
     end
   end
+
+  def test_add_table_options_as_xml
+    table_schema = make_empty_table_schema
+
+    xml_doc = prepare_xml_doc_with_root('root')
+
+    table_schema.instance_eval do
+      @engine          = 'Honda'
+      @auto_increment  = '23'
+      @default_charset = 'jis97'
+      @collate         = 'england'
+      @max_rows        = '999'
+      @comment         = 'No comment'
+
+      add_table_options_as_xml(xml_doc.root)
+    end
+
+    expected_lines = [
+      "  <?xml version='1.0' encoding='UTF-8'?>",
+      "  <root>",
+      "    <table_options>",
+      "      <engine>Honda</engine>",
+      "      <default_charset>jis97</default_charset>",
+      "      <collate>england</collate>",
+      "      <max_rows>999</max_rows>",
+      "      <comment><![CDATA[No comment]]></comment>",
+      "    </table_options>",
+      "  </root>",
+    ]
+
+    actual = Array.new
+    xml_doc.write(actual, indent=1)
+    actual_lines = actual.join.split("\n")
+
+    assert_in_lines(expected_lines, actual_lines, "TableSchema#add_table_options_as_xml()")
+  end
+
+    def prepare_xml_doc_with_root(root_element_name)
+      xml_doc = REXML::Document.new
+      xml_doc.add(REXML::XMLDecl.new(version="1.0", encoding="utf-8"))
+
+      root_element = REXML::Element.new(root_element_name)
+      xml_doc.add_element(root_element)
+
+      return xml_doc
+    end
+    private :prepare_xml_doc_with_root
 end
 
