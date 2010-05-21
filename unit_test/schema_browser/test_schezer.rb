@@ -2399,14 +2399,36 @@ class TestSchezer < Test::Unit::TestCase
     end
   end
 
-    def make_table_schema_mock(column_names=[])
+    def make_table_schema_mock(column_names=[], primary_keys=[])
       mock = Object.new
       mock.instance_variable_set(:@column_names, column_names)
+      mock.instance_variable_set(:@primary_keys, primary_keys)
       def mock.column_names
         @column_names
+      end
+      def mock.primary_keys
+        @primary_keys
       end
       return mock
     end
     private :make_table_schema_mock
+
+  #TODO: Test equals?, which was not finished as of 2010-05-21
+
+  def test_column_names_equals_of_class_table_schema_difference
+    namesABC = %w(columnA columnB columnC)
+    [
+      [[]      , []                         , true ],
+      [%w(id)  , %w(id)                     , true ],
+      [namesABC, %w(columnA columnB columnC), true ],
+      [namesABC, %w(columnA columnB columnD), false],
+      [namesABC, %w(columnI columnB columnC), false],
+    ].each do |column_names1, column_names2, expected|
+      table_schema1 = make_table_schema_mock(column_names1)
+      table_schema2 = make_table_schema_mock(column_names2)
+      ts_diff = TableSchemaDifference.new(table_schema1, table_schema2)
+      assert_equal(expected, ts_diff.column_names_equals?, "TableSchemaDifference#column_names_equals?")
+    end
+  end
 end
 
