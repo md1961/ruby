@@ -2377,5 +2377,36 @@ class TestSchezer < Test::Unit::TestCase
       return xml_doc
     end
     private :prepare_xml_doc_with_root
+
+  def test_constructor_of_class_table_schema_difference
+    assert_equal = method(:assert_equal)
+
+    namesABC = %w(columnA columnB columnC)
+    [
+      [namesABC, namesABC                   , []                 , []                         , namesABC           ],
+      [namesABC, %w(columnA columnB columnD), %w(columnC)        , %w(columnD)                , %w(columnA columnB)],
+      [namesABC, %w(columnA columnD columnE), %w(columnB columnC), %w(columnD columnE)        , %w(columnA)        ],
+      [namesABC, %w(columnD columnE columnF), namesABC           , %w(columnD columnE columnF), []                 ],
+    ].each do |column_names1, column_names2, column_names_only1, column_names_only2, column_names_both|
+      table_schema1 = make_table_schema_mock(column_names1)
+      table_schema2 = make_table_schema_mock(column_names2)
+      ts_diff = TableSchemaDifference.new(table_schema1, table_schema2)
+      ts_diff.instance_eval do
+        assert_equal.call(column_names_only1, @column_names_only1, "columns in only1")
+        assert_equal.call(column_names_only2, @column_names_only2, "columns in only2")
+        assert_equal.call(column_names_both , @column_names_both , "columns in both" )
+      end
+    end
+  end
+
+    def make_table_schema_mock(column_names=[])
+      mock = Object.new
+      mock.instance_variable_set(:@column_names, column_names)
+      def mock.column_names
+        @column_names
+      end
+      return mock
+    end
+    private :make_table_schema_mock
 end
 
