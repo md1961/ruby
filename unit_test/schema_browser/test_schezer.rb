@@ -2430,5 +2430,38 @@ class TestSchezer < Test::Unit::TestCase
       assert_equal(expected, ts_diff.column_names_equals?, "TableSchemaDifference#column_names_equals?")
     end
   end
+
+  def test_primary_keys_equals_of_class_table_schema_difference
+    [
+      [[]             , []             , true ],
+      [%w(pk1)        , %w(pk1)        , true ],
+      [%w(pk1)        , %w(pk2)        , false],
+      [%w(pk1 pk2)    , %w(pk1 pk2)    , true ],
+      [%w(pk1 pk2)    , %w(pk2 pk1)    , true ],
+      [%w(pk1 pk2 pk3), %w(pk1 pk2 pk3), true ],
+      [%w(pk1 pk2 pk3), %w(pk1 pk3 pk2), true ],
+      [%w(pk1 pk2 pk3), %w(pk2 pk3 pk1), true ],
+      [%w(pk1 pk2 pk3), %w(pk3 pk2 pk1), true ],
+      [%w(pk1 pk2 pk3), %w(pk1 pk2 pk4), false],
+    ].each do |primary_keys1, primary_keys2, expected|
+      table_schema1 = make_table_schema_mock([], primary_keys1)
+      table_schema2 = make_table_schema_mock([], primary_keys2)
+      ts_diff = TableSchemaDifference.new(table_schema1, table_schema2)
+      assert_equal(expected, ts_diff.primary_keys_equals?, "TableSchemaDifference#primary_keys_equals?")
+    end
+  end
+
+  def test_primary_keys_1_or_2_of_class_table_schema_difference
+    [
+      [[]             , []             ],
+      [%w(pk1 pk2 pk3), %w(pk4 pk5 pk6)],
+    ].each do |primary_keys1, primary_keys2|
+      table_schema1 = make_table_schema_mock([], primary_keys1)
+      table_schema2 = make_table_schema_mock([], primary_keys2)
+      ts_diff = TableSchemaDifference.new(table_schema1, table_schema2)
+      assert_equal(primary_keys1, ts_diff.primary_keys1, "TableSchemaDifference#primary_keys1")
+      assert_equal(primary_keys2, ts_diff.primary_keys2, "TableSchemaDifference#primary_keys2")
+    end
+  end
 end
 
