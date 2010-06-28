@@ -623,6 +623,7 @@ class ForeignKey
   DEFAULT_ON_DELETE = "RESTRICT"
 
   #TODO: :column_name => column_names, use \s+\(`([\w`,\ ]+)`\) in RE
+  #  and :ref_column_name => ref_column_names ??
 
   RE = %r!
     ^\s*CONSTRAINT\s+`(\w+)`
@@ -1015,7 +1016,7 @@ class Schezer
       return table_names_expanded.uniq
     end
 
-    MARKER_FOR_REGEXP = %w(* . ^ $ ?)
+    MARKER_FOR_REGEXP = %w(* . ^ $ ? |)
     RE_LITERAL_REGEXP = /^([^\w])(.+)\1$/
 
     def table_name2str_regexp(table_name)
