@@ -1,7 +1,10 @@
 #! /usr/bin/ruby
 
+$KCODE = 'sjis'
 
 require 'kconv'
+require 'jcode'
+
 require 'lib/excel_manipulator'
 
 
@@ -27,6 +30,8 @@ class ProductAnalysisScanner < ExcelManipulator
 
   def write
     puts "Well Name = " + @completion_data.well_name
+    puts "Date Completed = " + @completion_data.date_completed
+    puts "Reservoir Name = " + @completion_data.reservoir_name
   end
 
   TARGET_SHEETNAME = 'SK-1'
@@ -62,8 +67,19 @@ class ProductAnalysisScanner < ExcelManipulator
     end
   end
 
+    def self.zenkaku2hankaku(str)
+      return str.tr('０-９ａ-ｚＡ-Ｚ'.tosjis, '0-9a-zA-Z')
+    end
+
+    def self.check_existence_of(expected, actual, where)
+      exp = expected.tosjis
+      unless actual[0, exp.length] == exp
+        raise IllegalFormatException.new("No '#{exp}' found " + where)
+      end
+    end
+
   class CompletionData
-    attr_reader :well_name
+    attr_reader :well_name, :date_completed, :reservoir_name
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
 
@@ -78,10 +94,11 @@ class ProductAnalysisScanner < ExcelManipulator
         end
 
         row = rows_no_blank[0]
-        @well_name = row[0]
-        unless row[1][0, 10] == '成功年月日'.tosjis
-          raise IllegalFormatException.new("No '#{"成功年月日".tosjis}' in first row")
-        end
+        @well_name = ProductAnalysisScanner.zenkaku2hankaku(row[0])
+        ProductAnalysisScanner.check_existence_of('成功年月日', row[1], "in first row")
+        @date_completed = row[2]
+        ProductAnalysisScanner.check_existence_of('層名', row[3].gsub(/\s/, ''), "in first row")
+        @reservoir_name = row[4]
 
       end
       private :read
