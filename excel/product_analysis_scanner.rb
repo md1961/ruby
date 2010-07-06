@@ -15,6 +15,7 @@ class ProductAnalysisScanner < ExcelManipulator
   def initialize
     super
     @completion_data = nil
+    @is_index_checked = false
 
   end
 
@@ -29,7 +30,10 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
   def to_s
-    return @completion_data.to_s
+    strs = Array.new
+    strs << @completion_data.to_s
+    strs << "Pressure Unit = #{GasAnalysisData.unit_pressure}"
+    return strs.join("\n")
   end
 
   TARGET_SHEETNAME = 'SK-1'
@@ -55,6 +59,11 @@ class ProductAnalysisScanner < ExcelManipulator
         rows << cells
         if @completion_data.nil? and rows.size == CompletionData::NUM_ROWS_NEEDED_TO_INITIALIZE
           @completion_data = CompletionData.new(rows)
+          rows.clear
+        elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == GasAnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
+          GasAnalysisData.read_index(rows)
+          @is_index_checked = true
+          rows.clear
         end
 
         i += 1
@@ -71,7 +80,8 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def self.check_existence_of(expected, actual, where)
       exp = expected.tosjis
-      unless actual.gsub(/\s/, '')[0, exp.length] == exp
+      act = actual.gsub(/\s/, '').gsub(/#{'　'.tosjis}/, '')
+      unless act[0, exp.length] == exp
         raise IllegalFormatException.new("No '#{exp}' found " + where)
       end
     end
@@ -123,6 +133,37 @@ class ProductAnalysisScanner < ExcelManipulator
 
       end
       private :read
+  end
+
+  class GasAnalysisData
+
+    def initialize(row)
+    end
+
+    NUM_ROWS_NEEDED_TO_READ_INDEX = 2
+
+    EXPECTED_INDEX = %w(採取年月日 報告番号 ガス量 油量 水量 圧力 温度
+                        CH4 C2H6 C3H8 i-C4H10 n-C4H10 i-C5H12 n-C5H12 C6+ CO2 N2
+                        計算比重 計算熱量 C3以上液化量 摘要 組成合計 計算熱量
+                        M.C.P. ＷＩ(MJ系) Fg Fz Fz 報告日 分析日 採取箇所 産出状況)
+
+    def self.read_index(rows_of_two)
+      row = rows_of_two[0]
+      expected = EXPECTED_INDEX[0].tosjis
+      index = row.index(expected)
+      where = "in index row"
+      raise IllegalFormatException.new("No '#{expected}' at first column " + where) if index.nil?
+      EXPECTED_INDEX[1 .. -1].zip(row[index + 1, EXPECTED_INDEX.length - 1]).each_with_index do |expected_and_actual, i|
+        expected, actual = expected_and_actual
+        ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
+      end
+
+      @@unit_pressure = rows_of_two[1][row.index('圧力'.tosjis)]
+    end
+
+    def self.unit_pressure
+      return @@unit_pressure
+    end
   end
 end
 
