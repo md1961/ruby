@@ -9,14 +9,16 @@ require 'lib/excel_manipulator'
 
 
 class IllegalFormatException < Exception; end
+class IllegalStateException  < Exception; end
 
 class ProductAnalysisScanner < ExcelManipulator
 
   def initialize
     super
-    @completion_data = nil
-    @is_index_checked = false
 
+    @completion_data    = nil
+    @is_index_checked   = false
+    @gas_analysis_datas = Array.new
   end
 
   def scan_all(filenames)
@@ -31,8 +33,14 @@ class ProductAnalysisScanner < ExcelManipulator
 
   def to_s
     strs = Array.new
+
     strs << @completion_data.to_s
     strs << "Pressure Unit = #{GasAnalysisData.unit_pressure}"
+    strs << ""
+    @gas_analysis_datas.each do |gas_data|
+      strs << "Date Sampled = #{gas_data.date_sampled}"
+    end
+
     return strs.join("\n")
   end
 
@@ -61,8 +69,11 @@ class ProductAnalysisScanner < ExcelManipulator
           @completion_data = CompletionData.new(rows)
           rows.clear
         elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == GasAnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
-          GasAnalysisData.read_index(rows)
+          GasAnalysisData.check_index(rows)
           @is_index_checked = true
+          rows.clear
+        elsif @is_index_checked and rows.size == 1
+          @gas_analysis_datas << GasAnalysisData.new(rows[0])
           rows.clear
         end
 
@@ -136,8 +147,32 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
   class GasAnalysisData
+    ATTR_NAMES = [
+      :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature, \
+      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2, \
+      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :c3plus, :note, \
+      :total_compositions, :heat_capacity_calculated_in_mj, \
+      :mcp, :wi, :fg, :fz_standard, :fz_normal, :date_reported, :date_analysed, :sample_point, :production_status,
+    ]
+
+    attr_reader *ATTR_NAMES
+
+    @@index_leftmost = nil
 
     def initialize(row)
+      raise IllegalStateException.new("GasAnalysisData.check_index() has not been called") unless @@index_leftmost
+
+      values = row[@@index_leftmost, ATTR_NAMES.size]
+      ATTR_NAMES.zip(values) do |attr_name, value|
+        instance_variable_set("@#{attr_name}", value)
+      end
+    end
+
+    def to_s
+      strs = Array.new
+      strs << "Date Sampled = #{@date_sampled}"
+
+      return strs.join("\n")
     end
 
     NUM_ROWS_NEEDED_TO_READ_INDEX = 2
@@ -147,13 +182,14 @@ class ProductAnalysisScanner < ExcelManipulator
                         計算比重 計算熱量 C3以上液化量 摘要 組成合計 計算熱量
                         M.C.P. ＷＩ(MJ系) Fg Fz Fz 報告日 分析日 採取箇所 産出状況)
 
-    def self.read_index(rows_of_two)
+    def self.check_index(rows_of_two)
       row = rows_of_two[0]
       expected = EXPECTED_INDEX[0].tosjis
-      index = row.index(expected)
+      @@index_leftmost = row.index(expected)
       where = "in index row"
-      raise IllegalFormatException.new("No '#{expected}' at first column " + where) if index.nil?
-      EXPECTED_INDEX[1 .. -1].zip(row[index + 1, EXPECTED_INDEX.length - 1]).each_with_index do |expected_and_actual, i|
+      raise IllegalFormatException.new("No '#{expected}' at first column " + where) if @@index_leftmost.nil?
+      actuals = row[@@index_leftmost + 1, EXPECTED_INDEX.length - 1]
+      EXPECTED_INDEX[1 .. -1].zip(actuals).each_with_index do |expected_and_actual, i|
         expected, actual = expected_and_actual
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
