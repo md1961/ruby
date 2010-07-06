@@ -1,12 +1,8 @@
 
-require 'win32ole'
+require 'lib/excel_manipulator'
 
 
-class ProductAnalysisScanner
-
-  def initialize
-    @xls = WIN32OLE.new('Excel.Application')
-  end
+class ProductAnalysisScanner < ExcelManipulator
 
   def scan_all(filenames)
     begin
@@ -14,7 +10,7 @@ class ProductAnalysisScanner
         scan(filename)
       end
     ensure
-      @xls.Quit
+      close_excel
     end
   end
 
@@ -22,9 +18,8 @@ class ProductAnalysisScanner
   MAX_ROW = 50
 
   def scan(filename)
-    abs_filename = get_absolute_path(filename)
     begin
-      book = @xls.Workbooks.open(abs_filename)
+      book = open_book(filename)
       sheet = book.Worksheets.Item('SK-1')
       i = 0
       sheet.UsedRange.Rows.each do |row|
@@ -41,12 +36,9 @@ class ProductAnalysisScanner
       book.Close
     end
   end
+end
 
-    def get_absolute_path(filename)
-      fso = WIN32OLE.new('Scripting.FileSystemObject')
-      return fso.GetAbsolutePathName(filename)
-    end
-    private :get_absolute_path
+class CompletionData
 end
 
 
