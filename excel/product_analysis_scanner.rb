@@ -28,10 +28,8 @@ class ProductAnalysisScanner < ExcelManipulator
     end
   end
 
-  def write
-    puts "Well Name = " + @completion_data.well_name
-    puts "Date Completed = " + @completion_data.date_completed
-    puts "Reservoir Name = " + @completion_data.reservoir_name
+  def to_s
+    return @completion_data.to_s
   end
 
   TARGET_SHEETNAME = 'SK-1'
@@ -73,18 +71,30 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def self.check_existence_of(expected, actual, where)
       exp = expected.tosjis
-      unless actual[0, exp.length] == exp
+      unless actual.gsub(/\s/, '')[0, exp.length] == exp
         raise IllegalFormatException.new("No '#{exp}' found " + where)
       end
     end
 
   class CompletionData
-    attr_reader :well_name, :date_completed, :reservoir_name
+    attr_reader :well_name, :date_completed, :reservoir_name, :total_depth, \
+                :perforation_interval_top, :perforation_interval_bottom
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
 
     def initialize(rows)
       read(rows)
+    end
+
+    def to_s
+      strs = Array.new
+      strs << "Well Name          = #{@well_name}"
+      strs << "Date Completed     = #{@date_completed}"
+      strs << "Reservoir Name     = #{@reservoir_name}"
+      strs << "Total Depth        = #{@total_depth}"
+      strs << "Perforation Top    = #{@perforation_interval_top}"
+      strs << "Perforation Bottom = #{@perforation_interval_bottom}"
+      return strs.join("\n")
     end
 
       def read(rows)
@@ -97,8 +107,19 @@ class ProductAnalysisScanner < ExcelManipulator
         @well_name = ProductAnalysisScanner.zenkaku2hankaku(row[0])
         ProductAnalysisScanner.check_existence_of('成功年月日', row[1], "in first row")
         @date_completed = row[2]
-        ProductAnalysisScanner.check_existence_of('層名', row[3].gsub(/\s/, ''), "in first row")
+        ProductAnalysisScanner.check_existence_of('層名'      , row[3], "in first row")
         @reservoir_name = row[4]
+        ProductAnalysisScanner.check_existence_of('坑井深度'  , row[5], "in first row")
+        @total_depth    = row[6]
+        ProductAnalysisScanner.check_existence_of('仕上深度'  , row[7], "in first row")
+
+        row = rows_no_blank[1]
+        ProductAnalysisScanner.check_existence_of('自', row[0], "in second row")
+        @perforation_interval_top    = row[1]
+
+        row = rows_no_blank[2]
+        ProductAnalysisScanner.check_existence_of('至', row[0], "in third row")
+        @perforation_interval_bottom = row[1]
 
       end
       private :read
@@ -109,7 +130,7 @@ end
 if __FILE__ == $0
   pas = ProductAnalysisScanner.new
   pas.scan_all(%w(excel/gas_ms-29lower.xls))
-  pas.write
+  puts pas
 end
 
 
