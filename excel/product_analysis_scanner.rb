@@ -38,7 +38,8 @@ class ProductAnalysisScanner < ExcelManipulator
     strs << "Pressure Unit = #{GasAnalysisData.unit_pressure}"
     strs << ""
     @gas_analysis_datas.each do |gas_data|
-      strs << "Date Sampled = #{gas_data.date_sampled}"
+      strs << '-' * 40
+      strs << gas_data.to_s
     end
 
     return strs.join("\n")
@@ -61,9 +62,11 @@ class ProductAnalysisScanner < ExcelManipulator
         row.Columns.each do |cell|
           cells << cell.Value
         end
-        break if cells.all? { |r| ExcelManipulator.blank?(r) } and i >= MIN_ROW - 1
+        if cells.all? { |r| ExcelManipulator.blank?(r) }
+          break if i >= MIN_ROW - 1
+          next
+        end
 
-        #puts cells.join(', ')
         rows << cells
         if @completion_data.nil? and rows.size == CompletionData::NUM_ROWS_NEEDED_TO_INITIALIZE
           @completion_data = CompletionData.new(rows)
@@ -154,6 +157,7 @@ class ProductAnalysisScanner < ExcelManipulator
       :total_compositions, :heat_capacity_calculated_in_mj, \
       :mcp, :wi, :fg, :fz_standard, :fz_normal, :date_reported, :date_analysed, :sample_point, :production_status,
     ]
+    MAX_LENGTH_OF_ATTR_NAMES = ATTR_NAMES.map { |name| name.to_s.length }.max
 
     attr_reader *ATTR_NAMES
 
@@ -170,7 +174,11 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def to_s
       strs = Array.new
-      strs << "Date Sampled = #{@date_sampled}"
+      format = "%#{MAX_LENGTH_OF_ATTR_NAMES}s = %s"
+
+      ATTR_NAMES.each do |attr_name|
+        strs << sprintf(format, attr_name, instance_variable_get("@#{attr_name}"))
+      end
 
       return strs.join("\n")
     end
