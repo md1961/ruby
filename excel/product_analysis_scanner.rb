@@ -150,12 +150,20 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
   class GasAnalysisData
+
+    # The values must be equal to id's in DB TABLE units
+    MAP_UNIT_IDS = {
+      'ksc' => 1,
+      'mpa' => 2,
+    }
+
     ATTR_NAMES = [
-      :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature, \
-      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2, \
-      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :c3plus, :note, \
-      :total_compositions, :heat_capacity_calculated_in_mj, \
+      :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature,
+      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
+      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :c3plus, :note,
+      :total_compositions, :heat_capacity_calculated_in_mj,
       :mcp, :wi, :fg, :fz_standard, :fz_normal, :date_reported, :date_analysed, :sample_point, :production_status,
+      :pressure_unit_id,
     ]
     MAX_LENGTH_OF_ATTR_NAMES = ATTR_NAMES.map { |name| name.to_s.length }.max
 
@@ -170,6 +178,8 @@ class ProductAnalysisScanner < ExcelManipulator
       ATTR_NAMES.zip(values) do |attr_name, value|
         instance_variable_set("@#{attr_name}", value)
       end
+
+      @pressure_unit_id = MAP_UNIT_IDS[@@unit_pressure.downcase]
     end
 
     def to_s
@@ -202,7 +212,10 @@ class ProductAnalysisScanner < ExcelManipulator
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
 
-      @@unit_pressure = rows_of_two[1][row.index('圧力'.tosjis)]
+      @@unit_pressure = rows_of_two[1][row.index('圧力'.tosjis)].gsub(/[#{'\s()' + '　（）'.tosjis}]/, '')
+      unless MAP_UNIT_IDS.keys.include?(@@unit_pressure.downcase)
+        raise IllegalStateException.new("No pressure unit such as '#{@@unit_pressure}'")
+      end
     end
 
     def self.unit_pressure
