@@ -35,8 +35,6 @@ class ProductAnalysisScanner < ExcelManipulator
     strs = Array.new
 
     strs << @completion_data.to_s
-    strs << "Pressure Unit = #{GasAnalysisData.unit_pressure}"
-    strs << ""
     @gas_analysis_datas.each do |gas_data|
       strs << '-' * 40
       strs << gas_data.to_s
@@ -76,7 +74,8 @@ class ProductAnalysisScanner < ExcelManipulator
           @is_index_checked = true
           rows.clear
         elsif @is_index_checked and rows.size == 1
-          @gas_analysis_datas << GasAnalysisData.new(rows[0])
+          gas_data = GasAnalysisData.instance(rows[0])
+          @gas_analysis_datas << gas_data if gas_data
           rows.clear
         end
 
@@ -171,9 +170,18 @@ class ProductAnalysisScanner < ExcelManipulator
 
     @@index_leftmost = nil
 
-    def initialize(row)
+    def self.instance(row)
       raise IllegalStateException.new("GasAnalysisData.check_index() has not been called") unless @@index_leftmost
 
+      if (row - row[@@index_sample_pressure, 1]).all? { |cell| ExcelManipulator.blank?(cell) }
+        set_unit_pressure(row[@@index_sample_pressure])
+        return nil
+      else
+        return GasAnalysisData.new(row)
+      end
+    end
+
+    def initialize(row)
       values = row[@@index_leftmost, ATTR_NAMES.size]
       ATTR_NAMES.zip(values) do |attr_name, value|
         instance_variable_set("@#{attr_name}", value)
@@ -212,14 +220,15 @@ class ProductAnalysisScanner < ExcelManipulator
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
 
-      @@unit_pressure = rows_of_two[1][row.index('圧力'.tosjis)].gsub(/[#{'\s()' + '　（）'.tosjis}]/, '')
+      @@index_sample_pressure = row.index('圧力'.tosjis)
+      set_unit_pressure(rows_of_two[1][@@index_sample_pressure])
+    end
+
+    def self.set_unit_pressure(value)
+      @@unit_pressure = value.gsub(/[#{'\s()' + '　（）'.tosjis}]/, '')
       unless MAP_UNIT_IDS.keys.include?(@@unit_pressure.downcase)
         raise IllegalStateException.new("No pressure unit such as '#{@@unit_pressure}'")
       end
-    end
-
-    def self.unit_pressure
-      return @@unit_pressure
     end
   end
 end
