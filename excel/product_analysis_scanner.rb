@@ -4,6 +4,7 @@ $KCODE = 'sjis'
 
 require 'kconv'
 require 'jcode'
+require 'yaml'
 
 require 'lib/excel_manipulator'
 
@@ -13,12 +14,18 @@ class IllegalStateException  < Exception; end
 
 class ProductAnalysisScanner < ExcelManipulator
 
+  DB_MASTER_FILENAME = 'excel/100707-01_well_reservoir_completion.yml'
+
   def initialize
     super
 
     @completion_data    = nil
     @is_index_checked   = false
     @gas_analysis_datas = Array.new
+
+    open(DB_MASTER_FILENAME, 'r') do |fp|
+      @db_master = YAML.load(fp)
+    end
   end
 
   def scan_all(filenames)
@@ -68,6 +75,7 @@ class ProductAnalysisScanner < ExcelManipulator
         rows << cells
         if @completion_data.nil? and rows.size == CompletionData::NUM_ROWS_NEEDED_TO_INITIALIZE
           @completion_data = CompletionData.new(rows)
+          @completion_data.look_up_db_for_completion_id(@db_master)
           rows.clear
         elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == GasAnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
           GasAnalysisData.check_index(rows)
@@ -101,13 +109,55 @@ class ProductAnalysisScanner < ExcelManipulator
 
   class CompletionData
     attr_reader :well_name, :date_completed, :reservoir_name, :total_depth, \
-                :perforation_interval_top, :perforation_interval_bottom
+                :perforation_interval_top, :perforation_interval_bottom, \
+                :completion_id
+
+    RESERVOIR_NAME_CONVERSION_TABLE = {
+      '2900mA3' => '2900mA一括',
+    }
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
 
     def initialize(rows)
       read(rows)
     end
+
+    RE_WELL_NAME = /\A.*[A-Z]{2,}-\d+/
+
+    def look_up_db_for_completion_id(db_master_yaml)
+      if @well_name.nil? || @reservoir_name.nil?
+        raise IllegalStateException.new("Both @well_name and @reservoir_name must be set to non-null")
+      end
+      unless RE_WELL_NAME =~ @well_name
+        raise IllegalStateException.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
+      end
+      @well_name_to_look_up = $&
+      @reservoir_name_to_look_up = RESERVOIR_NAME_CONVERSION_TABLE[reservoir_name].tosjis || reservoir_name
+
+      hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     .toutf8)
+      hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up.toutf8)
+      raise IllegalStateException.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
+      raise IllegalStateException.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" ) unless hash_reservoir
+      hash_completion = look_up_db_record(db_master_yaml, 'completion',
+                                            'well_id' => hash_well['well_id'], 'reservoir_id' => hash_reservoir['reservoir_id'])
+      raise IllegalStateException.new("No completion found to match '#{@well_name_to_look_up}'(id=#{hash_well['well_id']})" \
+                            + " and '#{@reservoir_name_to_look_up}'(id=#{hash_reservoir['reservoir_id']})" ) unless hash_completion
+      @completion_id = hash_completion['completion_id'].to_i
+    end
+
+      def look_up_db_record(db_yaml, table_name, hash_to_look)
+        db_yaml[table_name].each do |hash_row|
+          found = true
+          hash_to_look.each do |column_name, value|
+            next if hash_row[column_name] == value
+            found = false
+            break
+          end
+          return hash_row if found
+        end
+        return nil
+      end
+      private :look_up_db_record
 
     def to_s
       strs = Array.new
@@ -117,6 +167,7 @@ class ProductAnalysisScanner < ExcelManipulator
       strs << "Total Depth        = #{@total_depth}"
       strs << "Perforation Top    = #{@perforation_interval_top}"
       strs << "Perforation Bottom = #{@perforation_interval_bottom}"
+      strs << "completion_id      = #{@completion_id} (#{@well_name_to_look_up}(#{@reservoir_name_to_look_up}))"
       return strs.join("\n")
     end
 
