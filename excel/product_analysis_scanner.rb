@@ -38,13 +38,20 @@ class ProductAnalysisScanner < ExcelManipulator
     end
   end
 
+  HR = '-' * 80
+
   def to_s
     strs = Array.new
 
     strs << @completion_data.to_s
+
+    id = 1
     @gas_analysis_datas.each do |gas_data|
-      strs << '-' * 40
+      strs << HR
       strs << gas_data.to_s
+      strs << HR
+      strs << gas_data.to_sql_to_insert(id, @completion_data.completion_id)
+      id += 1
     end
 
     return strs.join("\n")
@@ -219,6 +226,34 @@ class ProductAnalysisScanner < ExcelManipulator
 
     attr_reader *ATTR_NAMES
 
+    COLUMN_NAMES_OF_BASE_ANALYSES = [
+      :id, :completion_id, :analysis_type, :analysis_id,
+      :report_no, :date_sampled, :date_analysed, :date_reported,
+      :sample_point, :sample_pressure, :pressure_unit_id, :sample_temperature,
+      :production_id,
+      :note,
+      :created_at, :updated_at,
+    ]
+    ANALYSIS_TYPE = 'GasAnalysis'
+
+    COLUMN_NAMES_OF_GAS_ANALYSES = [
+      :id,
+      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
+      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :heat_capacity_calculated_in_mj,
+      :c3plus_liquified_volume, :mcp, :wi, :fg, :fz_standard, :fz_normal,
+    ]
+
+    COLUMN_NAMES_OF_PRODUCTIONS = [
+      :id, :completion_id,
+      :date_as_of, :gas_rate, :oil_rate, :water_rate, :status,
+    ]
+
+    MAP_COLUMN_NAMES = {
+      'base_analyses' => COLUMN_NAMES_OF_BASE_ANALYSES,
+      'gas_analyses'  => COLUMN_NAMES_OF_GAS_ANALYSES,
+      'productions'   => COLUMN_NAMES_OF_PRODUCTIONS,
+    }
+
     @@index_leftmost = nil
 
     def self.instance(row)
@@ -241,12 +276,52 @@ class ProductAnalysisScanner < ExcelManipulator
       @pressure_unit_id = MAP_UNIT_IDS[@@unit_pressure.downcase]
     end
 
+    def to_sql_to_insert(id, completion_id)
+      hash_attrs = Hash.new
+      ATTR_NAMES.each do |attr_name|
+        hash_attrs[attr_name.to_s] = instance_variable_get("@#{attr_name}")
+      end
+      hash_attrs['id']            = id
+      hash_attrs['completion_id'] = completion_id
+      hash_attrs['analysis_type'] = ANALYSIS_TYPE
+      hash_attrs['analysis_id']   = id
+      hash_attrs['production_id'] = id
+      hash_attrs['created_at']    = Time.now
+      hash_attrs['updated_at']    = hash_attrs['created_at']
+      hash_attrs['date_as_of']    = @date_sampled
+      hash_attrs['status']        = @production_status
+
+      sqls = Array.new
+      %w(base_analyses gas_analyses productions).each do |table_name|
+        sqls << make_sql_to_insert(table_name, hash_attrs)
+      end
+
+      return sqls.join("\n")
+    end
+
+      def make_sql_to_insert(table_name, hash_attrs)
+        column_names = MAP_COLUMN_NAMES[table_name]
+        raise IllegalStateException.new("No entry for table name '#{table_name}' in MAP_COLUMN_NAMES") unless column_names
+        column_names = column_names.map { |name| name.to_s }
+        enum_column_names  = column_names.join(', ')
+        enum_column_values = column_names.map { |name| quote_for_sql(hash_attrs[name]) }.join(', ')
+        return "INSERT INTO #{table_name} (#{enum_column_names}) VALUES (#{enum_column_values});"
+      end
+      private :make_sql_to_insert
+
+      def quote_for_sql(value)
+        format = value.kind_of?(Numeric) ? "%s" : "'%s'"
+        return sprintf(format, value)
+      end
+      private :quote_for_sql
+
     def to_s
       strs = Array.new
       format = "%#{MAX_LENGTH_OF_ATTR_NAMES}s = %s"
 
       ATTR_NAMES.each do |attr_name|
-        strs << sprintf(format, attr_name, instance_variable_get("@#{attr_name}"))
+        value = instance_variable_get("@#{attr_name}")
+        strs << sprintf(format, attr_name, value) + " (#{value.kind_of?(Numeric) ? 'number' : 'non-number'})"
       end
 
       return strs.join("\n")
