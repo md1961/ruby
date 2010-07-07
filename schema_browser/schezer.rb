@@ -117,8 +117,9 @@ class TableSchema
     return false
   end
 
-  def column_names_to_sort
-    columns_to_sort = @columns.select { |column| ! column.auto_increment? && ! column.hard_to_sort? }
+  def column_names_to_sort(includes_auto_increment=false)
+    columns_to_sort = @columns       .select { |column| ! column.hard_to_sort?   }
+    columns_to_sort = columns_to_sort.select { |column| ! column.auto_increment? } unless includes_auto_increment
     return columns_to_sort.map { |column| column.name }
   end
 
@@ -704,8 +705,8 @@ class TableData
   end
 
   # 返り値: Mysql::Result のインスタンス
-  def get_result
-    column_names_to_sort = @table_schema.column_names_to_sort
+  def get_result(includes_auto_increment=false)
+    column_names_to_sort = @table_schema.column_names_to_sort(includes_auto_increment)
     sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
     return @conn.get_query_result(sql)
   end
@@ -857,6 +858,27 @@ class TableData
     return outs.join("\n")
   end
 
+  INDENT_IN_YAML = 2
+
+  def to_yaml
+    outs = Array.new
+    outs << "#{@table_schema.name} :"
+
+    result = get_result(includes_auto_increment=true)
+    columns = @table_schema.columns
+    while hash_rows = result.fetch_hash
+      is_first_column = true
+      columns.each do |column|
+        next if column.hard_to_sort? || column.too_long_to_display?
+        indent = (is_first_column ? '-' : ' ') + ' ' * (INDENT_IN_YAML - 1)
+        outs << "#{indent}#{column.name} : #{hash_rows[column.name]}"
+        is_first_column = false
+      end
+    end
+
+    return outs.join("\n")
+  end
+
   private
 
     # Return -1, 0, 1 according to <, ==, >
@@ -933,7 +955,7 @@ class Schezer
     "sql_sync : Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
-  COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml]
+  COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml, :yaml]
   DEFAULT_TABLE_NAME = ALL_TABLES
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
@@ -1078,6 +1100,9 @@ class Schezer
         outs = to_disp_table_data(table_names, table_names2)
       when :sql_sync
         outs = to_disp_sql_to_sync(table_names, table_names2)
+      when :yaml
+        outs = to_disp_table_data_in_yaml(table_names)
+        joint = "\n"
       else
         raise ExitWithMessageException.new("Unknown command '#{command}'")
       end
@@ -1199,6 +1224,16 @@ class Schezer
         return value
       end
       return "'#{value}'"
+    end
+
+    def to_disp_table_data_in_yaml(table_names)
+      outs = Array.new
+      table_names.each do |table_name|
+        table_schema = parse_table_schema(table_name, @conn)
+        table_data = TableData.new(table_schema, @conn)
+        outs << table_data.to_yaml
+      end
+      return outs
     end
 
     def to_disp_table_data(table_names, table_names2=nil)

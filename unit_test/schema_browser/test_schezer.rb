@@ -1553,26 +1553,49 @@ class TestSchezer < Test::Unit::TestCase
     column_mblob = make_empty_column_schema('mblob', 'mediumblob')
     column_lblob = make_empty_column_schema('lblob', 'longblob')
 
-    set_columns_to_table_schema(table_schema, column_name)
-    assert_equal(%w(name), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+    set_columns_to_table_schema(table_schema           , column_name)
+    assert_equal(%w(name)         , table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
 
     set_columns_to_table_schema(table_schema, column_id, column_name)
-    assert_equal(%w(name), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+    assert_equal(%w(name)         , table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_addr)
-    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+    assert_equal(%w(name addr)    , table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_pid)
     assert_equal(%w(name addr pid), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob)
-    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+    assert_equal(%w(name addr)    , table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_mblob)
-    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+    assert_equal(%w(name addr)    , table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
 
     set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_mblob, column_lblob)
-    assert_equal(%w(name addr), table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+    assert_equal(%w(name addr)    , table_schema.column_names_to_sort, "TableSchema#column_names_to_sort")
+
+    # Now test with argument includes_auto_increment of true
+
+    set_columns_to_table_schema(table_schema           , column_name)
+    assert_equal(%w(name)            , table_schema.column_names_to_sort(true), "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name)
+    assert_equal(%w(id name)         , table_schema.column_names_to_sort(true), "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr)
+    assert_equal(%w(id name addr)    , table_schema.column_names_to_sort(true), "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_pid)
+    assert_equal(%w(id name addr pid), table_schema.column_names_to_sort(true), "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob)
+    assert_equal(%w(id name addr)    , table_schema.column_names_to_sort(true), "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_mblob)
+    assert_equal(%w(id name addr)    , table_schema.column_names_to_sort(true), "TableSchema#column_names_to_sort")
+
+    set_columns_to_table_schema(table_schema, column_id, column_name, column_addr, column_blob, column_mblob, column_lblob)
+    assert_equal(%w(id name addr)    , table_schema.column_names_to_sort(true), "TableSchema#column_names_to_sort")
   end
 
   def test_difference_of_class_table_schema_raises_exception
