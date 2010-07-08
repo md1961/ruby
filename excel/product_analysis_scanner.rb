@@ -120,6 +120,59 @@ class ProductAnalysisScanner < ExcelManipulator
       end
     end
 
+  private
+
+    COLUMN_NAMES_OF_WELL_SPECS = [
+      :id, :well_id, :total_depth,
+    ]
+
+    COLUMN_NAMES_OF_COMPLETION_SPECS = [
+      :id, :completion_id, :perforation_interval_top, :perforation_interval_bottom,
+    ]
+
+    COLUMN_NAMES_OF_BASE_ANALYSES = [
+      :id, :completion_id, :analysis_type, :analysis_id,
+      :report_no, :date_sampled, :date_analysed, :date_reported,
+      :sample_point, :sample_pressure, :pressure_unit_id, :sample_temperature,
+      :production_id,
+      :note,
+      :created_at, :updated_at,
+    ]
+
+    COLUMN_NAMES_OF_GAS_ANALYSES = [
+      :id,
+      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
+      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :heat_capacity_calculated_in_mj,
+      :c3plus_liquified_volume, :mcp, :wi, :fg, :fz_standard, :fz_normal,
+    ]
+
+    COLUMN_NAMES_OF_PRODUCTIONS = [
+      :id, :completion_id,
+      :date_as_of, :gas_rate, :oil_rate, :water_rate, :status,
+    ]
+
+    def self.make_sql_to_insert(table_name, hash_attrs)
+      column_names = get_column_names(table_name)
+      enum_column_names  = column_names.join(', ')
+      enum_column_values = column_names.map { |name| quote_for_sql(hash_attrs[name]) }.join(', ')
+      return "INSERT INTO #{table_name} (#{enum_column_names}) VALUES (#{enum_column_values});"
+    end
+
+    def self.get_column_names(table_name)
+      const_name_of_column_names = "column_names_of_#{table_name}".upcase
+      begin
+        column_names = eval(const_name_of_column_names)
+      rescue NameError
+        raise IllegalStateException.new("Cannot find constant #{const_name_of_column_names}")
+      end
+      return column_names.map { |name| name.to_s }
+    end
+
+    def self.quote_for_sql(value)
+      format = value.kind_of?(Numeric) || (value.kind_of?(String) && value[0, 1] == '@') ? "%s" : "'%s'"
+      return sprintf(format, value)
+    end
+
   class CompletionData
     attr_reader :well_name, :date_completed, :reservoir_name, :total_depth, \
                 :perforation_interval_top, :perforation_interval_bottom, \
@@ -232,33 +285,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     attr_reader *ATTR_NAMES
 
-    COLUMN_NAMES_OF_BASE_ANALYSES = [
-      :id, :completion_id, :analysis_type, :analysis_id,
-      :report_no, :date_sampled, :date_analysed, :date_reported,
-      :sample_point, :sample_pressure, :pressure_unit_id, :sample_temperature,
-      :production_id,
-      :note,
-      :created_at, :updated_at,
-    ]
     ANALYSIS_TYPE = 'GasAnalysis'
-
-    COLUMN_NAMES_OF_GAS_ANALYSES = [
-      :id,
-      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
-      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :heat_capacity_calculated_in_mj,
-      :c3plus_liquified_volume, :mcp, :wi, :fg, :fz_standard, :fz_normal,
-    ]
-
-    COLUMN_NAMES_OF_PRODUCTIONS = [
-      :id, :completion_id,
-      :date_as_of, :gas_rate, :oil_rate, :water_rate, :status,
-    ]
-
-    MAP_COLUMN_NAMES = {
-      'base_analyses' => COLUMN_NAMES_OF_BASE_ANALYSES,
-      'gas_analyses'  => COLUMN_NAMES_OF_GAS_ANALYSES,
-      'productions'   => COLUMN_NAMES_OF_PRODUCTIONS,
-    }
 
     @@index_leftmost = nil
 
@@ -299,7 +326,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
       sqls = Array.new
       %w(gas_analyses productions base_analyses).each do |table_name|
-        sqls << make_sql_to_insert(table_name, hash_attrs)
+        sqls << ProductAnalysisScanner.make_sql_to_insert(table_name, hash_attrs)
         if %w(gas_analyses productions).include?(table_name)
           var_name = table_name == 'gas_analyses' ? '@analysis_id' : '@production_id'
           sqls << "SET #{var_name} = last_insert_id();"
@@ -308,22 +335,6 @@ class ProductAnalysisScanner < ExcelManipulator
 
       return sqls.join("\n")
     end
-
-      def make_sql_to_insert(table_name, hash_attrs)
-        column_names = MAP_COLUMN_NAMES[table_name]
-        raise IllegalStateException.new("No entry for table name '#{table_name}' in MAP_COLUMN_NAMES") unless column_names
-        column_names = column_names.map { |name| name.to_s }
-        enum_column_names  = column_names.join(', ')
-        enum_column_values = column_names.map { |name| quote_for_sql(hash_attrs[name]) }.join(', ')
-        return "INSERT INTO #{table_name} (#{enum_column_names}) VALUES (#{enum_column_values});"
-      end
-      private :make_sql_to_insert
-
-      def quote_for_sql(value)
-        format = value.kind_of?(Numeric) || (value.kind_of?(String) && value[0, 1] == '@') ? "%s" : "'%s'"
-        return sprintf(format, value)
-      end
-      private :quote_for_sql
 
     def to_s
       strs = Array.new
