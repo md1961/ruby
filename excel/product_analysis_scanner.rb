@@ -47,7 +47,7 @@ class ProductAnalysisScanner < ExcelManipulator
       strs << @completion_data.to_s
       strs << HR
     end
-    strs << "INSERT INTO well_specs; INSERT INTO completion_specs;"
+    strs.concat(make_sqls_to_insert_well_and_completion_specs)
 
     id = 1
     @gas_analysis_datas.each do |gas_data|
@@ -62,6 +62,18 @@ class ProductAnalysisScanner < ExcelManipulator
 
     return strs.join("\n")
   end
+
+    def make_sqls_to_insert_well_and_completion_specs
+      sqls = Array.new
+      sqls << ProductAnalysisScanner.make_sql_to_insert('well_specs',
+                                 'id' => 0, 'well_id' => @completion_data.well_id, 'total_depth' => @completion_data.total_depth)
+      sqls << ProductAnalysisScanner.make_sql_to_insert('completion_specs',
+                                 'id' => 0, 'completion_id'    => @completion_data.completion_id,
+                                 'perforation_interval_top'    => @completion_data.perforation_interval_top,
+                                 'perforation_interval_bottom' => @completion_data.perforation_interval_bottom)
+      return sqls
+    end
+    private :make_sqls_to_insert_well_and_completion_specs
 
   TARGET_SHEETNAME = 'SK-1'
 
@@ -176,7 +188,7 @@ class ProductAnalysisScanner < ExcelManipulator
   class CompletionData
     attr_reader :well_name, :date_completed, :reservoir_name, :total_depth, \
                 :perforation_interval_top, :perforation_interval_bottom, \
-                :completion_id
+                :completion_id, :well_id, :reservoir_id
 
     RESERVOIR_NAME_CONVERSION_TABLE = {
       '2900mA3' => '2900mA一括',
@@ -204,11 +216,12 @@ class ProductAnalysisScanner < ExcelManipulator
       hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up.toutf8)
       raise IllegalStateException.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
       raise IllegalStateException.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" ) unless hash_reservoir
-      hash_completion = look_up_db_record(db_master_yaml, 'completion',
-                                            'well_id' => hash_well['well_id'], 'reservoir_id' => hash_reservoir['reservoir_id'])
-      raise IllegalStateException.new("No completion found to match '#{@well_name_to_look_up}'(id=#{hash_well['well_id']})" \
-                            + " and '#{@reservoir_name_to_look_up}'(id=#{hash_reservoir['reservoir_id']})" ) unless hash_completion
-      @completion_id = hash_completion['completion_id'].to_i
+      @well_id      = hash_well['well_id']
+      @reservoir_id = hash_reservoir['reservoir_id']
+      hash_completion = look_up_db_record(db_master_yaml, 'completion', 'well_id' => @well_id, 'reservoir_id' => @reservoir_id)
+      raise IllegalStateException.new("No completion found to match '#{@well_name_to_look_up}'(id=#{@well_id})" \
+                                      + " and '#{@reservoir_name_to_look_up}'(id=#{@reservoir_id})" ) unless hash_completion
+      @completion_id = hash_completion['completion_id']
     end
 
       def look_up_db_record(db_yaml, table_name, hash_to_look)
