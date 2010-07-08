@@ -164,10 +164,17 @@ class ProductAnalysisScanner < ExcelManipulator
       :date_as_of, :gas_rate, :oil_rate, :water_rate, :status,
     ]
 
+    COLUMN_NAMES_IN_STRING_TYPE = [
+      :analysis_type, :report_no, :sample_point, :note, :status, :created_at, :updated_at
+    ]
+    COLUMN_NAMES_IN_DATE_TYPE = [
+      :date_sampled, :date_analysed, :date_reported, :date_as_of
+    ]
+
     def self.make_sql_to_insert(table_name, hash_attrs)
       column_names = get_column_names(table_name)
       enum_column_names  = column_names.join(', ')
-      enum_column_values = column_names.map { |name| quote_for_sql(hash_attrs[name]) }.join(', ')
+      enum_column_values = column_names.map { |column_name| quote_for_sql(hash_attrs, column_name) }.join(', ')
       return "INSERT INTO #{table_name} (#{enum_column_names}) VALUES (#{enum_column_values});"
     end
 
@@ -181,9 +188,40 @@ class ProductAnalysisScanner < ExcelManipulator
       return column_names.map { |name| name.to_s }
     end
 
-    def self.quote_for_sql(value)
-      format = value.kind_of?(Numeric) || (value.kind_of?(String) && value[0, 1] == '@') ? "%s" : "'%s'"
+    TRACE_NUMBER = 0.0000999
+
+    def self.quote_for_sql(hash_attrs, column_name)
+      value = hash_attrs[column_name]
+
+      if COLUMN_NAMES_IN_DATE_TYPE.include?(column_name.to_sym)
+        if value.nil?
+          value = 'null'
+        elsif value.kind_of?(String)
+          value = value.split(' ')[0]
+          if /\A(\d+)\/(\d+)\/(\d+)(\D.*)?\z/ =~ value
+            value = "#{$1}-#{$2}-#{$3}#{$4}"
+          end
+        elsif value.kind_of?(Time)
+          value = value.strftime('%Y-%m-%d')
+        else
+          raise IllegalStateException.new("Cannot treat as date '#{value}' (:#{value.class})")
+        end
+      elsif ! COLUMN_NAMES_IN_STRING_TYPE.include?(column_name.to_sym)  # Numeric
+        if value.nil?
+          value = 'null'
+        elsif value.kind_of?(String) && ! mysql_var_name?(value)
+          value = /\Atr\.?\z/ =~ value ? TRACE_NUMBER : 'null'
+        end
+      end
+
+      format = value.kind_of?(Numeric) \
+            || (value.kind_of?(String) && (value == 'null' || mysql_var_name?(value))) ? "%s" : "'%s'"
+
       return sprintf(format, value)
+    end
+
+    def self.mysql_var_name?(value)
+      return value.kind_of?(String) && value[0, 1] == '@'
     end
 
   class CompletionData
@@ -274,7 +312,6 @@ class ProductAnalysisScanner < ExcelManipulator
         row = rows_no_blank[2]
         ProductAnalysisScanner.check_existence_of('至', row[0], "in third row")
         @perforation_interval_bottom = row[1]
-
       end
       private :read
   end
@@ -333,7 +370,7 @@ class ProductAnalysisScanner < ExcelManipulator
       hash_attrs['analysis_type'] = ANALYSIS_TYPE
       hash_attrs['analysis_id']   = '@analysis_id'
       hash_attrs['production_id'] = '@production_id'
-      hash_attrs['created_at']    = Time.now
+      hash_attrs['created_at']    = Time.now.strftime('%Y-%m-%d %H:%M:%S')
       hash_attrs['updated_at']    = hash_attrs['created_at']
       hash_attrs['date_as_of']    = @date_sampled
       hash_attrs['status']        = @production_status
