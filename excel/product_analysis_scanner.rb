@@ -90,7 +90,9 @@ class ProductAnalysisScanner < ExcelManipulator
       sheet.UsedRange.Rows.each do |row|
         cells = Array.new
         row.Columns.each do |cell|
-          cells << cell.Value
+          value = cell.Value
+          value = value.toutf8 if value.kind_of?(String)
+          cells << value
         end
         if cells.all? { |r| ExcelManipulator.blank?(r) }
           break if i >= MIN_ROW - 1
@@ -121,14 +123,13 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
     def self.zenkaku2hankaku(str)
-      return str.tr('０-９ａ-ｚＡ-Ｚ'.tosjis, '0-9a-zA-Z')
+      return str.tosjis.tr('０-９ａ-ｚＡ-Ｚ'.tosjis, '0-9a-zA-Z').toutf8
     end
 
     def self.check_existence_of(expected, actual, where)
-      exp = expected.tosjis
-      act = actual.gsub(/\s/, '').gsub(/#{'　'.tosjis}/, '')
-      unless act[0, exp.length] == exp
-        raise IllegalFormatException.new("No '#{exp}' found " + where)
+      act = actual.tosjis.gsub(/[\s#{'　'.tosjis}]/, '').toutf8
+      unless act[0, expected.length] == expected
+        raise IllegalFormatException.new("No '#{expected}' found " + where)
       end
     end
 
@@ -206,14 +207,14 @@ class ProductAnalysisScanner < ExcelManipulator
       if @well_name.nil? || @reservoir_name.nil?
         raise IllegalStateException.new("Both @well_name and @reservoir_name must be set to non-null")
       end
-      unless RE_WELL_NAME =~ @well_name
+      unless RE_WELL_NAME =~ @well_name.tosjis
         raise IllegalStateException.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
       end
-      @well_name_to_look_up = $&
-      @reservoir_name_to_look_up = RESERVOIR_NAME_CONVERSION_TABLE[reservoir_name].tosjis || reservoir_name
+      @well_name_to_look_up = $&.toutf8
+      @reservoir_name_to_look_up = RESERVOIR_NAME_CONVERSION_TABLE[reservoir_name] || reservoir_name
 
-      hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     .toutf8)
-      hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up.toutf8)
+      hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     )
+      hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up)
       raise IllegalStateException.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
       raise IllegalStateException.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" ) unless hash_reservoir
       @well_id      = hash_well['well_id']
@@ -370,7 +371,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def self.check_index(rows_of_two)
       row = rows_of_two[0]
-      expected = EXPECTED_INDEX[0].tosjis
+      expected = EXPECTED_INDEX[0]
       @@index_leftmost = row.index(expected)
       where = "in index row"
       raise IllegalFormatException.new("No '#{expected}' at first column " + where) if @@index_leftmost.nil?
@@ -380,12 +381,12 @@ class ProductAnalysisScanner < ExcelManipulator
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
 
-      @@index_sample_pressure = row.index('圧力'.tosjis)
+      @@index_sample_pressure = row.index('圧力')
       set_unit_pressure(rows_of_two[1][@@index_sample_pressure])
     end
 
     def self.set_unit_pressure(value)
-      @@unit_pressure = value.gsub(/[#{'\s()' + '　（）'.tosjis}]/, '')
+      @@unit_pressure = value.tosjis.gsub(/[\s()#{'　（）'.tosjis}]/, '').toutf8
       unless MAP_UNIT_IDS.keys.include?(@@unit_pressure.downcase)
         raise IllegalStateException.new("No pressure unit such as '#{@@unit_pressure}'")
       end
