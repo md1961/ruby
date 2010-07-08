@@ -40,16 +40,22 @@ class ProductAnalysisScanner < ExcelManipulator
 
   HR = '-' * 80
 
-  def to_s
+  def out_in_str(outputs_all=false)
     strs = Array.new
 
-    strs << @completion_data.to_s
+    if outputs_all
+      strs << @completion_data.to_s
+      strs << HR
+    end
+    strs << "INSERT INTO well_specs; INSERT INTO completion_specs;"
 
     id = 1
     @gas_analysis_datas.each do |gas_data|
-      strs << HR
-      strs << gas_data.to_s
-      strs << HR
+      if outputs_all
+        strs << HR
+        strs << gas_data.to_s
+        strs << HR
+      end
       strs << gas_data.to_sql_to_insert(id, @completion_data.completion_id)
       id += 1
     end
@@ -363,7 +369,7 @@ end
 if __FILE__ == $0
   pas = ProductAnalysisScanner.new
   pas.scan_all(%w(excel/gas_ms-29lower.xls))
-  puts pas
+  puts pas.out_in_str
 end
 
 
