@@ -40,10 +40,10 @@ class ProductAnalysisScanner < ExcelManipulator
 
   HR = '-' * 80
 
-  def out_in_str(outputs_all=false)
+  def out_in_str(sql_only=true)
     strs = Array.new
 
-    if outputs_all
+    unless sql_only
       strs << @completion_data.to_s
       strs << HR
     end
@@ -51,11 +51,11 @@ class ProductAnalysisScanner < ExcelManipulator
 
     id = 1
     @gas_analysis_datas.each do |gas_data|
-      if outputs_all
+      unless sql_only
         strs << HR
         strs << gas_data.to_s
-        strs << HR
       end
+      strs << (sql_only ? "" : HR)
       strs << gas_data.to_sql_to_insert(id, @completion_data.completion_id)
       id += 1
     end
@@ -287,19 +287,23 @@ class ProductAnalysisScanner < ExcelManipulator
       ATTR_NAMES.each do |attr_name|
         hash_attrs[attr_name.to_s] = instance_variable_get("@#{attr_name}")
       end
-      hash_attrs['id']            = id
+      hash_attrs['id']            = 0  # auto_increment
       hash_attrs['completion_id'] = completion_id
       hash_attrs['analysis_type'] = ANALYSIS_TYPE
-      hash_attrs['analysis_id']   = id
-      hash_attrs['production_id'] = id
+      hash_attrs['analysis_id']   = '@analysis_id'
+      hash_attrs['production_id'] = '@production_id'
       hash_attrs['created_at']    = Time.now
       hash_attrs['updated_at']    = hash_attrs['created_at']
       hash_attrs['date_as_of']    = @date_sampled
       hash_attrs['status']        = @production_status
 
       sqls = Array.new
-      %w(base_analyses gas_analyses productions).each do |table_name|
+      %w(gas_analyses productions base_analyses).each do |table_name|
         sqls << make_sql_to_insert(table_name, hash_attrs)
+        if %w(gas_analyses productions).include?(table_name)
+          var_name = table_name == 'gas_analyses' ? '@analysis_id' : '@production_id'
+          sqls << "SET #{var_name} = last_insert_id();"
+        end
       end
 
       return sqls.join("\n")
@@ -316,7 +320,7 @@ class ProductAnalysisScanner < ExcelManipulator
       private :make_sql_to_insert
 
       def quote_for_sql(value)
-        format = value.kind_of?(Numeric) ? "%s" : "'%s'"
+        format = value.kind_of?(Numeric) || (value.kind_of?(String) && value[0, 1] == '@') ? "%s" : "'%s'"
         return sprintf(format, value)
       end
       private :quote_for_sql
