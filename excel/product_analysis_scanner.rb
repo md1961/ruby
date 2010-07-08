@@ -327,7 +327,7 @@ class ProductAnalysisScanner < ExcelManipulator
     ATTR_NAMES = [
       :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature,
       :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
-      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :c3plus, :note,
+      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :c3plus_liquified_volume, :note,
       :total_compositions, :heat_capacity_calculated_in_mj,
       :mcp, :wi, :fg, :fz_standard, :fz_normal, :date_reported, :date_analysed, :sample_point, :production_status,
       :pressure_unit_id,
