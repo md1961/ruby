@@ -15,35 +15,37 @@ class InfrastructureException < Exception; end
 
 class ProductAnalysisScanner < ExcelManipulator
 
-  DB_MASTER_FILENAME = 'excel/100707-01_well_reservoir_completion.yml'
-
   def initialize
     super
-
-    @completion_data    = nil
-    @is_index_checked   = false
-    @gas_analysis_datas = Array.new
-
-    open(DB_MASTER_FILENAME, 'r') do |fp|
-      @db_master = YAML.load(fp)
-    end
   end
 
   FILE_PATTERN_TO_PROCESS = '*.xls'
 
   def scan_all(root_dirname)
     begin
+      strs = Array.new
+
       Dir.glob("#{root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
+        prepare
         scan(filename)
+        strs.concat(out_in_strs)
       end
+
+      return strs.join("\n")
     ensure
       close_excel
     end
   end
 
+  def prepare
+    @completion_data    = nil
+    @is_index_checked   = false
+    @gas_analysis_datas = Array.new
+  end
+
   HR = '-' * 80
 
-  def out_in_str(sql_only=true)
+  def out_in_strs(sql_only=true)
     strs = Array.new
 
     unless sql_only
@@ -63,7 +65,7 @@ class ProductAnalysisScanner < ExcelManipulator
       id += 1
     end
 
-    return strs.join("\n")
+    return strs
   end
 
     def make_sqls_to_insert_well_and_completion_specs
@@ -106,7 +108,6 @@ class ProductAnalysisScanner < ExcelManipulator
         rows << cells
         if @completion_data.nil? and rows.size == CompletionData::NUM_ROWS_NEEDED_TO_INITIALIZE
           @completion_data = CompletionData.new(rows)
-          @completion_data.look_up_db_for_completion_id(@db_master)
           rows.clear
         elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == GasAnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
           GasAnalysisData.check_index(rows)
@@ -236,53 +237,32 @@ class ProductAnalysisScanner < ExcelManipulator
                 :perforation_interval_top, :perforation_interval_bottom, \
                 :completion_id, :well_id, :reservoir_id
 
+    DB_MASTER_FILENAME = 'prod_anal/100707-01_well_reservoir_completion.yml'
+
     RESERVOIR_NAME_CONVERSION_TABLE = {
       '2900mA3' => '2900mA一括',
+      'ＧⅢ'     => 'GreenTuff一括',
+    }
+
+    MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID = {
+      'あけぼの'   =>  1,
+      '北あけぼの' =>  1,
+      '沼ノ端'     =>  1,
+      '西沼ノ端'   =>  1,
+      '南勇払'     =>  1,
+      '吉井'       => 94,
+      '安田'       => 94,
+      '南安田'     => 94,
+      '妙法寺'     => 94,
+      '地蔵峠'     => 94,
     }
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
 
     def initialize(rows)
       read(rows)
+      look_up_db_for_completion_id
     end
-
-    RE_WELL_NAME = /\A.*[A-Z]{2,}-\d+/
-
-    def look_up_db_for_completion_id(db_master_yaml)
-      if @well_name.nil? || @reservoir_name.nil?
-        raise IllegalStateException.new("Both @well_name and @reservoir_name must be set to non-null")
-      end
-      unless RE_WELL_NAME =~ @well_name.tosjis
-        raise IllegalStateException.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
-      end
-      @well_name_to_look_up = $&.toutf8
-      @reservoir_name_to_look_up = RESERVOIR_NAME_CONVERSION_TABLE[reservoir_name] || reservoir_name
-
-      hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     )
-      hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up)
-      raise IllegalStateException.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
-      raise IllegalStateException.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" ) unless hash_reservoir
-      @well_id      = hash_well['well_id']
-      @reservoir_id = hash_reservoir['reservoir_id']
-      hash_completion = look_up_db_record(db_master_yaml, 'completion', 'well_id' => @well_id, 'reservoir_id' => @reservoir_id)
-      raise IllegalStateException.new("No completion found to match '#{@well_name_to_look_up}'(id=#{@well_id})" \
-                                      + " and '#{@reservoir_name_to_look_up}'(id=#{@reservoir_id})" ) unless hash_completion
-      @completion_id = hash_completion['completion_id']
-    end
-
-      def look_up_db_record(db_yaml, table_name, hash_to_look)
-        db_yaml[table_name].each do |hash_row|
-          found = true
-          hash_to_look.each do |column_name, value|
-            next if hash_row[column_name] == value
-            found = false
-            break
-          end
-          return hash_row if found
-        end
-        return nil
-      end
-      private :look_up_db_record
 
     def to_s
       strs = Array.new
@@ -321,6 +301,60 @@ class ProductAnalysisScanner < ExcelManipulator
         @perforation_interval_bottom = row[1]
       end
       private :read
+
+      RE_WELL_NAME = /\A(.*)[A-Z]{2,}-\d+/
+
+      def look_up_db_for_completion_id
+        db_master_yaml = nil
+        open(DB_MASTER_FILENAME, 'r') do |fp|
+          db_master_yaml = YAML.load(fp)
+        end
+
+        if @well_name.nil? || @reservoir_name.nil?
+          raise IllegalStateException.new("Both @well_name and @reservoir_name must be set to non-null")
+        end
+        unless RE_WELL_NAME =~ @well_name.tosjis
+          raise IllegalStateException.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
+        end
+        @well_name_to_look_up = $&.toutf8
+        well_crown_name       = $1.toutf8
+        @reservoir_name_to_look_up = RESERVOIR_NAME_CONVERSION_TABLE[reservoir_name] || reservoir_name
+
+        hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     )
+        hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up)
+
+        raise IllegalStateException.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
+        @well_id = hash_well['well_id']
+        if hash_reservoir
+          @reservoir_id = hash_reservoir['reservoir_id']
+        else
+          if MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID.keys.include?(well_crown_name)
+            @reservoir_id = MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID[well_crown_name]
+          else
+            raise IllegalStateException.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" )
+          end
+        end
+
+        hash_completion = look_up_db_record(db_master_yaml, 'completion', 'well_id' => @well_id, 'reservoir_id' => @reservoir_id)
+        raise IllegalStateException.new("No completion found to match '#{@well_name_to_look_up}'(id=#{@well_id})" \
+                                        + " and '#{@reservoir_name_to_look_up}'(id=#{@reservoir_id})" ) unless hash_completion
+        @completion_id = hash_completion['completion_id']
+      end
+      private :look_up_db_for_completion_id
+
+      def look_up_db_record(db_yaml, table_name, hash_to_look)
+        db_yaml[table_name].each do |hash_row|
+          found = true
+          hash_to_look.each do |column_name, value|
+            next if hash_row[column_name] == value
+            found = false
+            break
+          end
+          return hash_row if found
+        end
+        return nil
+      end
+      private :look_up_db_record
   end
 
   class GasAnalysisData
@@ -447,9 +481,7 @@ end
 
 if __FILE__ == $0
   pas = ProductAnalysisScanner.new
-  pas.scan_all('../data/prod_anal/gas')
-  #pas.scan_all(%w(excel/gas_ms-29lower.xls))
-  puts pas.out_in_str
+  puts pas.scan_all('../data/prod_anal/gas')
 end
 
 
