@@ -9,8 +9,9 @@ require 'yaml'
 require 'lib/excel_manipulator'
 
 
-class IllegalFormatException < Exception; end
-class IllegalStateException  < Exception; end
+class IllegalFormatException  < Exception; end
+class IllegalStateException   < Exception; end
+class InfrastructureException < Exception; end
 
 class ProductAnalysisScanner < ExcelManipulator
 
@@ -28,9 +29,11 @@ class ProductAnalysisScanner < ExcelManipulator
     end
   end
 
-  def scan_all(filenames)
+  FILE_PATTERN_TO_PROCESS = '*.xls'
+
+  def scan_all(root_dirname)
     begin
-      filenames.each do |filename|
+      Dir.glob("#{root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
         scan(filename)
       end
     ensure
@@ -82,7 +85,8 @@ class ProductAnalysisScanner < ExcelManipulator
 
   def scan(filename)
     begin
-      book = open_book(filename)
+      book = open_book(filename.tosjis)
+      raise "Cannot open '#{filename}'" unless book
       sheet = book.Worksheets.Item(TARGET_SHEETNAME)
 
       rows = Array.new
@@ -117,8 +121,10 @@ class ProductAnalysisScanner < ExcelManipulator
         i += 1
         break if i >= MAX_ROW
       end
+    rescue => evar
+      raise InfrastructureException.new(evar.message + " while processing '#{filename}'")
     ensure
-      book.Close
+      book.Close if book
     end
   end
 
@@ -193,10 +199,10 @@ class ProductAnalysisScanner < ExcelManipulator
     def self.quote_for_sql(hash_attrs, column_name)
       value = hash_attrs[column_name]
 
-      if COLUMN_NAMES_IN_DATE_TYPE.include?(column_name.to_sym)
-        if value.nil?
-          value = 'null'
-        elsif value.kind_of?(String)
+      if value.nil?
+        value = 'null'
+      elsif COLUMN_NAMES_IN_DATE_TYPE.include?(column_name.to_sym)
+        if value.kind_of?(String)
           value = value.split(' ')[0]
           if /\A(\d+)\/(\d+)\/(\d+)(\D.*)?\z/ =~ value
             value = "#{$1}-#{$2}-#{$3}#{$4}"
@@ -206,10 +212,11 @@ class ProductAnalysisScanner < ExcelManipulator
         else
           raise IllegalStateException.new("Cannot treat as date '#{value}' (:#{value.class})")
         end
-      elsif ! COLUMN_NAMES_IN_STRING_TYPE.include?(column_name.to_sym)  # Numeric
-        if value.nil?
-          value = 'null'
-        elsif value.kind_of?(String) && ! mysql_var_name?(value)
+      elsif COLUMN_NAMES_IN_STRING_TYPE.include?(column_name.to_sym)  # Numeric
+        value = value.to_s unless value.kind_of?(String)
+        value.gsub!(/'/, "\\\\'")
+      else  # Numeric
+        if value.kind_of?(String) && ! mysql_var_name?(value)
           value = /\Atr\.?\z/ =~ value ? TRACE_NUMBER : 'null'
         end
       end
@@ -343,13 +350,19 @@ class ProductAnalysisScanner < ExcelManipulator
     def self.instance(row)
       raise IllegalStateException.new("GasAnalysisData.check_index() has not been called") unless @@index_leftmost
 
-      if (row - row[@@index_sample_pressure, 1]).all? { |cell| ExcelManipulator.blank?(cell) }
+      if just_pressure_unit_changing?(row)
         set_unit_pressure(row[@@index_sample_pressure])
         return nil
       else
         return GasAnalysisData.new(row)
       end
     end
+
+      def self.just_pressure_unit_changing?(row)
+        first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
+        cells_to_be_blank = row - [first_non_blank_cell] - row[@@index_sample_pressure, 1]
+        return cells_to_be_blank.all? { |cell| ExcelManipulator.blank?(cell) }
+      end
 
     def initialize(row)
       values = row[@@index_leftmost, ATTR_NAMES.size]
@@ -434,7 +447,8 @@ end
 
 if __FILE__ == $0
   pas = ProductAnalysisScanner.new
-  pas.scan_all(%w(excel/gas_ms-29lower.xls))
+  pas.scan_all('../data/prod_anal/gas')
+  #pas.scan_all(%w(excel/gas_ms-29lower.xls))
   puts pas.out_in_str
 end
 
