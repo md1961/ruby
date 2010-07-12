@@ -1,5 +1,12 @@
 #! /usr/bin/ruby
 
+# 原油、ガス、水の通常分析結果を保持する Excel ワークブックを読み込んで
+# 分析結果データをデータベースに書き込む SQL を出力するスクリプト。
+# 引数には Excel ワークブックが保存されている大元のディレクトリを
+# 指定する。そのディレクトリ以下（サブディレクトリを含む）に
+# 存在する Excel ワークブックすべてが対象となる
+
+
 $KCODE = 'sjis'
 
 require 'kconv'
@@ -9,9 +16,11 @@ require 'yaml'
 require 'lib/excel_manipulator'
 
 
+class NotADirectoryException  < Exception; end
 class IllegalFormatException  < Exception; end
 class IllegalStateException   < Exception; end
 class InfrastructureException < Exception; end
+
 
 class ProductAnalysisScanner < ExcelManipulator
 
@@ -22,6 +31,10 @@ class ProductAnalysisScanner < ExcelManipulator
   FILE_PATTERN_TO_PROCESS = '*.xls'
 
   def scan_all(root_dirname)
+    unless File.directory?(root_dirname)
+      raise NotADirectoryException.new("'#{root_dirname}' is not a directory")
+    end
+
     begin
       strs = Array.new
 
@@ -480,8 +493,17 @@ end
 
 
 if __FILE__ == $0
+  unless ARGV.size == 1
+    $stderr.puts "Specify a root directory which holds target Excel workbooks"
+    exit(1)
+  end
+
   pas = ProductAnalysisScanner.new
-  puts pas.scan_all('../data/prod_anal/gas')
+  begin
+    puts pas.scan_all(ARGV[0])
+  rescue NotADirectoryException => e
+    $stderr.puts e.message
+  end
 end
 
 
