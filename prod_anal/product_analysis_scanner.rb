@@ -495,38 +495,24 @@ class ProductAnalysisScanner < ExcelManipulator
       M.C.P. ＷＩ(MJ系) Fg Fz Fz 報告日 分析日 採取箇所 産出状況
     ).freeze
 
-    attr_reader *ATTR_NAMES
-
-    ANALYSIS_TYPE = 'GasAnalysis'
-    TABLE_NAME = 'gas_analyses'
-
     UNIT_INDEXES_AND_UNIT_ID_NAMES = [
       %w(圧力 pressure_unit_id),
     ].freeze
+
+    attr_reader *ATTR_NAMES
+
+    ANALYSIS_TYPE = 'GasAnalysis'
+    TABLE_NAME    = 'gas_analyses'
 
     def self.instance(row)
       return AnalysisData.instance(row, GasAnalysisData)
     end
 
-    def self.expected_index
-      return EXPECTED_INDEX
-    end
-
-    def attr_names
-      return ATTR_NAMES
-    end
-
-    def analysis_type
-      return ANALYSIS_TYPE
-    end
-
-    def table_name
-      return TABLE_NAME
-    end
-
-    def unit_indexes_and_unit_id_names
-      return UNIT_INDEXES_AND_UNIT_ID_NAMES
-    end
+    def self.expected_index                 ; return EXPECTED_INDEX                 ; end
+    def self.unit_indexes_and_unit_id_names ; return UNIT_INDEXES_AND_UNIT_ID_NAMES ; end
+    def attr_names    ; return ATTR_NAMES    ; end
+    def analysis_type ; return ANALYSIS_TYPE ; end
+    def table_name    ; return TABLE_NAME    ; end
   end
 
   class UnitExcelColumn
