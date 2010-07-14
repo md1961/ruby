@@ -372,23 +372,6 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
   class AnalysisData
-  end
-
-  class GasAnalysisData < AnalysisData
-
-    ATTR_NAMES = [
-      :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature,
-      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
-      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :c3plus_liquified_volume, :note,
-      :total_compositions, :heat_capacity_calculated_in_mj,
-      :mcp, :wi, :fg, :fz_standard, :fz_normal, :date_reported, :date_analysed, :sample_point, :production_status,
-      :pressure_unit_id,
-    ]
-    MAX_LENGTH_OF_ATTR_NAMES = ATTR_NAMES.map { |name| name.to_s.length }.max
-
-    attr_reader *ATTR_NAMES
-
-    ANALYSIS_TYPE = 'GasAnalysis'
 
     @@index_leftmost = nil
 
@@ -413,8 +396,8 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
     def initialize(row)
-      values = row[@@index_leftmost, ATTR_NAMES.size]
-      ATTR_NAMES.zip(values) do |attr_name, value|
+      values = row[@@index_leftmost, attr_names.size]
+      attr_names.zip(values) do |attr_name, value|
         instance_variable_set("@#{attr_name}", value)
       end
 
@@ -425,12 +408,12 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def to_sql_to_insert(id, completion_id)
       hash_attrs = Hash.new
-      ATTR_NAMES.each do |attr_name|
+      attr_names.each do |attr_name|
         hash_attrs[attr_name.to_s] = instance_variable_get("@#{attr_name}")
       end
       hash_attrs['id']            = 0  # auto_increment
       hash_attrs['completion_id'] = completion_id
-      hash_attrs['analysis_type'] = ANALYSIS_TYPE
+      hash_attrs['analysis_type'] = analysis_type
       hash_attrs['analysis_id']   = '@analysis_id'
       hash_attrs['production_id'] = '@production_id'
       hash_attrs['created_at']    = Time.now.strftime('%Y-%m-%d %H:%M:%S')
@@ -454,7 +437,7 @@ class ProductAnalysisScanner < ExcelManipulator
       strs = Array.new
       format = "%#{MAX_LENGTH_OF_ATTR_NAMES}s = %s"
 
-      ATTR_NAMES.each do |attr_name|
+      attr_names.each do |attr_name|
         value = instance_variable_get("@#{attr_name}")
         strs << sprintf(format, attr_name, value) + " (#{value.kind_of?(Numeric) ? 'number' : 'non-number'})"
       end
@@ -464,19 +447,14 @@ class ProductAnalysisScanner < ExcelManipulator
 
     NUM_ROWS_NEEDED_TO_READ_INDEX = 2
 
-    EXPECTED_INDEX = %w(採取年月日 報告番号 ガス量 油量 水量 圧力 温度
-                        CH4 C2H6 C3H8 i-C4H10 n-C4H10 i-C5H12 n-C5H12 C6+ CO2 N2
-                        計算比重 計算熱量 C3以上液化量 摘要 組成合計 計算熱量
-                        M.C.P. ＷＩ(MJ系) Fg Fz Fz 報告日 分析日 採取箇所 産出状況)
-
     def self.check_index(rows_of_two)
       row = rows_of_two[0]
-      expected = EXPECTED_INDEX[0]
+      expected = expected_index[0]
       @@index_leftmost = row.index(expected)
       where = "in index row"
       raise IllegalFormatException.new("No '#{expected}' at first column " + where) if @@index_leftmost.nil?
-      actuals = row[@@index_leftmost + 1, EXPECTED_INDEX.length - 1]
-      EXPECTED_INDEX[1 .. -1].zip(actuals).each_with_index do |expected_and_actual, i|
+      actuals = row[@@index_leftmost + 1, expected_index.length - 1]
+      expected_index[1 .. -1].zip(actuals).each_with_index do |expected_and_actual, i|
         expected, actual = expected_and_actual
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
@@ -495,6 +473,42 @@ class ProductAnalysisScanner < ExcelManipulator
         unit_excel_column.set_value(row)
       end
     end
+  end # of class AnalysisData
+
+  class GasAnalysisData < AnalysisData
+
+    ATTR_NAMES = [
+      :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature,
+      :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
+      :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :c3plus_liquified_volume, :note,
+      :total_compositions, :heat_capacity_calculated_in_mj,
+      :mcp, :wi, :fg, :fz_standard, :fz_normal, :date_reported, :date_analysed, :sample_point, :production_status,
+      :pressure_unit_id,
+    ].freeze
+    MAX_LENGTH_OF_ATTR_NAMES = ATTR_NAMES.map { |name| name.to_s.length }.max
+
+    attr_reader *ATTR_NAMES
+
+    ANALYSIS_TYPE = 'GasAnalysis'
+
+    EXPECTED_INDEX = %w(
+      採取年月日 報告番号 ガス量 油量 水量 圧力 温度
+      CH4 C2H6 C3H8 i-C4H10 n-C4H10 i-C5H12 n-C5H12 C6+ CO2 N2
+      計算比重 計算熱量 C3以上液化量 摘要 組成合計 計算熱量
+      M.C.P. ＷＩ(MJ系) Fg Fz Fz 報告日 分析日 採取箇所 産出状況
+    ).freeze
+
+    def self.expected_index
+      return EXPECTED_INDEX
+    end
+
+    def attr_names
+      return ATTR_NAMES
+    end
+
+    def analysis_type
+      return ANALYSIS_TYPE
+    end
   end
 
   class UnitExcelColumn
@@ -502,8 +516,14 @@ class ProductAnalysisScanner < ExcelManipulator
 
     # The values must be equal to id's in DB TABLE units
     MAP_UNIT_IDS = {
-      'ksc' => 1,
-      'mpa' => 2,
+      'ksc'  => 1,
+      'mpa'  => 2,
+      'mmhg' => 3,
+      'hpa'  => 4,
+      'cp'   => 5,
+      'mpas' => 6,
+      'cst'  => 7,
+      'mm2s' => 8,
     }
 
     def initialize(index_column, instance_variable_name)
