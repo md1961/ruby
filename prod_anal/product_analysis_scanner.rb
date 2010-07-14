@@ -375,14 +375,14 @@ class ProductAnalysisScanner < ExcelManipulator
 
     @@index_leftmost = nil
 
-    def self.instance(row)
-      raise IllegalStateException.new("GasAnalysisData.check_index() has not been called") unless @@index_leftmost
+    def self.instance(row, clazz)
+      raise IllegalStateException.new("#{clazz.name}.check_index() has not been called") unless @@index_leftmost
 
       if just_unit_changing?(row)
         set_units(row)
         return nil
       else
-        return GasAnalysisData.new(row)
+        return clazz.new(row)
       end
     end
 
@@ -422,10 +422,10 @@ class ProductAnalysisScanner < ExcelManipulator
       hash_attrs['status']        = @production_status
 
       sqls = Array.new
-      %w(gas_analyses productions base_analyses).each do |table_name|
-        sqls << ProductAnalysisScanner.make_sql_to_insert(table_name, hash_attrs)
-        if %w(gas_analyses productions).include?(table_name)
-          var_name = table_name == 'gas_analyses' ? '@analysis_id' : '@production_id'
+      [table_name, 'productions', 'base_analyses'].each do |name|
+        sqls << ProductAnalysisScanner.make_sql_to_insert(name, hash_attrs)
+        if [table_name, 'productions'].include?(name)
+          var_name = name == table_name ? '@analysis_id' : '@production_id'
           sqls << "SET #{var_name} = last_insert_id();"
         end
       end
@@ -435,7 +435,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def to_s
       strs = Array.new
-      format = "%#{MAX_LENGTH_OF_ATTR_NAMES}s = %s"
+      format = "%#{max_length_of_attr_names}s = %s"
 
       attr_names.each do |attr_name|
         value = instance_variable_get("@#{attr_name}")
@@ -443,6 +443,10 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
       return strs.join("\n")
+    end
+
+    def max_length_of_attr_names
+      return attr_names.map { |name| name.to_s.length }.max
     end
 
     NUM_ROWS_NEEDED_TO_READ_INDEX = 2
@@ -460,9 +464,7 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
       @@unit_excel_columns = Array.new
-      [
-        %w(圧力 pressure_unit_id)
-      ].each do |index_name, instance_variable_name|
+      unit_indexes_and_unit_id_names.each do |index_name, instance_variable_name|
         @@unit_excel_columns << UnitExcelColumn.new(row.index(index_name), instance_variable_name)
       end
       set_units(rows_of_two[1])
@@ -485,11 +487,6 @@ class ProductAnalysisScanner < ExcelManipulator
       :mcp, :wi, :fg, :fz_standard, :fz_normal, :date_reported, :date_analysed, :sample_point, :production_status,
       :pressure_unit_id,
     ].freeze
-    MAX_LENGTH_OF_ATTR_NAMES = ATTR_NAMES.map { |name| name.to_s.length }.max
-
-    attr_reader *ATTR_NAMES
-
-    ANALYSIS_TYPE = 'GasAnalysis'
 
     EXPECTED_INDEX = %w(
       採取年月日 報告番号 ガス量 油量 水量 圧力 温度
@@ -497,6 +494,19 @@ class ProductAnalysisScanner < ExcelManipulator
       計算比重 計算熱量 C3以上液化量 摘要 組成合計 計算熱量
       M.C.P. ＷＩ(MJ系) Fg Fz Fz 報告日 分析日 採取箇所 産出状況
     ).freeze
+
+    attr_reader *ATTR_NAMES
+
+    ANALYSIS_TYPE = 'GasAnalysis'
+    TABLE_NAME = 'gas_analyses'
+
+    UNIT_INDEXES_AND_UNIT_ID_NAMES = [
+      %w(圧力 pressure_unit_id),
+    ].freeze
+
+    def self.instance(row)
+      return AnalysisData.instance(row, GasAnalysisData)
+    end
 
     def self.expected_index
       return EXPECTED_INDEX
@@ -508,6 +518,14 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def analysis_type
       return ANALYSIS_TYPE
+    end
+
+    def table_name
+      return TABLE_NAME
+    end
+
+    def unit_indexes_and_unit_id_names
+      return UNIT_INDEXES_AND_UNIT_ID_NAMES
     end
   end
 
