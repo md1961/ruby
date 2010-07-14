@@ -136,6 +136,7 @@ class ProductAnalysisScanner < ExcelManipulator
         break if i >= MAX_ROW
       end
     rescue => evar
+      puts evar.backtrace
       raise InfrastructureException.new(evar.message + " while processing '#{filename}'")
     ensure
       book.Close if book
@@ -370,13 +371,10 @@ class ProductAnalysisScanner < ExcelManipulator
       private :look_up_db_record
   end
 
-  class GasAnalysisData
+  class AnalysisData
+  end
 
-    # The values must be equal to id's in DB TABLE units
-    MAP_UNIT_IDS = {
-      'ksc' => 1,
-      'mpa' => 2,
-    }
+  class GasAnalysisData < AnalysisData
 
     ATTR_NAMES = [
       :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature,
@@ -397,17 +395,20 @@ class ProductAnalysisScanner < ExcelManipulator
     def self.instance(row)
       raise IllegalStateException.new("GasAnalysisData.check_index() has not been called") unless @@index_leftmost
 
-      if just_pressure_unit_changing?(row)
-        set_unit_pressure(row[@@index_sample_pressure])
+      if just_unit_changing?(row)
+        set_units(row)
         return nil
       else
         return GasAnalysisData.new(row)
       end
     end
 
-      def self.just_pressure_unit_changing?(row)
+      def self.just_unit_changing?(row)
         first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
-        cells_to_be_blank = row - [first_non_blank_cell] - row[@@index_sample_pressure, 1]
+        cells_to_be_blank = row - [first_non_blank_cell]
+        @@unit_excel_columns.each do |unit_excel_column|
+          cells_to_be_blank -= row[unit_excel_column.index_column, 1]
+        end
         return cells_to_be_blank.all? { |cell| ExcelManipulator.blank?(cell) }
       end
 
@@ -417,7 +418,9 @@ class ProductAnalysisScanner < ExcelManipulator
         instance_variable_set("@#{attr_name}", value)
       end
 
-      @pressure_unit_id = MAP_UNIT_IDS[@@unit_pressure.downcase]
+      @@unit_excel_columns.each do |unit_excel_column|
+        instance_variable_set("@#{unit_excel_column.instance_variable_name}", unit_excel_column.unit_id)
+      end
     end
 
     def to_sql_to_insert(id, completion_id)
@@ -478,14 +481,41 @@ class ProductAnalysisScanner < ExcelManipulator
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
 
-      @@index_sample_pressure = row.index('圧力')
-      set_unit_pressure(rows_of_two[1][@@index_sample_pressure])
+      @@unit_excel_columns = Array.new
+      [
+        %w(圧力 pressure_unit_id)
+      ].each do |index_name, instance_variable_name|
+        @@unit_excel_columns << UnitExcelColumn.new(row.index(index_name), instance_variable_name)
+      end
+      set_units(rows_of_two[1])
     end
 
-    def self.set_unit_pressure(value)
-      @@unit_pressure = value.tosjis.gsub(/[\s()#{'　（）'.tosjis}]/, '').toutf8
-      unless MAP_UNIT_IDS.keys.include?(@@unit_pressure.downcase)
-        raise IllegalStateException.new("No pressure unit such as '#{@@unit_pressure}'")
+    def self.set_units(row)
+      @@unit_excel_columns.each do |unit_excel_column|
+        unit_excel_column.set_value(row)
+      end
+    end
+  end
+
+  class UnitExcelColumn
+    attr_reader :index_column, :instance_variable_name, :unit_id
+
+    # The values must be equal to id's in DB TABLE units
+    MAP_UNIT_IDS = {
+      'ksc' => 1,
+      'mpa' => 2,
+    }
+
+    def initialize(index_column, instance_variable_name)
+      @index_column           = index_column 
+      @instance_variable_name = instance_variable_name
+    end
+
+    def set_value(row)
+      unit = row[@index_column].tosjis.gsub(/[\s()#{'　（）'.tosjis}]/, '').toutf8
+      @unit_id = MAP_UNIT_IDS[unit.downcase]
+      unless @unit_id
+        raise IllegalStateException.new("No unit such as '#{unit}'")
       end
     end
   end
