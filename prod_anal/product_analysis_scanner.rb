@@ -122,12 +122,31 @@ class ProductAnalysisScanner < ExcelManipulator
         if @completion_data.nil? and rows.size == CompletionData::NUM_ROWS_NEEDED_TO_INITIALIZE
           @completion_data = CompletionData.new(rows)
           rows.clear
-        elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == GasAnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
-          GasAnalysisData.check_index(rows)
+        elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == AnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
+          data_classes = [GasAnalysisData, OilAnalysisData]
+          evars = Array.new
+          clazz = nil
+          data_classes.each do |clazz|
+            begin
+              clazz.check_index(rows)
+              break
+            rescue IllegalFormatException => evar
+              evars << evar
+              next
+            end
+          end
+          if evars.size >= data_classes.size
+            msgs = Array.new
+            evars.zip(data_classes) do |evar, clazz|
+              msgs << "#{evar.message} for #{clazz.name}"
+            end
+            raise InfrastructureException.new(msgs.join("\n"))
+          end
+          @analysis_class = clazz
           @is_index_checked = true
           rows.clear
         elsif @is_index_checked and rows.size == 1
-          gas_data = GasAnalysisData.instance(rows[0])
+          gas_data = @analysis_class.instance(rows[0])
           @gas_analysis_datas << gas_data if gas_data
           rows.clear
         end
@@ -137,7 +156,8 @@ class ProductAnalysisScanner < ExcelManipulator
       end
     rescue => evar
       puts evar.backtrace
-      raise InfrastructureException.new(evar.message + " while processing '#{filename}'")
+      puts "while processing '#{filename}'..."
+      raise
     ensure
       book.Close if book
     end
@@ -150,7 +170,7 @@ class ProductAnalysisScanner < ExcelManipulator
     def self.check_existence_of(expected, actual, where)
       act = actual.tosjis.gsub(/[\s#{'　'.tosjis}]/, '').toutf8
       unless act[0, expected.length] == expected
-        raise IllegalFormatException.new("No '#{expected}' found " + where)
+        raise IllegalFormatException.new("No '#{expected}' found ('#{actual}' instead) " + where)
       end
     end
 
@@ -178,6 +198,22 @@ class ProductAnalysisScanner < ExcelManipulator
       :ch4, :c2h6, :c3h8, :i_c4h10, :n_c4h10, :i_c5h12, :n_c5h12, :c6plus, :co2, :n2,
       :specific_gravity_calculated, :heat_capacity_calculated_in_kcal, :heat_capacity_calculated_in_mj,
       :c3plus_liquified_volume, :mcp, :wi, :fg, :fz_standard, :fz_normal,
+    ]
+
+    COLUMN_NAMES_OF_OIL_ANALYSES = [
+      :id,
+      :density, :api_gravity, :absolute_viscosity, :absolute_viscosity_unit_id,
+      :kinematic_viscosity_20degC, :kinematic_viscosity_30degC, :kinematic_viscosity_37_8degC,
+      :kinematic_viscosity_50degC, :kinematic_viscosity_unit_id,
+      :reflecting_color, :transparent_color, :water_and_mud_content, :initial_distillation_temperature,
+      :pct10_distillation_temperature, :pct20_distillation_temperature, :pct30_distillation_temperature,
+      :pct40_distillation_temperature, :pct50_distillation_temperature, :pct60_distillation_temperature,
+      :pct70_distillation_temperature, :pct80_distillation_temperature, :pct90_distillation_temperature,
+      :maximum_temperature, :total_distilled_volume, :residue_volume, :lost_volume,
+      :volatile_oil_content, :kerosene_content, :diesel_content, :heavy_oil_content, :flash_point,
+      :test_temperature, :atmospheric_pressure, :atmospheric_pressure_unit_id,
+      :distilled_volume_to_267degC, :sample_volume, :analysis_times,
+      :wax_content, :appearance, :upo_coefficient,
     ]
 
     COLUMN_NAMES_OF_PRODUCTIONS = [
@@ -225,7 +261,7 @@ class ProductAnalysisScanner < ExcelManipulator
         elsif value.kind_of?(Time)
           value = value.strftime('%Y-%m-%d')
         else
-          raise IllegalStateException.new("Cannot treat as date '#{value}' (:#{value.class})")
+          raise IllegalStateException.new("Cannot treat as date '#{value}' (:#{value.class}) in COLUMN '#{column_name}'")
         end
       elsif COLUMN_NAMES_IN_STRING_TYPE.include?(column_name.to_sym)  # Numeric
         value = value.to_s unless value.kind_of?(String)
@@ -297,6 +333,9 @@ class ProductAnalysisScanner < ExcelManipulator
         end
 
         row = rows_no_blank[0]
+        if /#{'成功年月日'.tosjis}.*(\d+\/\d+\/\d+)/ =~ row[1].tosjis
+          row[1, 1] = ['成功年月日', $1]
+        end
         @well_name = ProductAnalysisScanner.zenkaku2hankaku(row[0])
         ProductAnalysisScanner.check_existence_of('成功年月日', row[1], "in first row")
         @date_completed = row[2]
@@ -460,12 +499,14 @@ class ProductAnalysisScanner < ExcelManipulator
       actuals = row[@@index_leftmost + 1, expected_index.length - 1]
       expected_index[1 .. -1].zip(actuals).each_with_index do |expected_and_actual, i|
         expected, actual = expected_and_actual
+        actual = "" unless actual
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
 
+      row_trimmed = row.map { |cell| cell ? cell.tosjis.gsub(/[\s#{'　'.tosjis}]/, '').toutf8 : "" }
       @@unit_excel_columns = Array.new
       unit_indexes_offsets_and_unit_id_names.each do |index_name, offset, instance_variable_name|
-        @@unit_excel_columns << UnitExcelColumn.new(row.index(index_name), offset, instance_variable_name)
+        @@unit_excel_columns << UnitExcelColumn.new(row_trimmed.index(index_name), offset, instance_variable_name)
       end
       set_units(rows_of_two[1])
     end
@@ -515,6 +556,59 @@ class ProductAnalysisScanner < ExcelManipulator
     def table_name    ; return TABLE_NAME    ; end
   end
 
+  class OilAnalysisData < AnalysisData
+
+    ATTR_NAMES = [
+      :date_sampled, :report_no, :gas_rate, :oil_rate, :water_rate, :sample_pressure, :sample_temperature,
+      :density, :api_gravity, :kinematic_viscosity_20degC, :absolute_viscosity, :kinematic_viscosity_30degC,
+      :reflecting_color, :transparent_color, :water_and_mud_content, :initial_distillation_temperature,
+      :pct10_distillation_temperature, :pct20_distillation_temperature, :pct30_distillation_temperature,
+      :pct40_distillation_temperature, :pct50_distillation_temperature, :pct60_distillation_temperature,
+      :pct70_distillation_temperature, :pct80_distillation_temperature, :pct90_distillation_temperature,
+      :maximum_temperature, :total_distilled_volume, :residue_volume, :lost_volume,
+      :volatile_oil_content, :kerosene_content, :diesel_content, :heavy_oil_content, :flash_point,
+      :test_temperature, :atmospheric_pressure, :note,
+      :distilled_volume_to_267degC, :sample_volume, :analysis_times, :wax_content,
+      :date_reported, :date_analysed, :sample_point, :production_status,
+      :appearance, :kinematic_viscosity_37_8degC, :kinematic_viscosity_50degC, :upo_coefficient,
+      :pressure_unit_id,
+      :absolute_viscosity_unit_id,
+      :kinematic_viscosity_unit_id,
+      :atmospheric_pressure_unit_id,
+    ].freeze
+
+    EXPECTED_INDEX = [
+      '採取年月日', '報告番号', 'ガス量', '油量', '水量', '圧力', '温度',
+      '密度', 'API度', '粘度', '', '', '色相', '', '水泥分',
+      '初留', '10%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%', '最高温度',
+      '全留出量', '残油量', '減失量', '揮発油分', '灯油分', '軽油分', '重油分', '引火点',
+      '室温', '気圧', '摘要', '267.0℃留出量', '試料量', '測定回数',  'ワックス分',
+      '報告日', '分析日', '採取箇所', '産出状況', '外観特徴', '粘度', '', 'ＵＰＯ係数',
+    ].freeze
+
+    UNIT_INDEXES_OFFSETS_AND_UNIT_ID_NAMES = [
+      ['圧力', 0, :pressure_unit_id],
+      ['粘度', 0, :kinematic_viscosity_unit_id],
+      ['粘度', 1, :absolute_viscosity_unit_id],
+      ['気圧', 0, :atmospheric_pressure_unit_id],
+    ].freeze
+
+    attr_reader *ATTR_NAMES
+
+    ANALYSIS_TYPE = 'OilAnalysis'
+    TABLE_NAME    = 'oil_analyses'
+
+    def self.instance(row)
+      return AnalysisData.instance(row, OilAnalysisData)
+    end
+
+    def self.expected_index                         ; return EXPECTED_INDEX                         ; end
+    def self.unit_indexes_offsets_and_unit_id_names ; return UNIT_INDEXES_OFFSETS_AND_UNIT_ID_NAMES ; end
+    def attr_names    ; return ATTR_NAMES    ; end
+    def analysis_type ; return ANALYSIS_TYPE ; end
+    def table_name    ; return TABLE_NAME    ; end
+  end
+
   class UnitExcelColumn
     attr_reader :index_column, :instance_variable_name, :unit_id
 
@@ -536,7 +630,13 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
     def set_value(row)
-      unit = row[@index_column].tosjis.gsub(/[\s()#{'　（）'.tosjis}]/, '').toutf8
+      unit = row[@index_column]
+      unless unit
+        raise IllegalStateException.new("Nothing found at index #{@index_column} in row (#{row.inspect})")
+      end
+      unit = unit.tosjis.gsub(/[\s\/()\[\]#{'　（）・'.tosjis}]/, '').toutf8
+      degC = "℃".tosjis
+      unit = unit.tosjis.gsub(/\d+#{degC}/, '').toutf8
       @unit_id = MAP_UNIT_IDS[unit.downcase]
       unless @unit_id
         raise IllegalStateException.new("No unit such as '#{unit}'")
