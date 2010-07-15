@@ -24,8 +24,9 @@ class InfrastructureException < Exception; end
 
 class ProductAnalysisScanner < ExcelManipulator
 
-  def initialize
-    super
+  def initialize(prints_data_as_well=false)
+    super()
+    @sql_only = ! prints_data_as_well
   end
 
   FILE_PATTERN_TO_PROCESS = '*.xls'
@@ -41,7 +42,7 @@ class ProductAnalysisScanner < ExcelManipulator
       Dir.glob("#{root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
         prepare
         scan(filename)
-        strs.concat(out_in_strs)
+        strs.concat(out_in_strs(@sql_only))
       end
 
       return strs.join("\n")
@@ -53,7 +54,7 @@ class ProductAnalysisScanner < ExcelManipulator
   def prepare
     @completion_data    = nil
     @is_index_checked   = false
-    @gas_analysis_datas = Array.new
+    @analysis_datas = Array.new
   end
 
   HR = '-' * 80
@@ -68,13 +69,13 @@ class ProductAnalysisScanner < ExcelManipulator
     strs.concat(make_sqls_to_insert_well_and_completion_specs)
 
     id = 1
-    @gas_analysis_datas.each do |gas_data|
+    @analysis_datas.each do |analysis_data|
       unless sql_only
         strs << HR
-        strs << gas_data.to_s
+        strs << analysis_data.to_s
       end
       strs << (sql_only ? "" : HR)
-      strs << gas_data.to_sql_to_insert(id, @completion_data.completion_id)
+      strs << analysis_data.to_sql_to_insert(id, @completion_data.completion_id)
       id += 1
     end
 
@@ -146,8 +147,8 @@ class ProductAnalysisScanner < ExcelManipulator
           @is_index_checked = true
           rows.clear
         elsif @is_index_checked and rows.size == 1
-          gas_data = @analysis_class.instance(rows[0])
-          @gas_analysis_datas << gas_data if gas_data
+          analysis_data = @analysis_class.instance(rows[0])
+          @analysis_datas << analysis_data if analysis_data
           rows.clear
         end
 
@@ -222,10 +223,13 @@ class ProductAnalysisScanner < ExcelManipulator
     ]
 
     COLUMN_NAMES_IN_STRING_TYPE = [
-      :analysis_type, :report_no, :sample_point, :note, :status, :created_at, :updated_at
+      # From GasAnalysisData
+      :analysis_type, :report_no, :sample_point, :note, :status, :created_at, :updated_at,
+      # From OilAnalysisData
+      :reflecting_color, :transparent_color, :appearance,
     ]
     COLUMN_NAMES_IN_DATE_TYPE = [
-      :date_sampled, :date_analysed, :date_reported, :date_as_of
+      :date_sampled, :date_analysed, :date_reported, :date_as_of,
     ]
 
     def self.make_sql_to_insert(table_name, hash_attrs)
@@ -647,12 +651,18 @@ end
 
 
 if __FILE__ == $0
+  prints_data_as_well = false
+  if ARGV[0] == '-d'
+    prints_data_as_well = true
+    ARGV.shift
+  end
+
   unless ARGV.size == 1
     $stderr.puts "Specify a root directory which holds target Excel workbooks"
     exit(1)
   end
 
-  pas = ProductAnalysisScanner.new
+  pas = ProductAnalysisScanner.new(prints_data_as_well)
   begin
     puts pas.scan_all(ARGV[0])
   rescue NotADirectoryException => e
