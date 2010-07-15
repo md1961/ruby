@@ -464,8 +464,8 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
       @@unit_excel_columns = Array.new
-      unit_indexes_and_unit_id_names.each do |index_name, instance_variable_name|
-        @@unit_excel_columns << UnitExcelColumn.new(row.index(index_name), instance_variable_name)
+      unit_indexes_offsets_and_unit_id_names.each do |index_name, offset, instance_variable_name|
+        @@unit_excel_columns << UnitExcelColumn.new(row.index(index_name), offset, instance_variable_name)
       end
       set_units(rows_of_two[1])
     end
@@ -495,8 +495,8 @@ class ProductAnalysisScanner < ExcelManipulator
       M.C.P. ＷＩ(MJ系) Fg Fz Fz 報告日 分析日 採取箇所 産出状況
     ).freeze
 
-    UNIT_INDEXES_AND_UNIT_ID_NAMES = [
-      %w(圧力 pressure_unit_id),
+    UNIT_INDEXES_OFFSETS_AND_UNIT_ID_NAMES = [
+      ['圧力', 0, :pressure_unit_id],
     ].freeze
 
     attr_reader *ATTR_NAMES
@@ -508,8 +508,8 @@ class ProductAnalysisScanner < ExcelManipulator
       return AnalysisData.instance(row, GasAnalysisData)
     end
 
-    def self.expected_index                 ; return EXPECTED_INDEX                 ; end
-    def self.unit_indexes_and_unit_id_names ; return UNIT_INDEXES_AND_UNIT_ID_NAMES ; end
+    def self.expected_index                         ; return EXPECTED_INDEX                         ; end
+    def self.unit_indexes_offsets_and_unit_id_names ; return UNIT_INDEXES_OFFSETS_AND_UNIT_ID_NAMES ; end
     def attr_names    ; return ATTR_NAMES    ; end
     def analysis_type ; return ANALYSIS_TYPE ; end
     def table_name    ; return TABLE_NAME    ; end
@@ -530,9 +530,9 @@ class ProductAnalysisScanner < ExcelManipulator
       'mm2s' => 8,
     }
 
-    def initialize(index_column, instance_variable_name)
-      @index_column           = index_column 
-      @instance_variable_name = instance_variable_name
+    def initialize(index_column, offset, instance_variable_name)
+      @index_column           = index_column + offset
+      @instance_variable_name = instance_variable_name.to_s
     end
 
     def set_value(row)
