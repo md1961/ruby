@@ -212,9 +212,9 @@ class ProductAnalysisScanner < ExcelManipulator
       :pct70_distillation_temperature, :pct80_distillation_temperature, :pct90_distillation_temperature,
       :maximum_temperature, :total_distilled_volume, :residue_volume, :lost_volume,
       :volatile_oil_content, :kerosene_content, :diesel_content, :heavy_oil_content, :flash_point,
-      :test_temperature, :atmospheric_pressure, :atmospheric_pressure_unit_id,
+      :ambient_temperature, :atmospheric_pressure, :atmospheric_pressure_unit_id,
       :distilled_volume_to_267degC, :sample_volume, :analysis_times,
-      :wax_content, :appearance, :upo_coefficient,
+      :wax_content, :appearance, :uop_coefficient,
     ]
 
     COLUMN_NAMES_OF_PRODUCTIONS = [
@@ -571,10 +571,10 @@ class ProductAnalysisScanner < ExcelManipulator
       :pct70_distillation_temperature, :pct80_distillation_temperature, :pct90_distillation_temperature,
       :maximum_temperature, :total_distilled_volume, :residue_volume, :lost_volume,
       :volatile_oil_content, :kerosene_content, :diesel_content, :heavy_oil_content, :flash_point,
-      :test_temperature, :atmospheric_pressure, :note,
+      :ambient_temperature, :atmospheric_pressure, :note,
       :distilled_volume_to_267degC, :sample_volume, :analysis_times, :wax_content,
       :date_reported, :date_analysed, :sample_point, :production_status,
-      :appearance, :kinematic_viscosity_37_8degC, :kinematic_viscosity_50degC, :upo_coefficient,
+      :appearance, :kinematic_viscosity_37_8degC, :kinematic_viscosity_50degC, :uop_coefficient,
       :pressure_unit_id,
       :absolute_viscosity_unit_id,
       :kinematic_viscosity_unit_id,
