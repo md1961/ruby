@@ -24,9 +24,10 @@ class InfrastructureError < StandardError; end
 
 class ProductAnalysisScanner < ExcelManipulator
 
-  def initialize(prints_data_as_well=false)
+  def initialize(prints_data_as_well=false, fixes_creation_time_at_midnight=false)
     super()
     @sql_only = ! prints_data_as_well
+    @fixes_creation_time_at_midnight = fixes_creation_time_at_midnight
   end
 
   FILE_PATTERN_TO_PROCESS = '*.xls'
@@ -75,7 +76,7 @@ class ProductAnalysisScanner < ExcelManipulator
         strs << analysis_data.to_s
       end
       strs << (sql_only ? "" : HR)
-      strs << analysis_data.to_sql_to_insert(id, @completion_data.completion_id)
+      strs << analysis_data.to_sql_to_insert(id, @completion_data.completion_id, @fixes_creation_time_at_midnight)
       id += 1
     end
 
@@ -449,7 +450,7 @@ class ProductAnalysisScanner < ExcelManipulator
       end
     end
 
-    def to_sql_to_insert(id, completion_id)
+    def to_sql_to_insert(id, completion_id, fixes_creation_time_at_midnight=false)
       hash_attrs = Hash.new
       attr_names.each do |attr_name|
         hash_attrs[attr_name.to_s] = instance_variable_get("@#{attr_name}")
@@ -459,7 +460,9 @@ class ProductAnalysisScanner < ExcelManipulator
       hash_attrs['analysis_type'] = analysis_type
       hash_attrs['analysis_id']   = '@analysis_id'
       hash_attrs['production_id'] = '@production_id'
-      hash_attrs['created_at']    = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+      created_at = Time.now
+      created_at = midnight(created_at) if fixes_creation_time_at_midnight
+      hash_attrs['created_at']    = created_at.strftime('%Y-%m-%d %H:%M:%S')
       hash_attrs['updated_at']    = hash_attrs['created_at']
       hash_attrs['date_as_of']    = @date_sampled
       hash_attrs['status']        = @production_status
@@ -475,6 +478,14 @@ class ProductAnalysisScanner < ExcelManipulator
 
       return sqls.join("\n")
     end
+
+      def midnight(time)
+        hour = time.hour
+        min  = time.min
+        sec  = time.sec
+        return time - (hour * 60 + min) * 60 - sec
+      end
+      private :midnight
 
     def to_s
       strs = Array.new
@@ -652,8 +663,16 @@ end
 
 if __FILE__ == $0
   prints_data_as_well = false
-  if ARGV[0] == '-d'
-    prints_data_as_well = true
+  fixes_creation_time_at_midnight = false
+  until ARGV.empty?
+    case ARGV[0]
+    when '-d'
+      prints_data_as_well = true
+    when '-m'
+      fixes_creation_time_at_midnight = true
+    else
+      break
+    end
     ARGV.shift
   end
 
@@ -662,7 +681,7 @@ if __FILE__ == $0
     exit(1)
   end
 
-  pas = ProductAnalysisScanner.new(prints_data_as_well)
+  pas = ProductAnalysisScanner.new(prints_data_as_well, fixes_creation_time_at_midnight)
   begin
     puts pas.scan_all(ARGV[0])
   rescue NotADirectoryError => e
