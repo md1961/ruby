@@ -161,12 +161,12 @@ class ProductAnalysisScanner < ExcelManipulator
       puts "while processing '#{filename}'..."
       raise
     ensure
-      book.Close if book
+      close_book(book, :no_save => true)
     end
   end
 
     def self.zenkaku2hankaku(str)
-      return str.tr('０-９ａ-ｚＡ-Ｚ', '0-9a-zA-Z')
+      return str.gsub(/－/, '-').tr('０-９ａ-ｚＡ-Ｚ', '0-9a-zA-Z')
     end
 
     def self.check_existence_of(expected, actual, where)
@@ -366,7 +366,7 @@ class ProductAnalysisScanner < ExcelManipulator
         return row.index(cell_found)
       end
 
-      RE_WELL_NAME = /\A(.*)[A-Z]{2,}-\d+/
+      RE_WELL_NAME = /\A(.*)[A-Z]{2,}-\s*\d+/
 
       def look_up_db_for_completion_id
         db_master_yaml = nil
@@ -378,6 +378,10 @@ class ProductAnalysisScanner < ExcelManipulator
           raise IllegalStateError.new("Both @well_name and @reservoir_name must be set to non-null")
         end
         unless RE_WELL_NAME =~ @well_name
+          
+          #TODO: Delete this debug-print
+          puts "@well_name = #{@well_name.inspect}(#{@well_name.split(//).map { |c| c[0]}.join(', ')})"
+
           raise IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
         end
         @well_name_to_look_up = $&

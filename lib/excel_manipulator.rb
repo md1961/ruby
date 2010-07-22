@@ -17,6 +17,12 @@ class ExcelManipulator
     return @excel.Workbooks.open('Filename' => abs_filename, 'ReadOnly' => readonly)
   end
 
+  def close_book(obj_book, hash_options={})
+    return unless obj_book
+    obj_book.Saved = true if hash_options[:no_save]
+    obj_book.Close
+  end
+
   def self.blank?(value)
     return value.nil? || value == ''
   end
