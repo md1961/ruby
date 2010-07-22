@@ -16,10 +16,10 @@ require 'yaml'
 require 'lib/excel_manipulator'
 
 
-class NotADirectoryException  < Exception; end
-class IllegalFormatException  < Exception; end
-class IllegalStateException   < Exception; end
-class InfrastructureException < Exception; end
+class NotADirectoryError  < StandardError; end
+class IllegalFormatError  < StandardError; end
+class IllegalStateError   < StandardError; end
+class InfrastructureError < StandardError; end
 
 
 class ProductAnalysisScanner < ExcelManipulator
@@ -33,7 +33,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
   def scan_all(root_dirname)
     unless File.directory?(root_dirname)
-      raise NotADirectoryException.new("'#{root_dirname}' is not a directory")
+      raise NotADirectoryError.new("'#{root_dirname}' is not a directory")
     end
 
     begin
@@ -131,7 +131,7 @@ class ProductAnalysisScanner < ExcelManipulator
             begin
               clazz.check_index(rows)
               break
-            rescue IllegalFormatException => evar
+            rescue IllegalFormatError => evar
               evars << evar
               next
             end
@@ -141,7 +141,7 @@ class ProductAnalysisScanner < ExcelManipulator
             evars.zip(data_classes) do |evar, clazz|
               msgs << "#{evar.message} for #{clazz.name}"
             end
-            raise InfrastructureException.new(msgs.join("\n"))
+            raise InfrastructureError.new(msgs.join("\n"))
           end
           @analysis_class = clazz
           @is_index_checked = true
@@ -171,7 +171,7 @@ class ProductAnalysisScanner < ExcelManipulator
     def self.check_existence_of(expected, actual, where)
       act = actual.tosjis.gsub(/[\s#{'　'.tosjis}]/, '').toutf8
       unless act[0, expected.length] == expected
-        raise IllegalFormatException.new("No '#{expected}' found ('#{actual}' instead) " + where)
+        raise IllegalFormatError.new("No '#{expected}' found ('#{actual}' instead) " + where)
       end
     end
 
@@ -244,7 +244,7 @@ class ProductAnalysisScanner < ExcelManipulator
       begin
         column_names = eval(const_name_of_column_names)
       rescue NameError
-        raise IllegalStateException.new("Cannot find constant #{const_name_of_column_names}")
+        raise IllegalStateError.new("Cannot find constant #{const_name_of_column_names}")
       end
       return column_names.map { |name| name.to_s }
     end
@@ -265,7 +265,7 @@ class ProductAnalysisScanner < ExcelManipulator
         elsif value.kind_of?(Time)
           value = value.strftime('%Y-%m-%d')
         else
-          raise IllegalStateException.new("Cannot treat as date '#{value}' (:#{value.class}) in COLUMN '#{column_name}'")
+          raise IllegalStateError.new("Cannot treat as date '#{value}' (:#{value.class}) in COLUMN '#{column_name}'")
         end
       elsif COLUMN_NAMES_IN_STRING_TYPE.include?(column_name.to_sym)  # Numeric
         value = value.to_s unless value.kind_of?(String)
@@ -368,10 +368,10 @@ class ProductAnalysisScanner < ExcelManipulator
         end
 
         if @well_name.nil? || @reservoir_name.nil?
-          raise IllegalStateException.new("Both @well_name and @reservoir_name must be set to non-null")
+          raise IllegalStateError.new("Both @well_name and @reservoir_name must be set to non-null")
         end
         unless RE_WELL_NAME =~ @well_name.tosjis
-          raise IllegalStateException.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
+          raise IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
         end
         @well_name_to_look_up = $&.toutf8
         well_crown_name       = $1.toutf8
@@ -380,7 +380,7 @@ class ProductAnalysisScanner < ExcelManipulator
         hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     )
         hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up)
 
-        raise IllegalStateException.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
+        raise IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
         @well_id = hash_well['well_id']
         if hash_reservoir
           @reservoir_id = hash_reservoir['reservoir_id']
@@ -388,12 +388,12 @@ class ProductAnalysisScanner < ExcelManipulator
           if MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID.keys.include?(well_crown_name)
             @reservoir_id = MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID[well_crown_name]
           else
-            raise IllegalStateException.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" )
+            raise IllegalStateError.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" )
           end
         end
 
         hash_completion = look_up_db_record(db_master_yaml, 'completion', 'well_id' => @well_id, 'reservoir_id' => @reservoir_id)
-        raise IllegalStateException.new("No completion found to match '#{@well_name_to_look_up}'(id=#{@well_id})" \
+        raise IllegalStateError.new("No completion found to match '#{@well_name_to_look_up}'(id=#{@well_id})" \
                                         + " and '#{@reservoir_name_to_look_up}'(id=#{@reservoir_id})" ) unless hash_completion
         @completion_id = hash_completion['completion_id']
       end
@@ -419,7 +419,7 @@ class ProductAnalysisScanner < ExcelManipulator
     @@index_leftmost = nil
 
     def self.instance(row, clazz)
-      raise IllegalStateException.new("#{clazz.name}.check_index() has not been called") unless @@index_leftmost
+      raise IllegalStateError.new("#{clazz.name}.check_index() has not been called") unless @@index_leftmost
 
       if just_unit_changing?(row)
         set_units(row)
@@ -499,7 +499,7 @@ class ProductAnalysisScanner < ExcelManipulator
       expected = expected_index[0]
       @@index_leftmost = row.index(expected)
       where = "in index row"
-      raise IllegalFormatException.new("No '#{expected}' at first column " + where) if @@index_leftmost.nil?
+      raise IllegalFormatError.new("No '#{expected}' at first column " + where) if @@index_leftmost.nil?
       actuals = row[@@index_leftmost + 1, expected_index.length - 1]
       expected_index[1 .. -1].zip(actuals).each_with_index do |expected_and_actual, i|
         expected, actual = expected_and_actual
@@ -636,14 +636,14 @@ class ProductAnalysisScanner < ExcelManipulator
     def set_value(row)
       unit = row[@index_column]
       unless unit
-        raise IllegalStateException.new("Nothing found at index #{@index_column} in row (#{row.inspect})")
+        raise IllegalStateError.new("Nothing found at index #{@index_column} in row (#{row.inspect})")
       end
       unit = unit.tosjis.gsub(/[\s\/()\[\]#{'　（）・'.tosjis}]/, '').toutf8
       degC = "℃".tosjis
       unit = unit.tosjis.gsub(/\d+#{degC}/, '').toutf8
       @unit_id = MAP_UNIT_IDS[unit.downcase]
       unless @unit_id
-        raise IllegalStateException.new("No unit such as '#{unit}'")
+        raise IllegalStateError.new("No unit such as '#{unit}'")
       end
     end
   end
@@ -665,7 +665,7 @@ if __FILE__ == $0
   pas = ProductAnalysisScanner.new(prints_data_as_well)
   begin
     puts pas.scan_all(ARGV[0])
-  rescue NotADirectoryException => e
+  rescue NotADirectoryError => e
     $stderr.puts e.message
   end
 end
