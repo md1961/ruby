@@ -7,7 +7,7 @@
 # 存在する Excel ワークブックすべてが対象となる
 
 
-$KCODE = 'sjis'
+$KCODE = 'utf8'
 
 require 'kconv'
 require 'jcode'
@@ -166,11 +166,11 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
     def self.zenkaku2hankaku(str)
-      return str.tosjis.tr('０-９ａ-ｚＡ-Ｚ'.tosjis, '0-9a-zA-Z').toutf8
+      return str.tr('０-９ａ-ｚＡ-Ｚ', '0-9a-zA-Z')
     end
 
     def self.check_existence_of(expected, actual, where)
-      act = actual.tosjis.gsub(/[\s#{'　'.tosjis}]/, '').toutf8
+      act = actual.gsub(/[\s　]/, '')
       unless act[0, expected.length] == expected
         raise IllegalFormatError.new("No '#{expected}' found ('#{actual}' instead) " + where)
       end
@@ -338,7 +338,7 @@ class ProductAnalysisScanner < ExcelManipulator
         @well_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
 
         index = CompletionData.index(rows, 0, '\A成功年月日')
-        if /#{'成功年月日'.tosjis}.*(\d+\/\d+\/\d+)/ =~ row[index].tosjis
+        if /成功年月日(\d+\/\d+\/\d+)/ =~ row[index]
           @date_completed = $1
         else
           @date_completed = row[index + 1]
@@ -359,7 +359,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
       def self.index(rows, row_no, str_re_to_look)
         row = rows[row_no]
-        cell_found = row.find { |cell| cell && /#{str_re_to_look.tosjis}/ =~ cell.to_s.tosjis.gsub(/[\s#{'　'.tosjis}]/, '') }
+        cell_found = row.find { |cell| cell && /#{str_re_to_look}/ =~ cell.to_s.gsub(/[\s　]/, '') }
         unless cell_found
           raise IllegalFormatError.new("No cell found to match /#{str_re_to_look}/ in row No.#{row_no + 1}")
         end
@@ -377,11 +377,11 @@ class ProductAnalysisScanner < ExcelManipulator
         if @well_name.nil? || @reservoir_name.nil?
           raise IllegalStateError.new("Both @well_name and @reservoir_name must be set to non-null")
         end
-        unless RE_WELL_NAME =~ @well_name.tosjis
+        unless RE_WELL_NAME =~ @well_name
           raise IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
         end
-        @well_name_to_look_up = $&.toutf8
-        well_crown_name       = $1.toutf8
+        @well_name_to_look_up = $&
+        well_crown_name       = $1
         @reservoir_name_to_look_up = RESERVOIR_NAME_CONVERSION_TABLE[reservoir_name] || reservoir_name
 
         hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     )
@@ -537,7 +537,7 @@ class ProductAnalysisScanner < ExcelManipulator
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
       end
 
-      row_trimmed = row.map { |cell| cell ? cell.tosjis.gsub(/[\s#{'　'.tosjis}]/, '').toutf8 : "" }
+      row_trimmed = row.map { |cell| cell ? cell.gsub(/[\s　.]/, '') : "" }
       @@unit_excel_columns = Array.new
       unit_indexes_offsets_and_unit_id_names.each do |index_name, offset, instance_variable_name|
         @@unit_excel_columns << UnitExcelColumn.new(row_trimmed.index(index_name), offset, instance_variable_name)
@@ -668,9 +668,9 @@ class ProductAnalysisScanner < ExcelManipulator
       unless unit
         raise IllegalStateError.new("Nothing found at index #{@index_column} in row (#{row.inspect})")
       end
-      unit = unit.tosjis.gsub(/[\s\/()\[\]#{'　（）・'.tosjis}]/, '').toutf8
-      degC = "℃".tosjis
-      unit = unit.tosjis.gsub(/\d+#{degC}/, '').toutf8
+      unit = unit.gsub(/[\s\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
+      degC = '℃'
+      unit = unit.gsub(/\d+#{degC}/, '')
       @unit_id = MAP_UNIT_IDS[unit.downcase]
       unless @unit_id
         raise IllegalStateError.new("No unit such as '#{unit}'")
