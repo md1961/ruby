@@ -332,33 +332,39 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
       def read(rows)
-        rows_no_blank = Array.new
-        rows.each do |row|
-          rows_no_blank << row.select { |cell| ! ExcelManipulator.blank?(cell) }
+        row = rows[0]
+
+        first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
+        @well_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
+
+        index = CompletionData.index(rows, 0, '\A成功年月日')
+        if /#{'成功年月日'.tosjis}.*(\d+\/\d+\/\d+)/ =~ row[index].tosjis
+          @date_completed = $1
+        else
+          @date_completed = row[index + 1]
         end
+        index = CompletionData.index(rows, 0, '\A層名')
+        @reservoir_name = row[index + 1]
+        index = CompletionData.index(rows, 0, '\A坑井深度')
+        @total_depth    = row[index + 1]
+        dummy = CompletionData.index(rows, 0, '\A仕上深度')
 
-        row = rows_no_blank[0]
-        if /#{'成功年月日'.tosjis}.*(\d+\/\d+\/\d+)/ =~ row[1].tosjis
-          row[1, 1] = ['成功年月日', $1]
-        end
-        @well_name = ProductAnalysisScanner.zenkaku2hankaku(row[0])
-        ProductAnalysisScanner.check_existence_of('成功年月日', row[1], "in first row")
-        @date_completed = row[2]
-        ProductAnalysisScanner.check_existence_of('層名'      , row[3], "in first row")
-        @reservoir_name = row[4]
-        ProductAnalysisScanner.check_existence_of('坑井深度'  , row[5], "in first row")
-        @total_depth    = row[6]
-        ProductAnalysisScanner.check_existence_of('仕上深度'  , row[7], "in first row")
+        index = CompletionData.index(rows, 1, '\A自')
+        @perforation_interval_top    = rows[1][index + 1]
 
-        row = rows_no_blank[1]
-        ProductAnalysisScanner.check_existence_of('自', row[0], "in second row")
-        @perforation_interval_top    = row[1]
-
-        row = rows_no_blank[2]
-        ProductAnalysisScanner.check_existence_of('至', row[0], "in third row")
-        @perforation_interval_bottom = row[1]
+        index = CompletionData.index(rows, 2, '\A至')
+        @perforation_interval_bottom = rows[2][index + 1]
       end
       private :read
+
+      def self.index(rows, row_no, str_re_to_look)
+        row = rows[row_no]
+        cell_found = row.find { |cell| cell && /#{str_re_to_look.tosjis}/ =~ cell.to_s.tosjis.gsub(/[\s#{'　'.tosjis}]/, '') }
+        unless cell_found
+          raise IllegalFormatError.new("No cell found to match /#{str_re_to_look}/ in row No.#{row_no + 1}")
+        end
+        return row.index(cell_found)
+      end
 
       RE_WELL_NAME = /\A(.*)[A-Z]{2,}-\d+/
 
