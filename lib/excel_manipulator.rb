@@ -12,9 +12,9 @@ class ExcelManipulator
     @excel.Quit
   end
 
-  def open_book(filename)
+  def open_book(filename, readonly=true)
     abs_filename = get_absolute_path(filename)
-    return @excel.Workbooks.open(abs_filename)
+    return @excel.Workbooks.open('Filename' => abs_filename, 'ReadOnly' => readonly)
   end
 
   def self.blank?(value)
