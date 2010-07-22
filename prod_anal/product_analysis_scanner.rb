@@ -410,7 +410,7 @@ class ProductAnalysisScanner < ExcelManipulator
         db_yaml[table_name].each do |hash_row|
           found = true
           hash_to_look.each do |column_name, value|
-            next if hash_row[column_name] == value
+            next if name_equal?(hash_row[column_name], value, table_name)
             found = false
             break
           end
@@ -419,6 +419,19 @@ class ProductAnalysisScanner < ExcelManipulator
         return nil
       end
       private :look_up_db_record
+
+      def name_equal?(name1, name2, table_name)
+        return name_for_comparison(name1, table_name) == name_for_comparison(name2, table_name)
+      end
+      private :name_equal?
+
+      def name_for_comparison(name, table_name)
+        if table_name == 'well'
+          return name.sub(/D\z/, '').sub(/(\w) (?=-)/, '\1')
+        end
+        return name
+      end
+      private :name_for_comparison
   end
 
   class AnalysisData
