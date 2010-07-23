@@ -12,6 +12,7 @@ $KCODE = 'utf8'
 require 'kconv'
 require 'nkf'
 require 'yaml'
+require 'optparse'
 
 require 'lib/excel_manipulator'
 
@@ -36,19 +37,13 @@ class ProductAnalysisScanner < ExcelManipulator
       @sql_only                        = true
       @fixes_creation_time_at_midnight = false
       @verbose                         = false
-      until argv.empty?
-        case argv[0]
-        when '-d'
-          @sql_only = false
-        when '-m'
-          @fixes_creation_time_at_midnight = true
-        when '-v'
-          @verbose = true
-        else
-          break
-        end
-        argv.shift
-      end
+
+      @opt_parser = OptionParser.new
+      @opt_parser.on("-d", "--data_as_well"           ) { |v| @sql_only                        = false }
+      @opt_parser.on("-m", "--fix_created_at_midnight") { |v| @fixes_creation_time_at_midnight = true  }
+      @opt_parser.on("-v", "--verbose"                ) { |v| @verbose                         = true  }
+
+      @opt_parser.parse!(argv)
 
       unless argv.size == 1
         raise CommandLineArgumentError.new("Specify a root directory which holds target Excel workbooks")
@@ -136,7 +131,7 @@ class ProductAnalysisScanner < ExcelManipulator
       sheet = get_target_worksheet(book)
 
       rows = Array.new
-      i = 0
+      total_row_count = 0
       sheet.UsedRange.Rows.each do |row|
         cells = Array.new
         row.Columns.each do |cell|
@@ -145,7 +140,7 @@ class ProductAnalysisScanner < ExcelManipulator
           cells << value
         end
         if cells.all? { |r| ExcelManipulator.blank?(r) }
-          break if i >= MIN_ROW - 1
+          break if total_row_count >= MIN_ROW - 1
           next
         end
 
@@ -182,8 +177,8 @@ class ProductAnalysisScanner < ExcelManipulator
           rows.clear
         end
 
-        i += 1
-        break if i >= MAX_ROW
+        total_row_count += 1
+        break if total_row_count >= MAX_ROW
       end
     rescue => evar
       puts evar.backtrace
