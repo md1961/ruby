@@ -391,31 +391,42 @@ class ProductAnalysisScanner < ExcelManipulator
         first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
         @well_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
 
-        index = CompletionData.index(rows, 0, '\A成功年月日')
-        if /成功年月日(\d+\/\d+\/\d+)/ =~ row[index]
+        index = CompletionData.index(rows, 0, /\A\s*成功年月日/)
+        if /\A\s*成功年月日.*(\d+\/\d+\/\d+)/ =~ row[index]
           @date_completed = $1
         else
           @date_completed = row[index + 1]
         end
-        index = CompletionData.index(rows, 0, '\A層名')
-        @reservoir_name = row[index + 1]
-        index = CompletionData.index(rows, 0, '\A坑井深度')
+
+        index = CompletionData.index(rows, 0, /\A\s*層名/)
+        if /\A\s*層名：(.+[^\s　])[\s　]*\z/ =~ row[index]
+          @reservoir_name = $1
+        else
+          @reservoir_name = row[index + 1]
+        end
+
+        index = CompletionData.index(rows, 0, /\A\s*坑井深度/)
         @total_depth    = row[index + 1]
-        dummy = CompletionData.index(rows, 0, '\A仕上深度')
 
-        index = CompletionData.index(rows, 1, '\A自')
-        @perforation_interval_top    = rows[1][index + 1]
+        index = CompletionData.index(rows, 0, /\A仕\s*上深度/)
+        if /\A\s*仕上深度.*([\d.]+).*([\d.]+)/ =~ row[index]
+          @perforation_interval_top    = $1
+          @perforation_interval_bottom = $2
+        else
+          index = CompletionData.index(rows, 1, /\A\s*自/)
+          @perforation_interval_top    = rows[1][index + 1]
 
-        index = CompletionData.index(rows, 2, '\A至')
-        @perforation_interval_bottom = rows[2][index + 1]
+          index = CompletionData.index(rows, 2, /\A\s*至/)
+          @perforation_interval_bottom = rows[2][index + 1]
+        end
       end
       private :read
 
-      def self.index(rows, row_no, str_re_to_look)
+      def self.index(rows, row_no, re_to_look)
         row = rows[row_no]
-        cell_found = row.find { |cell| cell && /#{str_re_to_look}/ =~ cell.to_s.gsub(/[\s　]/, '') }
+        cell_found = row.find { |cell| cell && re_to_look =~ cell.to_s.gsub(/[\s　]/, '') }
         unless cell_found
-          raise IllegalFormatError.new("No cell found to match /#{str_re_to_look}/ in row No.#{row_no + 1}")
+          raise IllegalFormatError.new("No cell found to match #{re_to_look} in row No.#{row_no + 1}")
         end
         return row.index(cell_found)
       end
