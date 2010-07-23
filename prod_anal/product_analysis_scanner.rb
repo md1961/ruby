@@ -346,13 +346,19 @@ class ProductAnalysisScanner < ExcelManipulator
                 :perforation_interval_top, :perforation_interval_bottom, \
                 :completion_id, :well_id, :reservoir_id
 
-    DB_MASTER_FILENAME = 'prod_anal/100707-01_well_reservoir_completion.yml'
+    DB_MASTER_FILENAME = 'prod_anal/100723_marrs_field_well_reservoir_completion.yml'
 
     RESERVOIR_NAME_CONVERSION_TABLE = {
-      '2900mA3' => '2900mA一括',
-      'ＧⅢ'     => 'GreenTuff一括',
+      '東新潟' => {
+        '2000m'   => '2000m+2100m',
+        '2900mA3' => '2900mA一括',
+      },
+      '片貝' => {
+        'ＧⅢ'  => 'GreenTuff一括',
+      },
     }
 
+    #TODO: Eventually to be deleted
     MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID = {
       'あけぼの'   =>  1,
       '北あけぼの' =>  1,
@@ -364,6 +370,24 @@ class ProductAnalysisScanner < ExcelManipulator
       '南安田'     => 94,
       '妙法寺'     => 94,
       '地蔵峠'     => 94,
+    }
+
+    MAP_WELL_CROWN_NAMES_TO_FIELD_NAME = {
+      'あけぼの'   => '勇払',
+      '北あけぼの' => '勇払',
+      '沼ノ端'     => '勇払',
+      '西沼ノ端'   => '勇払',
+      '南勇払'     => '勇払',
+      '吉井'       => '吉井',
+      '安田'       => '吉井',
+      '南安田'     => '吉井',
+      '妙法寺'     => '吉井',
+      '地蔵峠'     => '吉井',
+      '北片貝'     => '片貝',
+    }
+    #TODO: Replace MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID with this
+    MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID = {
+
     }
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
@@ -449,12 +473,24 @@ class ProductAnalysisScanner < ExcelManipulator
 
           raise IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
         end
+
         @well_name_to_look_up = $&
         well_crown_name       = $1
-        @reservoir_name_to_look_up = RESERVOIR_NAME_CONVERSION_TABLE[reservoir_name] || reservoir_name
+        @field_name_to_look_up = MAP_WELL_CROWN_NAMES_TO_FIELD_NAME[well_crown_name] || well_crown_name
 
-        hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     )
-        hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up)
+        hash_field     = look_up_db_record(db_master_yaml, 'field', 'field_zen' => @field_name_to_look_up)
+        unless hash_field
+          raise IllegalStateError.new("No (oil/gas) field found to match '#{@field_name_to_look_up}'")
+        end
+        field_id   = hash_field['field_id']
+        field_name = hash_field['field_zen']
+
+        @reservoir_name_to_look_up = (RESERVOIR_NAME_CONVERSION_TABLE[field_name] || {})[reservoir_name] || reservoir_name
+
+        hash_well      = look_up_db_record(db_master_yaml, 'well',
+                                           'well_zen'      => @well_name_to_look_up     , 'field_id' => field_id)
+        hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir',
+                                           'reservoir_zen' => @reservoir_name_to_look_up, 'field_id' => field_id)
 
         unless hash_well
           
@@ -464,12 +500,12 @@ class ProductAnalysisScanner < ExcelManipulator
           raise IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'")
         end
         @well_id = hash_well['well_id']
+
         if hash_reservoir
           @reservoir_id = hash_reservoir['reservoir_id']
         else
-          if MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID.keys.include?(well_crown_name)
-            @reservoir_id = MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID[well_crown_name]
-          else
+          @reservoir_id = MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID[well_crown_name]
+          unless @reservoir_id
             raise IllegalStateError.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" )
           end
         end
@@ -485,7 +521,7 @@ class ProductAnalysisScanner < ExcelManipulator
         db_yaml[table_name].each do |hash_row|
           found = true
           hash_to_look.each do |column_name, value|
-            next if name_equal?(hash_row[column_name], value, table_name)
+            next if value_equal?(hash_row[column_name], value, table_name)
             found = false
             break
           end
@@ -495,18 +531,18 @@ class ProductAnalysisScanner < ExcelManipulator
       end
       private :look_up_db_record
 
-      def name_equal?(name1, name2, table_name)
-        return name_for_comparison(name1, table_name) == name_for_comparison(name2, table_name)
+      def value_equal?(value1, value2, table_name)
+        return value_for_comparison(value1, table_name) == value_for_comparison(value2, table_name)
       end
-      private :name_equal?
+      private :value_equal?
 
-      def name_for_comparison(name, table_name)
-        if table_name == 'well'
-          return name.sub(/D\z/, '').sub(/(\w) (?=-)/, '\1')
+      def value_for_comparison(value, table_name)
+        if table_name == 'well' && value.kind_of?(String)
+          return value.sub(/D\z/, '').sub(/(\w) (?=-)/, '\1')
         end
-        return name
+        return value
       end
-      private :name_for_comparison
+      private :value_for_comparison
   end
 
   class AnalysisData

@@ -1,3 +1,396 @@
+field :
+- field_id : 1
+  field : Yufutsu
+  field_zen : 勇払
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 140
+  field_office_id : 1
+- field_id : 2
+  field : Akebono Asasou
+  field_zen : あけぼの浅層
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 150
+  field_office_id : 1
+- field_id : 3
+  field : Sarukawa
+  field_zen : 申川
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 320
+  field_office_id : 3
+- field_id : 4
+  field : Fukubezawa
+  field_zen : 福米沢
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 330
+  field_office_id : 3
+- field_id : 5
+  field : Fukukawa
+  field_zen : 福川
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 340
+  field_office_id : 6
+- field_id : 6
+  field : Nishi-Ohgata
+  field_zen : 西大潟
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 350
+  field_office_id : 6
+- field_id : 7
+  field : Yoshino
+  field_zen : 美野
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 360
+  field_office_id : 6
+- field_id : 8
+  field : Yurihara
+  field_zen : 由利原
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 440
+  field_office_id : 4
+- field_id : 9
+  field : Ayukawa
+  field_zen : 鮎川
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 460
+  field_office_id : 4
+- field_id : 10
+  field : Amarume
+  field_zen : 余目
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 480
+  field_office_id : 5
+- field_id : 11
+  field : Hirakida
+  field_zen : 平木田
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 720
+  field_office_id : 14
+- field_id : 12
+  field : Shiunji
+  field_zen : 紫雲寺
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 740
+  field_office_id : 7
+- field_id : 13
+  field : Shintainai
+  field_zen : 新胎内
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 760
+  field_office_id : 14
+- field_id : 14
+  field : Higashi-Niigata
+  field_zen : 東新潟
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 840
+  field_office_id : 8
+- field_id : 15
+  field : Mitsuke
+  field_zen : 見附
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 940
+  field_office_id : 9
+- field_id : 16
+  field : Fujikawa
+  field_zen : 藤川
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 1040
+  field_office_id : 10
+- field_id : 17
+  field : Kumoide
+  field_zen : 雲出
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 1140
+  field_office_id : 11
+- field_id : 18
+  field : Yoshii
+  field_zen : 吉井
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 1240
+  field_office_id : 12
+- field_id : 19
+  field : Katakai
+  field_zen : 片貝
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 1340
+  field_office_id : 13
+- field_id : 20
+  field : Iwafune-Oki
+  field_zen : 岩船沖
+  date_field_aban : 
+  date_added : 
+  date_removed : 
+  field_north : 2100
+  field_office_id : 15
+- field_id : 21
+  field : Aga-Oki
+  field_zen : 阿賀沖
+  date_field_aban : 2000-04-01
+  date_added : 
+  date_removed : 
+  field_north : 2200
+  field_office_id : 15
+- field_id : 22
+  field : Biratori
+  field_zen : 平取
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 210
+  field_office_id : 14
+- field_id : 23
+  field : Barato
+  field_zen : 茨戸
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 220
+  field_office_id : 2
+- field_id : 24
+  field : Hashimoto
+  field_zen : 橋本
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 510
+  field_office_id : 6
+- field_id : 25
+  field : Watanabe
+  field_zen : 渡部
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 520
+  field_office_id : 14
+- field_id : 26
+  field : Katanishi
+  field_zen : 潟西
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 530
+  field_office_id : 14
+- field_id : 27
+  field : Tsuchizaki-Oki
+  field_zen : 土崎沖
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 540
+  field_office_id : 6
+- field_id : 28
+  field : Kitamichikawa-Oki
+  field_zen : 北道川沖
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 550
+  field_office_id : 14
+- field_id : 29
+  field : Shimohama
+  field_zen : 下浜
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 560
+  field_office_id : 6
+- field_id : 30
+  field : Futada
+  field_zen : 二田
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 570
+  field_office_id : 14
+- field_id : 31
+  field : Kitakonoura
+  field_zen : 北金浦
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 580
+  field_office_id : 14
+- field_id : 32
+  field : Nishioguni
+  field_zen : 西小国
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 590
+  field_office_id : 14
+- field_id : 33
+  field : Daihangou
+  field_zen : 大飯郷
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 600
+  field_office_id : 14
+- field_id : 34
+  field : Mega
+  field_zen : 女鹿
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 610
+  field_office_id : 14
+- field_id : 35
+  field : Fukura
+  field_zen : 吹浦
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 620
+  field_office_id : 6
+- field_id : 36
+  field : Oishi
+  field_zen : 生石
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 630
+  field_office_id : 14
+- field_id : 37
+  field : Seki
+  field_zen : 関
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 640
+  field_office_id : 14
+- field_id : 38
+  field : Minamisuibara
+  field_zen : 南水原
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1500
+  field_office_id : 14
+- field_id : 39
+  field : Higashisanjou
+  field_zen : 東三条
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1510
+  field_office_id : 14
+- field_id : 40
+  field : Honjouji
+  field_zen : 本成寺
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1520
+  field_office_id : 14
+- field_id : 41
+  field : Kurosaka
+  field_zen : 黒坂
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1530
+  field_office_id : 14
+- field_id : 42
+  field : Nagasawa
+  field_zen : 長沢
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1540
+  field_office_id : 14
+- field_id : 43
+  field : Ohkouzu
+  field_zen : 大河津
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1550
+  field_office_id : 14
+- field_id : 44
+  field : Tamugiyama
+  field_zen : 田麦山
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1560
+  field_office_id : 14
+- field_id : 45
+  field : Serita
+  field_zen : 芹田
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1570
+  field_office_id : 14
+- field_id : 46
+  field : Nakanomiya
+  field_zen : 中之宮
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1580
+  field_office_id : 14
+- field_id : 47
+  field : Bessho
+  field_zen : 別所
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1590
+  field_office_id : 14
+- field_id : 48
+  field : Maya
+  field_zen : 馬屋
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1600
+  field_office_id : 14
+- field_id : 49
+  field : Sekihara
+  field_zen : 関原
+  date_field_aban : 1986-04-01
+  date_added : 
+  date_removed : 
+  field_north : 1610
+  field_office_id : 14
 well :
 - well_id : 1
   well : Akebono SK-1
