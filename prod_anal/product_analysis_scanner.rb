@@ -10,7 +10,7 @@
 $KCODE = 'utf8'
 
 require 'kconv'
-require 'jcode'
+require 'nkf'
 require 'yaml'
 
 require 'lib/excel_manipulator'
@@ -195,7 +195,7 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
     def self.zenkaku2hankaku(str)
-      return str.gsub(/－/, '-').tr('０-９ａ-ｚＡ-Ｚ', '0-9a-zA-Z')
+      return NKF::nkf('-WwZ0', str)
     end
 
     def self.check_existence_of(expected, actual, where)
@@ -420,7 +420,13 @@ class ProductAnalysisScanner < ExcelManipulator
         hash_well      = look_up_db_record(db_master_yaml, 'well'     , 'well_zen'      => @well_name_to_look_up     )
         hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir', 'reservoir_zen' => @reservoir_name_to_look_up)
 
-        raise IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'") unless hash_well
+        unless hash_well
+          
+          #TODO: Delete this debug-print
+          puts "@well_name_to_look_up = #{@well_name_to_look_up}(#{@well_name_to_look_up.split(//).map { |c| c[0]}.join(', ')})"
+
+          raise IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'")
+        end
         @well_id = hash_well['well_id']
         if hash_reservoir
           @reservoir_id = hash_reservoir['reservoir_id']
