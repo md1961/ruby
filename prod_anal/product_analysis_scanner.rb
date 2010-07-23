@@ -19,6 +19,7 @@ require 'lib/excel_manipulator'
 
 class CommandLineArgumentError < StandardError; end
 class NotADirectoryError       < StandardError; end
+class CannotFindWorksheetError < StandardError; end
 class IllegalFormatError       < StandardError; end
 class IllegalStateError        < StandardError; end
 class InfrastructureError      < StandardError; end
@@ -164,7 +165,11 @@ class ProductAnalysisScanner < ExcelManipulator
         return sheet_1
       end
 
-      return book.Worksheets.Item(TARGET_SHEETNAME)
+      begin
+        return book.Worksheets.Item(TARGET_SHEETNAME)
+      rescue WIN32OLERuntimeError => evar
+        raise CannotFindWorksheetError.new("Cannot find worksheet '#{TARGET_SHEETNAME}' in '#{book.name}'")
+      end
     end
     private :get_target_worksheet
 
