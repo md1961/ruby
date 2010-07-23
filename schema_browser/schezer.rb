@@ -952,10 +952,12 @@ class Schezer
     "xml      : Output schema in XML ('#{ALL_TABLES}' not allowed with -g)",
     "count    : Output row count of the table",
     "data     : Output data of the table",
+    "yaml     : Output data of the table in YAML format",
     "sql_sync : Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
-  COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS = [:raw, :xml, :yaml]
+  COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS   = [:raw, :xml]
+  COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED = [:data, :yaml]
   DEFAULT_TABLE_NAME = ALL_TABLES
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
@@ -971,6 +973,9 @@ class Schezer
 
     if @conn2 && COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS.include?(command)
       exit_with_msg("Cannot run command '#{command}' with two environments")
+    end
+    if @argv.empty? && COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED.include?(command)
+      exit_with_msg("Cannot run command '#{command}' with no table name specified")
     end
 
     @argv << DEFAULT_TABLE_NAME if @argv.empty?
