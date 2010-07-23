@@ -121,8 +121,8 @@ class ProductAnalysisScanner < ExcelManipulator
     end
     private :make_sqls_to_insert_well_and_completion_specs
 
-  MIN_ROW = 10
-  MAX_ROW = 50
+  MIN_ROW =  10
+  MAX_ROW = 512
 
   def scan(filename)
     begin
@@ -135,7 +135,7 @@ class ProductAnalysisScanner < ExcelManipulator
       total_row_count = 0
       sheet.UsedRange.Rows.each do |row|
         cells = row2cells(row)
-        if cells.all? { |r| ExcelManipulator.blank?(r) }
+        if @completion_data && cells.all? { |r| ExcelManipulator.blank?(r) }
           break if total_row_count >= MIN_ROW - 1
           next
         end
@@ -350,26 +350,14 @@ class ProductAnalysisScanner < ExcelManipulator
 
     RESERVOIR_NAME_CONVERSION_TABLE = {
       '東新潟' => {
+        '1450mB'  => '1450m',
         '2000m'   => '2000m+2100m',
+        '2100m'   => '2000m+2100m',
         '2900mA3' => '2900mA一括',
       },
       '片貝' => {
         'ＧⅢ'  => 'GreenTuff一括',
       },
-    }
-
-    #TODO: Eventually to be deleted
-    MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID = {
-      'あけぼの'   =>  1,
-      '北あけぼの' =>  1,
-      '沼ノ端'     =>  1,
-      '西沼ノ端'   =>  1,
-      '南勇払'     =>  1,
-      '吉井'       => 94,
-      '安田'       => 94,
-      '南安田'     => 94,
-      '妙法寺'     => 94,
-      '地蔵峠'     => 94,
     }
 
     MAP_WELL_CROWN_NAMES_TO_FIELD_NAME = {
@@ -385,9 +373,10 @@ class ProductAnalysisScanner < ExcelManipulator
       '地蔵峠'     => '吉井',
       '北片貝'     => '片貝',
     }
-    #TODO: Replace MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID with this
-    MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID = {
 
+    MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID = {
+      '勇払' =>  1,
+      '吉井' => 94,
     }
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
@@ -426,7 +415,7 @@ class ProductAnalysisScanner < ExcelManipulator
         if /\A\s*層名：(.+[^\s　])[\s　]*\z/ =~ row[index]
           @reservoir_name = $1
         else
-          @reservoir_name = row[index + 1]
+          @reservoir_name = row[index + 1].gsub(/[\s　]/, '')
         end
 
         index = CompletionData.index(rows, 0, /\A\s*坑井深度/)
@@ -504,7 +493,7 @@ class ProductAnalysisScanner < ExcelManipulator
         if hash_reservoir
           @reservoir_id = hash_reservoir['reservoir_id']
         else
-          @reservoir_id = MAP_WELL_CROWN_NAMES_WITH_SINGLE_RESERVOIR_ID[well_crown_name]
+          @reservoir_id = MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID[field_name]
           unless @reservoir_id
             raise IllegalStateError.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" )
           end
@@ -639,13 +628,13 @@ class ProductAnalysisScanner < ExcelManipulator
       row = rows_of_two[0]
       expected = expected_index[0]
       @@index_leftmost = row.index(expected)
-      where = "in index row"
-      raise IllegalFormatError.new("No '#{expected}' at first column " + where) if @@index_leftmost.nil?
+      raise IllegalFormatError.new("No '#{expected}' in index row") unless @@index_leftmost
+
       actuals = row[@@index_leftmost + 1, expected_index.length - 1]
       expected_index[1 .. -1].zip(actuals).each_with_index do |expected_and_actual, i|
         expected, actual = expected_and_actual
         actual = "" unless actual
-        ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} #{where}")
+        ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} in index row")
       end
 
       row_trimmed = row.map { |cell| cell ? cell.gsub(/[\s　.]/, '') : "" }
