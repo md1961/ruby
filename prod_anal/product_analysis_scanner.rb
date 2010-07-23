@@ -133,49 +133,14 @@ class ProductAnalysisScanner < ExcelManipulator
       rows = Array.new
       total_row_count = 0
       sheet.UsedRange.Rows.each do |row|
-        cells = Array.new
-        row.Columns.each do |cell|
-          value = cell.Value
-          value = value.toutf8 if value.kind_of?(String)
-          cells << value
-        end
+        cells = row2cells(row)
         if cells.all? { |r| ExcelManipulator.blank?(r) }
           break if total_row_count >= MIN_ROW - 1
           next
         end
 
         rows << cells
-        if @completion_data.nil? and rows.size == CompletionData::NUM_ROWS_NEEDED_TO_INITIALIZE
-          @completion_data = CompletionData.new(rows)
-          rows.clear
-        elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == AnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
-          data_classes = [GasAnalysisData, OilAnalysisData]
-          evars = Array.new
-          clazz = nil
-          data_classes.each do |clazz|
-            begin
-              clazz.check_index(rows)
-              break
-            rescue IllegalFormatError => evar
-              evars << evar
-              next
-            end
-          end
-          if evars.size >= data_classes.size
-            msgs = Array.new
-            evars.zip(data_classes) do |evar, clazz|
-              msgs << "#{evar.message} for #{clazz.name}"
-            end
-            raise InfrastructureError.new(msgs.join("\n"))
-          end
-          @analysis_class = clazz
-          @is_index_checked = true
-          rows.clear
-        elsif @is_index_checked and rows.size == 1
-          analysis_data = @analysis_class.instance(rows[0])
-          @analysis_datas << analysis_data if analysis_data
-          rows.clear
-        end
+        process_rows(rows)
 
         total_row_count += 1
         break if total_row_count >= MAX_ROW
@@ -193,13 +158,61 @@ class ProductAnalysisScanner < ExcelManipulator
       sheet_count = book.Worksheets.count
       sheet_1     = book.Worksheets(1)
       if sheet_count == 1 || sheet_1.name == TARGET_SHEETNAME
-        $stderr.puts "  Use sole sheet '#{sheet_1.name}' to retrieve data from" unless sheet_1.name == TARGET_SHEETNAME
+        if @verbose && sheet_1.name != TARGET_SHEETNAME
+          $stderr.puts "  Use sole worksheet '#{sheet_1.name}' to retrieve data from"
+        end
         return sheet_1
       end
 
       return book.Worksheets.Item(TARGET_SHEETNAME)
     end
     private :get_target_worksheet
+
+    def row2cells(row)
+      cells = Array.new
+      row.Columns.each do |cell|
+        value = cell.Value
+        value = value.toutf8 if value.kind_of?(String)
+        cells << value
+      end
+      return cells
+    end
+    private :row2cells
+
+    def process_rows(rows)
+      if @completion_data.nil? and rows.size == CompletionData::NUM_ROWS_NEEDED_TO_INITIALIZE
+        @completion_data = CompletionData.new(rows)
+        rows.clear
+      elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == AnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
+        data_classes = [GasAnalysisData, OilAnalysisData]
+        evars = Array.new
+        clazz = nil
+        data_classes.each do |clazz|
+          begin
+            clazz.check_index(rows)
+            break
+          rescue IllegalFormatError => evar
+            evars << evar
+            next
+          end
+        end
+        if evars.size >= data_classes.size
+          msgs = Array.new
+          evars.zip(data_classes) do |evar, clazz|
+            msgs << "#{evar.message} for #{clazz.name}"
+          end
+          raise InfrastructureError.new(msgs.join("\n"))
+        end
+        @analysis_class = clazz
+        @is_index_checked = true
+        rows.clear
+      elsif @is_index_checked and rows.size == 1
+        analysis_data = @analysis_class.instance(rows[0])
+        @analysis_datas << analysis_data if analysis_data
+        rows.clear
+      end
+    end
+    private :process_rows
 
     def self.zenkaku2hankaku(str)
       return NKF::nkf('-WwZ0', str)
