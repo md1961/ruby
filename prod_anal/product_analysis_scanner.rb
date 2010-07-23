@@ -16,19 +16,40 @@ require 'yaml'
 require 'lib/excel_manipulator'
 
 
-class NotADirectoryError  < StandardError; end
-class IllegalFormatError  < StandardError; end
-class IllegalStateError   < StandardError; end
-class InfrastructureError < StandardError; end
+class CommandLineArgumentError < StandardError; end
+class NotADirectoryError       < StandardError; end
+class IllegalFormatError       < StandardError; end
+class IllegalStateError        < StandardError; end
+class InfrastructureError      < StandardError; end
 
 
 class ProductAnalysisScanner < ExcelManipulator
 
-  def initialize(prints_data_as_well=false, fixes_creation_time_at_midnight=false)
+  def initialize(argv)
     super()
-    @sql_only = ! prints_data_as_well
-    @fixes_creation_time_at_midnight = fixes_creation_time_at_midnight
+    process_argv(argv)
   end
+
+    def process_argv(argv)
+      @sql_only                        = true
+      @fixes_creation_time_at_midnight = false
+      until argv.empty?
+        case argv[0]
+        when '-d'
+          @sql_only = false
+        when '-m'
+          @fixes_creation_time_at_midnight = true
+        else
+          break
+        end
+        argv.shift
+      end
+
+      unless argv.size == 1
+        raise CommandLineArgumentError.new("Specify a root directory which holds target Excel workbooks")
+      end
+    end
+    private :process_argv
 
   FILE_PATTERN_TO_PROCESS = '*.xls'
 
@@ -685,29 +706,10 @@ end
 
 
 if __FILE__ == $0
-  prints_data_as_well = false
-  fixes_creation_time_at_midnight = false
-  until ARGV.empty?
-    case ARGV[0]
-    when '-d'
-      prints_data_as_well = true
-    when '-m'
-      fixes_creation_time_at_midnight = true
-    else
-      break
-    end
-    ARGV.shift
-  end
-
-  unless ARGV.size == 1
-    $stderr.puts "Specify a root directory which holds target Excel workbooks"
-    exit(1)
-  end
-
-  pas = ProductAnalysisScanner.new(prints_data_as_well, fixes_creation_time_at_midnight)
   begin
+    pas = ProductAnalysisScanner.new(ARGV)
     puts pas.scan_all(ARGV[0])
-  rescue NotADirectoryError => e
+  rescue CommandLineArgumentError, NotADirectoryError => e
     $stderr.puts e.message
   end
 end
