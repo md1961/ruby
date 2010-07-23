@@ -27,18 +27,23 @@ class ProductAnalysisScanner < ExcelManipulator
 
   def initialize(argv)
     super()
+
     process_argv(argv)
+    @root_dirname = argv[0].sub(/\/$/, '')
   end
 
     def process_argv(argv)
       @sql_only                        = true
       @fixes_creation_time_at_midnight = false
+      @verbose                         = false
       until argv.empty?
         case argv[0]
         when '-d'
           @sql_only = false
         when '-m'
           @fixes_creation_time_at_midnight = true
+        when '-v'
+          @verbose = true
         else
           break
         end
@@ -53,16 +58,19 @@ class ProductAnalysisScanner < ExcelManipulator
 
   FILE_PATTERN_TO_PROCESS = '*.xls'
 
-  def scan_all(root_dirname)
-    unless File.directory?(root_dirname)
-      raise NotADirectoryError.new("'#{root_dirname}' is not a directory")
+  def scan_all
+    unless File.directory?(@root_dirname)
+      raise NotADirectoryError.new("'#{@root_dirname}' is not a directory")
     end
 
     begin
       strs = Array.new
 
-      Dir.glob("#{root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
-        prepare
+      Dir.glob("#{@root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
+        prepare_variables
+
+        $stderr.puts "Processing '#{filename}'..." if @verbose
+
         scan(filename)
         strs.concat(out_in_strs(@sql_only))
       end
@@ -73,10 +81,10 @@ class ProductAnalysisScanner < ExcelManipulator
     end
   end
 
-  def prepare
-    @completion_data    = nil
-    @is_index_checked   = false
-    @analysis_datas = Array.new
+  def prepare_variables
+    @completion_data  = nil
+    @is_index_checked = false
+    @analysis_datas   = Array.new
   end
 
   HR = '-' * 80
@@ -708,7 +716,7 @@ end
 if __FILE__ == $0
   begin
     pas = ProductAnalysisScanner.new(ARGV)
-    puts pas.scan_all(ARGV[0])
+    puts pas.scan_all
   rescue CommandLineArgumentError, NotADirectoryError => e
     $stderr.puts e.message
   end
