@@ -57,6 +57,7 @@ class ProductAnalysisScanner < ExcelManipulator
     private :process_argv
 
   FILE_PATTERN_TO_PROCESS = '*.xls'
+  TARGET_SHEETNAME        = 'SK-1'
 
   def scan_all
     unless File.directory?(@root_dirname)
@@ -124,8 +125,6 @@ class ProductAnalysisScanner < ExcelManipulator
     end
     private :make_sqls_to_insert_well_and_completion_specs
 
-  TARGET_SHEETNAME = 'SK-1'
-
   MIN_ROW = 10
   MAX_ROW = 50
 
@@ -133,7 +132,8 @@ class ProductAnalysisScanner < ExcelManipulator
     begin
       book = open_book(filename.tosjis)
       raise "Cannot open '#{filename}'" unless book
-      sheet = book.Worksheets.Item(TARGET_SHEETNAME)
+
+      sheet = get_target_worksheet(book)
 
       rows = Array.new
       i = 0
@@ -193,6 +193,18 @@ class ProductAnalysisScanner < ExcelManipulator
       close_book(book, :no_save => true)
     end
   end
+
+    def get_target_worksheet(book)
+      sheet_count = book.Worksheets.count
+      sheet_1     = book.Worksheets(1)
+      if sheet_count == 1 || sheet_1.name == TARGET_SHEETNAME
+        $stderr.puts "  Use sole sheet '#{sheet_1.name}' to retrieve data from" unless sheet_1.name == TARGET_SHEETNAME
+        return sheet_1
+      end
+
+      return book.Worksheets.Item(TARGET_SHEETNAME)
+    end
+    private :get_target_worksheet
 
     def self.zenkaku2hankaku(str)
       return NKF::nkf('-WwZ0', str)
