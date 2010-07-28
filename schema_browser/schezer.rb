@@ -953,11 +953,12 @@ class Schezer
     "count    : Output row count of the table",
     "data     : Output data of the table",
     "yaml     : Output data of the table in YAML format",
+    "fixture  : Output data of the table in YAML format for Rails fixture",
     "sql_sync : Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS   = [:raw, :xml]
-  COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED = [:data, :yaml]
+  COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED = [:data, :yaml, :fixture]
   DEFAULT_TABLE_NAME = ALL_TABLES
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
@@ -1108,6 +1109,8 @@ class Schezer
       when :yaml
         outs = to_disp_table_data_in_yaml(table_names)
         joint = "\n"
+      when :fixture
+        outs = [to_rails_fixture(table_names)]
       else
         raise ExitWithMessageException.new("Unknown command '#{command}'")
       end
@@ -1239,6 +1242,34 @@ class Schezer
         outs << table_data.to_yaml
       end
       return outs
+    end
+
+    INDENT_IN_FIXTURE = ' ' * 2
+
+    def to_rails_fixture(table_names)
+      str_yaml = to_disp_table_data_in_yaml(table_names).join("\n")
+
+      outs = Array.new
+      ret_hash = Hash.new
+      YAML.load(str_yaml).each do |table_name, rows|
+        table_schema = parse_table_schema(table_name, @conn)
+        primary_key_names = table_schema.columns_with_primary_key.map { |column| column.name }
+        if primary_key_names.empty?
+          raise ExitWithMessageException.new(
+                  "It's not supported yet to create fixtures for TABLE `#{table_name}` without primary keys")
+        end
+
+        outs << "#{table_name} :"
+        rows.each do |hash_row|
+          row_label = "id_" + primary_key_names.map { |column_name| hash_row[column_name] }.join('_')
+          outs << "#{INDENT_IN_FIXTURE}#{row_label}:"
+          table_schema.column_names.each do |column_name|
+            outs << "#{INDENT_IN_FIXTURE * 2}#{column_name}: #{hash_row[column_name]}"
+          end
+        end
+      end
+
+      return outs.join("\n")
     end
 
     def to_disp_table_data(table_names, table_names2=nil)
