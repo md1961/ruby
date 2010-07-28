@@ -346,19 +346,8 @@ class ProductAnalysisScanner < ExcelManipulator
                 :perforation_interval_top, :perforation_interval_bottom, \
                 :completion_id, :well_id, :reservoir_id
 
-    DB_MASTER_FILENAME = 'prod_anal/100723_marrs_field_well_reservoir_completion.yml'
-
-    RESERVOIR_NAME_CONVERSION_TABLE = {
-      '東新潟' => {
-        '1450mB'  => '1450m',
-        '2000m'   => '2000m+2100m',
-        '2100m'   => '2000m+2100m',
-        '2900mA3' => '2900mA一括',
-      },
-      '片貝' => {
-        'ＧⅢ'  => 'GreenTuff一括',
-      },
-    }
+    DB_MASTER_FILENAME                          = 'prod_anal/100723_marrs_field_well_reservoir_completion.yml'
+    FILENAME_OF_RESERVOIR_NAME_CONVERSION_TABLE = "prod_anal/reservoir_name_conversion_table.yml"
 
     MAP_WELL_CROWN_NAMES_TO_FIELD_NAME = {
       'あけぼの'   => '勇払',
@@ -381,10 +370,22 @@ class ProductAnalysisScanner < ExcelManipulator
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
 
+    @@reservoir_name_conversion_table = nil
+
     def initialize(rows)
+      read_reservoir_name_conversion_table
+
       read(rows)
       look_up_db_for_completion_id
     end
+      
+      def read_reservoir_name_conversion_table
+        return if @@reservoir_name_conversion_table
+        open(FILENAME_OF_RESERVOIR_NAME_CONVERSION_TABLE, 'r') do |fp|
+          @@reservoir_name_conversion_table = YAML.load(fp)
+        end
+      end
+      private :read_reservoir_name_conversion_table
 
     def to_s
       strs = Array.new
@@ -474,7 +475,7 @@ class ProductAnalysisScanner < ExcelManipulator
         field_id   = hash_field['field_id']
         field_name = hash_field['field_zen']
 
-        @reservoir_name_to_look_up = (RESERVOIR_NAME_CONVERSION_TABLE[field_name] || {})[reservoir_name] || reservoir_name
+        @reservoir_name_to_look_up = (@@reservoir_name_conversion_table[field_name] || {})[reservoir_name] || reservoir_name
 
         hash_well      = look_up_db_record(db_master_yaml, 'well',
                                            'well_zen'      => @well_name_to_look_up     , 'field_id' => field_id)
