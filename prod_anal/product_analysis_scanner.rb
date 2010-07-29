@@ -416,13 +416,14 @@ class ProductAnalysisScanner < ExcelManipulator
         if /\A\s*層名：(.+[^\s　])[\s　]*\z/ =~ row[index]
           @reservoir_name = $1
         else
-          @reservoir_name = row[index + 1].gsub(/[\s　]/, '')
+          @reservoir_name = row[index + 1] || ''
+          @reservoir_name.gsub!(/[\s　]/, '')
         end
 
         index = CompletionData.index(rows, 0, /\A\s*坑井深度/)
         @total_depth    = row[index + 1]
 
-        index = CompletionData.index(rows, 0, /\A仕\s*上深度/)
+        index = CompletionData.index(rows, 0, /\A\s*仕上深度/)
         if /\A\s*仕上深度.*([\d.]+).*([\d.]+)/ =~ row[index]
           @perforation_interval_top    = $1
           @perforation_interval_bottom = $2
@@ -475,7 +476,10 @@ class ProductAnalysisScanner < ExcelManipulator
         field_id   = hash_field['field_id']
         field_name = hash_field['field_zen']
 
-        @reservoir_name_to_look_up = (@@reservoir_name_conversion_table[field_name] || {})[reservoir_name] || reservoir_name
+        hash_reservoir_name = @@reservoir_name_conversion_table[field_name] || {}
+        reservoir_name_converted = hash_reservoir_name[reservoir_name]
+        reservoir_name_converted = reservoir_name_converted[@well_name_to_look_up] if reservoir_name_converted.kind_of?(Hash)
+        @reservoir_name_to_look_up = reservoir_name_converted || reservoir_name
 
         hash_well      = look_up_db_record(db_master_yaml, 'well',
                                            'well_zen'      => @well_name_to_look_up     , 'field_id' => field_id)
@@ -496,7 +500,8 @@ class ProductAnalysisScanner < ExcelManipulator
         else
           @reservoir_id = MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID[field_name]
           unless @reservoir_id
-            raise IllegalStateError.new("No reservoir found to match '#{@reservoir_name_to_look_up}'" )
+            raise IllegalStateError.new(
+                    "No reservoir found to match '#{@reservoir_name_to_look_up}'(well '#{@well_name_to_look_up}')" )
           end
         end
 
