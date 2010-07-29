@@ -2801,8 +2801,8 @@ well :
   field_id : 14
   smap_field_id : 
 - well_id : 302
-  well : Higashi-Niigata MS-41a
-  well_zen : 東新潟MS-41a
+  well : Higashi-Niigata MS-41
+  well_zen : 東新潟MS-41
   date_well_comp : 
   date_well_aban : 
   is_substantial : 1

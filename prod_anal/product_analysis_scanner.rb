@@ -148,7 +148,8 @@ class ProductAnalysisScanner < ExcelManipulator
       end
     rescue => evar
       puts evar.backtrace
-      puts "while processing '#{filename}'..."
+      row_display = total_row_count.nil? ? "" : "row #{total_row_count + 1} in "
+      puts "while processing #{row_display}'#{filename}'..."
       raise
     ensure
       close_book(book, :no_save => true)
@@ -156,19 +157,12 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
     def get_target_worksheet(book)
-      sheet_count = book.Worksheets.count
-      sheet_1     = book.Worksheets(1)
-      if sheet_count == 1 || sheet_1.name == TARGET_SHEETNAME
-        if @verbose && sheet_1.name != TARGET_SHEETNAME
-          $stderr.puts "  Use sole worksheet '#{sheet_1.name}' to retrieve data from"
-        end
-        return sheet_1
-      end
-
       begin
         return book.Worksheets.Item(TARGET_SHEETNAME)
       rescue WIN32OLERuntimeError => evar
-        raise CannotFindWorksheetError.new("Cannot find worksheet '#{TARGET_SHEETNAME}' in '#{book.name}'")
+        sheet_1 = book.Worksheets(1)
+        $stderr.puts "  Use leftmost worksheet '#{sheet_1.name}' to retrieve data from" if @verbose
+        return sheet_1
       end
     end
     private :get_target_worksheet
