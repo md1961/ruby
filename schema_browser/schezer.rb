@@ -1261,7 +1261,8 @@ class Schezer
 
         outs << "#{table_name} :"
         rows.each do |hash_row|
-          row_label = "id_" + primary_key_names.map { |column_name| hash_row[column_name] }.join('_')
+          pk_values = primary_key_names.map { |column_name| hash_row[column_name] }
+          row_label = "id_#{pk_values.join('_')}".gsub(/\s/, '_')
           outs << "#{INDENT_IN_FIXTURE}#{row_label}:"
           table_schema.column_names.each do |column_name|
             outs << "#{INDENT_IN_FIXTURE * 2}#{column_name}: #{hash_row[column_name]}"
