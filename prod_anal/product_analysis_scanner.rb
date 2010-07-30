@@ -340,28 +340,9 @@ class ProductAnalysisScanner < ExcelManipulator
                 :perforation_interval_top, :perforation_interval_bottom, \
                 :completion_id, :well_id, :reservoir_id
 
-    DB_MASTER_FILENAME                          = 'prod_anal/100723_marrs_field_well_reservoir_completion.yml'
+    DB_MASTER_FILENAME                          = "prod_anal/100723_marrs_field_well_reservoir_completion.yml"
     FILENAME_OF_RESERVOIR_NAME_CONVERSION_TABLE = "prod_anal/reservoir_name_conversion_table.yml"
-
-    MAP_WELL_CROWN_NAMES_TO_FIELD_NAME = {
-      'あけぼの'   => '勇払',
-      '北あけぼの' => '勇払',
-      '沼ノ端'     => '勇払',
-      '西沼ノ端'   => '勇払',
-      '南勇払'     => '勇払',
-      '吉井'       => '吉井',
-      '安田'       => '吉井',
-      '南安田'     => '吉井',
-      '妙法寺'     => '吉井',
-      '地蔵峠'     => '吉井',
-      '北片貝'     => '片貝',
-      '中片貝'     => '片貝',
-      '新片貝'     => '片貝',
-      '中原'       => '片貝',
-      '小千谷'     => '片貝',
-      '旧小千谷'   => '片貝',
-      '北小千谷'   => '片貝',
-    }
+    FILENAME_OF_WELL_CROWN_NAMES_OF_FIELD       = "prod_anal/well_crown_names_of_field.yml"
 
     MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID = {
       '勇払' =>  1,
@@ -370,10 +351,12 @@ class ProductAnalysisScanner < ExcelManipulator
 
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
 
-    @@reservoir_name_conversion_table = nil
+    @@reservoir_name_conversion_table    = nil
+    @@map_well_crown_names_to_field_name = nil
 
     def initialize(rows)
       read_reservoir_name_conversion_table
+      prepare_map_well_crown_names_to_field_name
 
       read(rows)
       look_up_db_for_completion_id
@@ -386,6 +369,19 @@ class ProductAnalysisScanner < ExcelManipulator
         end
       end
       private :read_reservoir_name_conversion_table
+
+      def prepare_map_well_crown_names_to_field_name
+        return if @@map_well_crown_names_to_field_name
+        open(FILENAME_OF_WELL_CROWN_NAMES_OF_FIELD, 'r') do |fp|
+          map_well_crown_names_of_field = YAML.load(fp)
+          @@map_well_crown_names_to_field_name = Hash.new
+          map_well_crown_names_of_field.each do |field_name, crown_names|
+            crown_names.each do |crown_name|
+              @@map_well_crown_names_to_field_name[crown_name] = field_name
+            end
+          end
+        end
+      end
 
     def to_s
       strs = Array.new
@@ -464,7 +460,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
         @well_name_to_look_up = $&
         well_crown_name       = $1
-        @field_name_to_look_up = MAP_WELL_CROWN_NAMES_TO_FIELD_NAME[well_crown_name] || well_crown_name
+        @field_name_to_look_up = @@map_well_crown_names_to_field_name[well_crown_name] || well_crown_name
 
         hash_field     = look_up_db_record(db_master_yaml, 'field', 'field_zen' => @field_name_to_look_up)
         unless hash_field
