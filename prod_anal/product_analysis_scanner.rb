@@ -326,7 +326,7 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
       format = value.kind_of?(Numeric) \
-            || (value.kind_of?(String) && (value == 'null' || mysql_var_name?(value))) ? "%s" : "'%s'"
+           || (value.kind_of?(String) && (value == 'null' || mysql_var_name?(value))) ? "%s" : "'%s'"
 
       return sprintf(format, value)
     end
@@ -355,6 +355,12 @@ class ProductAnalysisScanner < ExcelManipulator
       '妙法寺'     => '吉井',
       '地蔵峠'     => '吉井',
       '北片貝'     => '片貝',
+      '中片貝'     => '片貝',
+      '新片貝'     => '片貝',
+      '中原'       => '片貝',
+      '小千谷'     => '片貝',
+      '旧小千谷'   => '片貝',
+      '北小千谷'   => '片貝',
     }
 
     MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID = {
@@ -411,6 +417,7 @@ class ProductAnalysisScanner < ExcelManipulator
           @reservoir_name = $1
         else
           @reservoir_name = row[index + 1] || ''
+          @reservoir_name = Integer(@reservoir_name).to_s if @reservoir_name.kind_of?(Numeric)
           @reservoir_name.gsub!(/[\s　]/, '')
         end
 
@@ -452,10 +459,6 @@ class ProductAnalysisScanner < ExcelManipulator
           raise IllegalStateError.new("Both @well_name and @reservoir_name must be set to non-null")
         end
         unless RE_WELL_NAME =~ @well_name
-          
-          #TODO: Delete this debug-print
-          puts "@well_name = #{@well_name.inspect}(#{@well_name.split(//).map { |c| c[0]}.join(', ')})"
-
           raise IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
         end
 
@@ -481,10 +484,6 @@ class ProductAnalysisScanner < ExcelManipulator
                                            'reservoir_zen' => @reservoir_name_to_look_up, 'field_id' => field_id)
 
         unless hash_well
-          
-          #TODO: Delete this debug-print
-          puts "@well_name_to_look_up = #{@well_name_to_look_up}(#{@well_name_to_look_up.split(//).map { |c| c[0]}.join(', ')})"
-
           raise IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'")
         end
         @well_id = hash_well['well_id']
