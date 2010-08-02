@@ -133,15 +133,20 @@ class ProductAnalysisScanner < ExcelManipulator
 
       rows = Array.new
       total_row_count = 0
+
+      $stderr.print "  processing row "
+
       sheet.UsedRange.Rows.each do |row|
+
+        $stderr.print "#{total_row_count + 1} "
+
         cells = row2cells(row)
         if @completion_data && cells.all? { |r| ExcelManipulator.blank?(r) }
           break if total_row_count >= MIN_ROW - 1
-          next
+        else
+          rows << cells
+          process_rows(rows)
         end
-
-        rows << cells
-        process_rows(rows)
 
         total_row_count += 1
         break if total_row_count >= MAX_ROW
@@ -152,6 +157,8 @@ class ProductAnalysisScanner < ExcelManipulator
       puts "while processing #{row_display}'#{filename}'..."
       raise
     ensure
+      $stderr.puts
+
       close_book(book, :no_save => true)
     end
   end
@@ -409,8 +416,8 @@ class ProductAnalysisScanner < ExcelManipulator
         end
 
         index = CompletionData.index(rows, 0, /\A\s*層名/)
-        if /\A\s*層名：(.+[^\s　])[\s　]*\z/ =~ row[index]
-          @reservoir_name = $1
+        if /\A\s*層名[:：](.*[^\s　])[\s　]*\z/ =~ row[index]
+          @reservoir_name = $1.to_s
         else
           @reservoir_name = row[index + 1] || ''
           @reservoir_name = Integer(@reservoir_name).to_s if @reservoir_name.kind_of?(Numeric)
