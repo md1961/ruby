@@ -770,15 +770,19 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
     def set_value(row)
-      unit = row[@index_column]
-      return unless unit
-      unit = unit.gsub(/[\s\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
-      degC = '℃'
-      unit = unit.gsub(/\d+#{degC}/, '')
-      @unit_id = MAP_UNIT_IDS[unit.downcase]
-      unless @unit_id
-        raise IllegalStateError.new("No unit such as '#{unit}'")
-      end
+      unit_name = row[@index_column]
+      return unless unit_name
+
+      @unit_id = UnitExcelColumn.convert_unit_name_to_DB_id(unit_name)
+      raise IllegalStateError.new("No unit such as '#{unit_name}'") unless @unit_id
+    end
+
+    DEG_C = '℃'
+
+    def self.convert_unit_name_to_DB_id(unit_name)
+      name = unit_name.gsub(/[\s\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
+      name = name.gsub(/\d+#{DEG_C}/, '')
+      return MAP_UNIT_IDS[name.downcase]
     end
   end
 end
