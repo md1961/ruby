@@ -551,6 +551,10 @@ class ProductAnalysisScanner < ExcelManipulator
       end
     end
 
+      # Excelシートの該当行がデータではなく、単位の変更情報のみを含んでいるかどうかを判定する。
+      # 判定は、self.check_index() で取得した @@unit_excel_columns の各要素 UnitExcelColumn の
+      # index_column が示すセルと、一番左端のブランクでないセルを除くセルが、すべてブランクである
+      # ときは単位の変更情報のみを含んでいるとする
       def self.just_unit_changing?(row)
         first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
         cells_to_be_blank = row - [first_non_blank_cell]
