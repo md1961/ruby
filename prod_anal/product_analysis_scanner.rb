@@ -767,9 +767,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def set_value(row)
       unit = row[@index_column]
-      unless unit
-        raise IllegalStateError.new("Nothing found at index #{@index_column} in row (#{row.inspect})")
-      end
+      return unless unit
       unit = unit.gsub(/[\s\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
       degC = '℃'
       unit = unit.gsub(/\d+#{degC}/, '')
