@@ -134,11 +134,11 @@ class ProductAnalysisScanner < ExcelManipulator
       rows = Array.new
       total_row_count = 0
 
-      $stderr.print "  processing row "
+      $stderr.print "  processing row " if @verbose
 
       sheet.UsedRange.Rows.each do |row|
 
-        $stderr.print "#{total_row_count + 1} "
+        $stderr.print "#{total_row_count + 1} " if @verbose
 
         cells = row2cells(row)
         if @completion_data && cells.all? { |r| ExcelManipulator.blank?(r) }
@@ -157,7 +157,7 @@ class ProductAnalysisScanner < ExcelManipulator
       puts "while processing #{row_display}'#{filename}'..."
       raise
     ensure
-      $stderr.puts
+      $stderr.puts if @verbose
 
       close_book(book, :no_save => true)
     end
@@ -556,12 +556,13 @@ class ProductAnalysisScanner < ExcelManipulator
       # index_column が示すセルと、一番左端のブランクでないセルを除くセルが、すべてブランクである
       # ときは単位の変更情報のみを含んでいるとする
       def self.just_unit_changing?(row)
-        first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
-        cells_to_be_blank = row - [first_non_blank_cell]
         @@unit_excel_columns.each do |unit_excel_column|
-          cells_to_be_blank -= row[unit_excel_column.index_column, 1]
+          unit_name = row[unit_excel_column.index_column]
+          unit_id = UnitExcelColumn.convert_unit_name_to_DB_id(unit_name)
+          return false if unit_name && unit_id.nil?
         end
-        return cells_to_be_blank.all? { |cell| ExcelManipulator.blank?(cell) }
+
+        return true
       end
 
     def initialize(row)
@@ -780,6 +781,8 @@ class ProductAnalysisScanner < ExcelManipulator
     DEG_C = '℃'
 
     def self.convert_unit_name_to_DB_id(unit_name)
+      return nil if unit_name.nil? || unit_name.kind_of?(Numeric)
+
       name = unit_name.gsub(/[\s\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
       name = name     .gsub(/\d+#{DEG_C}/, '')  # Remove ' \d+degC' from such as "mPa.s 25degC"
       return MAP_UNIT_IDS[name.downcase]
