@@ -677,7 +677,7 @@ class ProductAnalysisScanner < ExcelManipulator
     ).freeze
 
     UNIT_INDEXES_OFFSETS_AND_UNIT_ID_NAMES = [
-      ['圧力', 0, :pressure_unit_id],
+      ['圧力', 0, :pressure_unit_id].freeze,
     ].freeze
 
     attr_reader *ATTR_NAMES
@@ -727,10 +727,10 @@ class ProductAnalysisScanner < ExcelManipulator
     ].freeze
 
     UNIT_INDEXES_OFFSETS_AND_UNIT_ID_NAMES = [
-      ['圧力', 0, :pressure_unit_id],
-      ['粘度', 0, :kinematic_viscosity_unit_id],
-      ['粘度', 1, :absolute_viscosity_unit_id],
-      ['気圧', 0, :atmospheric_pressure_unit_id],
+      ['圧力', 0, :pressure_unit_id            ].freeze,
+      ['粘度', 0, :kinematic_viscosity_unit_id ].freeze,
+      ['粘度', 1, :absolute_viscosity_unit_id  ].freeze,
+      ['気圧', 0, :atmospheric_pressure_unit_id].freeze,
     ].freeze
 
     attr_reader *ATTR_NAMES
@@ -752,7 +752,7 @@ class ProductAnalysisScanner < ExcelManipulator
   class UnitExcelColumn
     attr_reader :index_column, :instance_variable_name, :unit_id
 
-    # The values must be equal to id's in DB TABLE units
+    # Each key/value pair must be equal to name_zen/id of a DB record in TABLE units
     MAP_UNIT_IDS = {
       'ksc'  => 1,
       'mpa'  => 2,
@@ -781,7 +781,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def self.convert_unit_name_to_DB_id(unit_name)
       name = unit_name.gsub(/[\s\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
-      name = name.gsub(/\d+#{DEG_C}/, '')
+      name = name     .gsub(/\d+#{DEG_C}/, '')  # Remove ' \d+degC' from such as "mPa.s 25degC"
       return MAP_UNIT_IDS[name.downcase]
     end
   end
