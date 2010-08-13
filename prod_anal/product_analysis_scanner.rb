@@ -18,13 +18,6 @@ require 'optparse'
 require 'lib/excel_manipulator'
 
 
-class Date
-  def ymd
-    return strftime("%Y-%m-%d")
-  end
-end
-
-
 class CommandLineArgumentError < StandardError; end
 class NotADirectoryError       < StandardError; end
 class CannotFindWorksheetError < StandardError; end
@@ -685,30 +678,73 @@ class ProductAnalysisScanner < ExcelManipulator
 
   class DataValidator
 
+    # :allows takes an Array of literal(s) and/or Regexp('s)
+    PARAM_DATE       = {:type => :date   , :min => "1900-1-1", :max => "2099-12-31"}
+    PARAM_PERCENTAGE = {:type => :numeric, :min => 0         , :max => 100         , :allows => [/\A\s*Tr\.?\s*\z/]}
+
     PARAMETERS = {
-      :date_sampled  => {:type => :date, :min => "1900-1-1", :max => "2099-12-31"},
-      :date_analysed => {:type => :date, :min => "1900-1-1", :max => "2099-12-31"},
-      :date_reported => {:type => :date, :min => "1900-1-1", :max => "2099-12-31"},
+      :date_sampled  => PARAM_DATE,
+      :date_analysed => PARAM_DATE,
+      :date_reported => PARAM_DATE,
+      :ch4     => PARAM_PERCENTAGE,
+      :c2h6    => PARAM_PERCENTAGE,
+      :c3h8    => PARAM_PERCENTAGE,
+      :i_c4h10 => PARAM_PERCENTAGE,
+      :n_c4h10 => PARAM_PERCENTAGE,
+      :i_c5h12 => PARAM_PERCENTAGE,
+      :n_c5h12 => PARAM_PERCENTAGE,
+      :c6plus  => PARAM_PERCENTAGE,
+      :co2     => PARAM_PERCENTAGE,
+      :n2      => PARAM_PERCENTAGE,
+      #:total_compositions => PARAM_PERCENTAGE,
     }
 
     def self.validate(name, value)
       return unless value
+
       name_symbol = name.kind_of?(Symbol) ? name : name.to_sym
       h_param = PARAMETERS[name_symbol]
       return unless h_param
+
       case h_param[:type]
       when :date
-        date = Date.parse(value)
-        min_date = Date.parse(h_param[:min])
-        if date < min_date
-          raise FailedValidationError.new("'#{name}' must be greater than or equal to '#{min_date.ymd}' ('#{date.ymd}' given)")
+        begin
+          date = Date.parse(value)
+        rescue ArgumentError => evar
+          raise FailedValidationError.new("Cannot parse '#{value}' as a Date")
         end
-        max_date = Date.parse(h_param[:max])
-        if date > max_date
-          raise FailedValidationError.new("'#{name}' must be less than or equal to '#{max_date.ymd}' ('#{date.ymd}' given)")
+
+        validate_min_max(name, date, Date.parse(h_param[:min]), Date.parse(h_param[:max]))
+      when :numeric
+        allowed_exceptionally = allowed?(value, h_param[:allows])
+        if ! value.kind_of?(Numeric) && ! allowed_exceptionally
+          raise FailedValidationError.new("'#{value}' is not numeric")
         end
+
+        validate_min_max(name, value, h_param[:min], h_param[:max]) unless allowed_exceptionally
       end
     end
+    
+      def self.validate_min_max(name, value, min, max)
+        if min && value < min
+          raise FailedValidationError.new("'#{name}' must be greater than or equal to '#{min}' ('#{value}' given)")
+        end
+        if max && value > max
+          raise FailedValidationError.new("'#{name}' must be less than or equal to '#{max}' ('#{value}' given)")
+        end
+      end
+
+      def self.allowed?(value, list_allowed)
+        return true if list_allowed.include?(value)
+
+        if value.kind_of?(String)
+          list_allowed.select { |item| item.kind_of?(Regexp) }.each do |re|
+            return true if re =~ value
+          end
+        end
+
+        return false
+      end
   end
 
   class GasAnalysisData < AnalysisData
