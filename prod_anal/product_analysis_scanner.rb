@@ -32,6 +32,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     process_argv(argv)
     @root_dirname = argv[0].sub(/\/$/, '')
+    @out_verbose = make_out_verbose
   end
 
     def process_argv(argv)
@@ -52,6 +53,18 @@ class ProductAnalysisScanner < ExcelManipulator
     end
     private :process_argv
 
+    def make_out_verbose
+      if @verbose
+        return $stderr
+      end
+
+      null_out = Object.new
+      def null_out.puts  ; end
+      def null_out.print ; end
+      return null_out
+    end
+    private :make_out_verbose
+
   FILE_PATTERN_TO_PROCESS = '*.xls'
   TARGET_SHEETNAME        = 'SK-1'
 
@@ -66,7 +79,7 @@ class ProductAnalysisScanner < ExcelManipulator
       Dir.glob("#{@root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
         prepare_variables
 
-        $stderr.puts "Processing '#{filename}'..." if @verbose
+        @out_verbose.puts "Processing '#{filename}'..." if @verbose
 
         scan(filename)
         strs.concat(out_in_strs(@sql_only))
@@ -134,11 +147,11 @@ class ProductAnalysisScanner < ExcelManipulator
       rows = Array.new
       total_row_count = 0
 
-      $stderr.print "  processing row " if @verbose
+      @out_verbose.print "  processing row " if @verbose
 
       sheet.UsedRange.Rows.each do |row|
 
-        $stderr.print "#{total_row_count + 1} " if @verbose
+        @out_verbose.print "#{total_row_count + 1} " if @verbose
 
         cells = row2cells(row)
         if @completion_data && cells.all? { |r| ExcelManipulator.blank?(r) }
@@ -157,7 +170,7 @@ class ProductAnalysisScanner < ExcelManipulator
       puts "while processing #{row_display}'#{filename}'..."
       raise
     ensure
-      $stderr.puts if @verbose
+      @out_verbose.puts if @verbose
 
       close_book(book, :no_save => true)
     end
@@ -168,7 +181,7 @@ class ProductAnalysisScanner < ExcelManipulator
         return book.Worksheets.Item(TARGET_SHEETNAME)
       rescue WIN32OLERuntimeError => evar
         sheet_1 = book.Worksheets(1)
-        $stderr.puts "  Use leftmost worksheet '#{sheet_1.name}' to retrieve data from" if @verbose
+        @out_verbose.puts "  Use leftmost worksheet '#{sheet_1.name}' to retrieve data from" if @verbose
         return sheet_1
       end
     end
