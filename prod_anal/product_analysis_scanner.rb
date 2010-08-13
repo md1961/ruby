@@ -12,9 +12,17 @@ $KCODE = 'utf8'
 require 'kconv'
 require 'nkf'
 require 'yaml'
+require 'date'
 require 'optparse'
 
 require 'lib/excel_manipulator'
+
+
+class Date
+  def ymd
+    return strftime("%Y-%m-%d")
+  end
+end
 
 
 class CommandLineArgumentError < StandardError; end
@@ -581,6 +589,7 @@ class ProductAnalysisScanner < ExcelManipulator
     def initialize(row)
       values = row[@@index_leftmost, attr_names.size]
       attr_names.zip(values) do |attr_name, value|
+        DataValidator.validate(attr_name, value)
         instance_variable_set("@#{attr_name}", value)
       end
 
@@ -671,6 +680,36 @@ class ProductAnalysisScanner < ExcelManipulator
       end
     end
   end # of class AnalysisData
+
+  class FailedValidationError < StandardError; end
+
+  class DataValidator
+
+    PARAMETERS = {
+      :date_sampled  => {:type => :date, :min => "1900-1-1", :max => "2099-12-31"},
+      :date_analysed => {:type => :date, :min => "1900-1-1", :max => "2099-12-31"},
+      :date_reported => {:type => :date, :min => "1900-1-1", :max => "2099-12-31"},
+    }
+
+    def self.validate(name, value)
+      return unless value
+      name_symbol = name.kind_of?(Symbol) ? name : name.to_sym
+      h_param = PARAMETERS[name_symbol]
+      return unless h_param
+      case h_param[:type]
+      when :date
+        date = Date.parse(value)
+        min_date = Date.parse(h_param[:min])
+        if date < min_date
+          raise FailedValidationError.new("'#{name}' must be greater than or equal to '#{min_date.ymd}' ('#{date.ymd}' given)")
+        end
+        max_date = Date.parse(h_param[:max])
+        if date > max_date
+          raise FailedValidationError.new("'#{name}' must be less than or equal to '#{max_date.ymd}' ('#{date.ymd}' given)")
+        end
+      end
+    end
+  end
 
   class GasAnalysisData < AnalysisData
 
