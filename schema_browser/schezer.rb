@@ -947,17 +947,18 @@ class Schezer
   SPC_ALL_T = ' ' * ALL_TABLES.length
   COMMAND_HELPS = [
     "names    : Output table names",
-    "raw      : Output raw table schema ('#{ALL_TABLES}' not allowed with -g)",
+    "raw      : Output raw table schema (Not allowed with -g)",
     "table    : Output parsed table schema",
-    "xml      : Output schema in XML ('#{ALL_TABLES}' not allowed with -g)",
+    "xml      : Output schema in XML (Not allowed with -g)",
+    "columns  : Output column names (Not allowed with -g, for now)",
     "count    : Output row count of the table",
-    "data     : Output data of the table",
-    "yaml     : Output data of the table in YAML format",
-    "fixture  : Output data of the table in YAML format for Rails fixture",
+    "data     : Output data of the table (Need table name(s) specified)",
+    "yaml     : Output data of the table in YAML format (Need table name(s) specified)",
+    "fixture  : Output data of the table in YAML format for Rails fixture (Need table name(s) specified)",
     "sql_sync : Generate SQL's to synchronize data of '-e' to '-g'",
   ]
 
-  COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS   = [:raw, :xml]
+  COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS   = [:raw, :xml, :columns]
   COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED = [:data, :yaml, :fixture]
   DEFAULT_TABLE_NAME = ALL_TABLES
 
@@ -1088,6 +1089,8 @@ class Schezer
         indent = @is_pretty ? XML_INDENT_WHEN_PRETTY / 2 : -1
         xml_doc.write($stdout, indent)
         puts
+      when :columns
+        outs = to_disp_column_names(table_names)
       when :count
         unless @conn2
           num_rows_per_table = 10
@@ -1489,6 +1492,21 @@ class Schezer
         end
         next unless schema
         outs << schema
+      end
+      return outs
+    end
+
+    def to_disp_column_names(table_names)
+      outs = Array.new
+      is_multiple_tables = table_names.size > 1
+      table_names.each do |table_name|
+        outs2 = Array.new
+        schema = parse_table_schema(table_name, @conn)
+        outs2 << "TABLE `#{table_name}`" if is_multiple_tables
+        schema.columns.each do |column|
+          outs2 << column.name
+        end
+        outs << outs2.join("\n")
       end
       return outs
     end
