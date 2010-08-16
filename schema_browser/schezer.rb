@@ -1407,7 +1407,6 @@ class Schezer
       return outs.join("\n")
     end
 
-    # Return nil if VIEW
     def parse_table_schema(name, conn)
       raw_schema = get_raw_table_schema(name, conn)
       return nil unless raw_schema
@@ -1420,7 +1419,7 @@ class Schezer
       result = conn.get_query_result(sql)
       names = Array.new
       result.each do |name|
-        next if view?(name, conn)
+        next if view?(name, conn) ^ @view_only
         names << name[0]
       end
       return names
@@ -1444,10 +1443,11 @@ class Schezer
       return field_names.include?(FIELD_NAME_FOR_VIEW)
     end
 
-    # Return nil if VIEW
+    # Return nil if (-w && TABLE) || (no -w && VIEW)
     def get_raw_table_schema(name, conn)
       result = get_create_table_result(name, conn)
-      schema = result.fetch_hash['Create Table']
+      h_result = result.fetch_hash
+      schema = h_result[@view_only ? 'Create View' : 'Create Table']
       return schema
     end
 
@@ -1649,6 +1649,7 @@ class Schezer
     DESC_E  = "Database connection name (Environment name in Rails)"
     DESC_G  = "Second database connection name for comparison with -e"
     DESC_V  = "Verbose output"
+    DESC_W  = "Include view(s)"
     DESC_CT = "Capitalize COLUMN data types of TABLE schema"
     DESC_PR = "Pretty indented XML outputs"
     DESC_TW = "Terminal column width to display (default is #{DEFAULT_TERMINAL_WIDTH})"
@@ -1659,6 +1660,7 @@ class Schezer
       @delimiter_field     = nil
       @config_name2        = nil
       @terminal_width      = DEFAULT_TERMINAL_WIDTH
+      @view_only           = false
       @is_pretty           = false
       @capitalizes_types   = false
       @unique_key_equalize = false
@@ -1674,6 +1676,7 @@ class Schezer
       @opt_parser.on("-e", "--environment=VALUE"    , DESC_E ) { |v| @config_name     = v }
       @opt_parser.on("-g", "--environment_alt=VALUE", DESC_G ) { |v| @config_name2    = v }
       @opt_parser.on("-v", "--verbose"              , DESC_V ) { |v| @verbose             = true   }
+      @opt_parser.on("-w", "--view_only"            , DESC_W ) { |v| @view_only           = true   }
       @opt_parser.on("--capitalizes_types"          , DESC_CT) { |v| @capitalizes_types   = true   }
       @opt_parser.on("--pretty"                     , DESC_PR) { |v| @is_pretty           = true   }
       @opt_parser.on("--terminal_width=VALUE"       , DESC_TW) { |v| @terminal_width      = v.to_i }
