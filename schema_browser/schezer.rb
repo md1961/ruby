@@ -960,6 +960,7 @@ class Schezer
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS   = [:raw, :xml, :columns]
   COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED = [:data, :yaml, :fixture]
+  COMMANDS_NOT_TO_RUN_WITH_VIEW_ONLY_OPTION   = [:table]
   DEFAULT_TABLE_NAME = ALL_TABLES
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
@@ -978,6 +979,9 @@ class Schezer
     end
     if @argv.empty? && COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED.include?(command)
       exit_with_msg("Cannot run command '#{command}' with no table name specified")
+    end
+    if @view_only && COMMANDS_NOT_TO_RUN_WITH_VIEW_ONLY_OPTION.include?(command)
+      exit_with_msg("Cannot run command '#{command}' with command line option -w(--view_only)")
     end
 
     @argv << DEFAULT_TABLE_NAME if @argv.empty?
