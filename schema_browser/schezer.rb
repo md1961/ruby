@@ -879,14 +879,7 @@ class TableData
     return outs.join("\n")
   end
 
-  #TODO: Remove magic number from terminal_width
-  def to_table(terminal_width=120)
-    indexes = @table_schema.column_names
-    map_indexes = Hash.new
-    indexes.each do |index|
-      map_indexes[index] = index
-    end
-
+  def to_table(terminal_width)
     result = get_result(includes_auto_increment=true)
     table_items = Array.new
     while hash_rows = result.fetch_hash
@@ -895,9 +888,19 @@ class TableData
 
     return nil if table_items.empty?
 
+    indexes = @table_schema.column_names
+    map_indexes = Hash.new
+    indexes.each do |index|
+      map_indexes[index] = index
+    end
+
     table = TableOnCUI.new(indexes, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
     table.nil_display = "NULL"
     table.set_data(table_items)
+    @table_schema.columns.each do |column|
+      table.set_align_right(column.name) if column.numerical_type?
+    end
+
     if table.width <= terminal_width
       return table.to_table
     else
@@ -1333,7 +1336,7 @@ class Schezer
         table_data = TableData.new(table_schema, @conn)
         table_data.delimiter_out = @delimiter_field if @delimiter_field
         unless @conn2
-          table_display = table_data.to_table
+          table_display = table_data.to_table(@terminal_width)
           table_display = NO_DATA_IN_TABLE if table_display.nil? && @verbose
           outs2 << "TABLE `#{table_name}`" << table_display if table_display
         else

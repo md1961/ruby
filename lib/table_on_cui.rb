@@ -31,6 +31,11 @@ class TableOnCUI
   # nil 値表示のデフォルト値
   DEFAULT_NIL_DISPLAY = "nil"
 
+  LEFT  = 'left'
+  RIGHT = 'right'
+
+  DEFAULT_ALIGN = LEFT
+
   # コンストラクタ
   # <em>index_names</em> :: 表示順（左から右）に整列された列名の Array
   # <em>func_length</em> :: 表示文字数を求める、１引数を取り整数値を返すラムダ関数
@@ -38,11 +43,12 @@ class TableOnCUI
     @index_names = index_names
     @func_length = func_length
 
-    @map_indexes  = []
-    @ary_map_data = []
-    @map_max_lengths = {}
+    @map_indexes  = Array.new
+    @ary_map_data = Array.new
+    @map_max_lengths = Hash.new
+    @map_aligns      = Hash.new { |h, k| h[k] = DEFAULT_ALIGN }
 
-    @index_names_to_hide = []
+    @index_names_to_hide = Array.new
 
     @num_padding   = DEFAULT_NUM_PADDING
     @shows_indexes = DEFAULT_SHOWS_INDEXES
@@ -78,7 +84,7 @@ class TableOnCUI
     end
   end
 
-  # 列を非表示とすることを、new 時に渡した列名の列挙で設定する。
+  # 指定した列を非表示にする。
   # 引数に :all のみを指定するとすべての列を非表示とする
   # <em>index_names</em> :: 列名の列挙。すべての列は :all で指定
   def hide(*index_names)
@@ -114,6 +120,15 @@ class TableOnCUI
     @map_max_lengths = make_map_max_lengths
   end
 
+  # 指定した列のセル値表示を右寄せにする。
+  # 引数に :all のみを指定するとすべての列を右寄せとする
+  # <em>index_names</em> :: 列名の列挙。すべての列は :all で指定
+  def set_align_right(*index_names)
+    (index_names == [:all] ? @index_names : index_names).each do |index_name|
+      @map_aligns[index_name] = RIGHT
+    end
+  end
+
   # 表形式に変換して文字列で返す
   # 返り値 :: 文字列型に変換された表
   def to_table
@@ -127,18 +142,18 @@ class TableOnCUI
     ary_map_whole_table.each do |map_items|
       s = '|'
       index_names_to_display.each do |index|
-        is_right_align = false
+        align = @map_aligns[index]
         item = map_items[index]
         if item.nil?
           item = @nil_display
-        elsif item.kind_of?(Fixnum)
-          is_right_align = true
+        elsif item.kind_of?(Numeric)
+          align = RIGHT
           item = item.to_s
         end
         width = @map_max_lengths[index]
         length = @func_length.call(item)
         blanks = ' ' * (width - length)
-        item_display = is_right_align ? (blanks + item) : (item + blanks)
+        item_display = align == LEFT ? (item + blanks) : (blanks + item)
         s += ' ' + item_display + ' |'
       end
       strs << s
