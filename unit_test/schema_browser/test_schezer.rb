@@ -2279,7 +2279,6 @@ class TestSchezer < Test::Unit::TestCase
     table_schema = make_empty_table_schema
 
     [
-      "CREATE TABLE `name` ",
       "CREATE TABLE `table name` (",
       "CREATE TABLE 'name' (",
     ].each do |line|

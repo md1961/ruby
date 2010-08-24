@@ -310,7 +310,7 @@ class TableSchema
       column.comment = DEFAULT_COLUMN_COMMENT_FOR_ID if column.comment_blank?
     end
 
-    RE_TABLE_NAME = /^\s*CREATE +TABLE +`(\w+)` +\(\s*$/i
+    RE_TABLE_NAME = /^\s*CREATE +(?:TABLE|.*VIEW) +(?:`[^`]+`\.)?`(\w+)` +/i
 
     def get_table_name_at_top(line)
       m = Regexp.compile(RE_TABLE_NAME).match(line)
@@ -710,7 +710,8 @@ class TableData
   # 返り値: Mysql::Result のインスタンス
   def get_result(includes_auto_increment=false)
     column_names_to_sort = @table_schema.column_names_to_sort(includes_auto_increment)
-    sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
+    sql = "SELECT * FROM #{@table_schema.name}"
+    sql += " ORDER BY #{column_names_to_sort.join(', ')}" unless column_names_to_sort.empty?
     result = @conn.get_query_result(sql)
     @row_count = result.num_rows
     return result
