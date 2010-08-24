@@ -236,6 +236,7 @@ class TestSchezer < Test::Unit::TestCase
       "|            3 |          2 |        1 | 5678.90 |       1 |",
       "|            4 |          2 |        2 | 7890.12 |       2 |",
       "+--------------+------------+----------+---------+---------+",
+      "(Total of 4 records)",
     ]
     assert_in_lines(expected_lines, actual_lines, "Data in TABLE `reserve`")
 
@@ -255,6 +256,7 @@ class TestSchezer < Test::Unit::TestCase
       "|            3 | STB       |",
       "|            4 | SCF       |",
       "+--------------+-----------+",
+      "(Total of 4 records)",
       "TABLE `field`",
       "+----------+-----------------+-----------+-----------------+------------+--------------+-------------+",
       "| field_id | field           | field_zen | date_field_aban | date_added | date_removed | field_north |",
@@ -264,6 +266,7 @@ class TestSchezer < Test::Unit::TestCase
       "|       14 | Higashi-Niigata | 東新潟    | NULL            | NULL       | NULL         |         840 |",
       "|       20 | Iwafune-Oki     | 岩船沖    | NULL            | NULL       | NULL         |        2100 |",
       "+----------+-----------------+-----------+-----------------+------------+--------------+-------------+",
+      "(Total of 4 records)",
     ]
     assert_in_lines(expected_lines, actual_lines, "Data of TABLE `base_unit` and `field`")
   end

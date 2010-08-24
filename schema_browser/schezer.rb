@@ -18,6 +18,7 @@ class SchemaDiscrepancyException                 < Exception; end
 class NotComparedYetException                    < Exception; end
 class NoPrimaryKeyException                      < Exception; end
 class MultipleRowsExpectingUniqueResultException < Exception; end
+class IllegalStateException                      < Exception; end
 
 
 class TableSchemaDifference
@@ -702,13 +703,17 @@ class TableData
     @delimiter_out = delimiter_out
 
     @has_been_compared = false
+
+    @row_count = nil
   end
 
   # 返り値: Mysql::Result のインスタンス
   def get_result(includes_auto_increment=false)
     column_names_to_sort = @table_schema.column_names_to_sort(includes_auto_increment)
     sql = "SELECT * FROM #{@table_schema.name} ORDER BY #{column_names_to_sort.join(', ')}"
-    return @conn.get_query_result(sql)
+    result = @conn.get_query_result(sql)
+    @row_count = result.num_rows
+    return result
   end
 
   # 主キーが引数と等しいレコードを返す。見つからないときは nil を返す
@@ -844,6 +849,13 @@ class TableData
       values << value
     end
     return values.join(@delimiter_out)
+  end
+
+  # このメソッドを呼ぶ前に get_result() を明示して呼ぶか、あるいは
+  # to_s(), to_yaml(), to_table() のいずれかを呼ばなければならない
+  def row_count
+    raise IllegalStateException.new("get_result() was not called yet") unless @row_count
+    return @row_count
   end
 
   def to_s
@@ -1317,7 +1329,8 @@ class Schezer
       return outs.join("\n")
     end
 
-    NO_DATA_IN_TABLE = "(No data)"
+    NO_DATA_DISPLAY = "(No data)"
+    FORMAT_ROW_COUNT = "(Total of %d records)"
 
     def to_disp_table_data(table_names, table_names2=nil)
       table_names2 = table_names.dup unless table_names2
@@ -1337,8 +1350,13 @@ class Schezer
         table_data.delimiter_out = @delimiter_field if @delimiter_field
         unless @conn2
           table_display = table_data.to_table(@terminal_width)
-          table_display = NO_DATA_IN_TABLE if table_display.nil? && @verbose
-          outs2 << "TABLE `#{table_name}`" << table_display if table_display
+          table_display = NO_DATA_DISPLAY if table_display.nil? && @verbose
+          if table_display
+            outs2 << "TABLE `#{table_name}`" << table_display
+            row_count = table_data.row_count
+            row_count_display = sprintf(FORMAT_ROW_COUNT, row_count)
+            outs2 << row_count_display if row_count > 0
+          end
         else
           table_schema2 = parse_table_schema(table_name, @conn2)
           table_data2 = TableData.new(table_schema2, @conn2)
