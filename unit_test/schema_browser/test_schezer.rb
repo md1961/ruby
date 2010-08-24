@@ -227,6 +227,7 @@ class TestSchezer < Test::Unit::TestCase
     end
     actual_lines = actual.join("\n").split("\n")
     expected_lines = [
+      "TABLE `reserve`",
       "+--------------+------------+----------+---------+---------+",
       "| synthetic_id | reserve_id | fluid_id | reserve | unit_id |",
       "+--------------+------------+----------+---------+---------+",

@@ -1318,11 +1318,11 @@ class Schezer
 
     def to_disp_table_data(table_names, table_names2=nil)
       table_names2 = table_names.dup unless table_names2
-      if @conn2
-        outs, table_names_both = compare_table_names(table_names, table_names2)
-      else
+      unless @conn2
         table_names_both = table_names
         outs = Array.new
+      else
+        outs, table_names_both = compare_table_names(table_names, table_names2)
       end
 
       is_multiple_tables = table_names.size > 1
@@ -1332,11 +1332,10 @@ class Schezer
         table_schema = parse_table_schema(table_name, @conn)
         table_data = TableData.new(table_schema, @conn)
         table_data.delimiter_out = @delimiter_field if @delimiter_field
-        if @conn2.nil?
-          outs2 << "TABLE `#{table_name}`" if is_multiple_tables
+        unless @conn2
           table_display = table_data.to_table
-          table_display = NO_DATA_IN_TABLE if table_display.nil? && is_multiple_tables
-          outs2 << table_display
+          table_display = NO_DATA_IN_TABLE if table_display.nil? && @verbose
+          outs2 << "TABLE `#{table_name}`" << table_display if table_display
         else
           table_schema2 = parse_table_schema(table_name, @conn2)
           table_data2 = TableData.new(table_schema2, @conn2)
@@ -1352,7 +1351,7 @@ class Schezer
           end
         end
 
-        outs << outs2.join("\n")
+        outs << outs2.join("\n") unless outs2.empty?
       end
 
       return outs
