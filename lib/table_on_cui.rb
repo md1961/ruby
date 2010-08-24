@@ -17,6 +17,8 @@ class TableOnCUI
   class NoSuchIndexException     < Exception; end
   class NoDataSpecifiedException < Exception; end
 
+  attr_writer :num_padding, :nil_display
+
   # 表示文字数を求める、デフォルトの関数
   DEFAULT_FUNC_LENGTH = lambda { |x| x ? x.to_s.length : 0 }
 
@@ -26,7 +28,10 @@ class TableOnCUI
   # 列見出しを表示するか否かのデフォルト値
   DEFAULT_SHOWS_INDEXES = true
 
-  # コンストラクタ。
+  # nil 値表示のデフォルト値
+  DEFAULT_NIL_DISPLAY = "nil"
+
+  # コンストラクタ
   # <em>index_names</em> :: 表示順（左から右）に整列された列名の Array
   # <em>func_length</em> :: 表示文字数を求める、１引数を取り整数値を返すラムダ関数
   def initialize(index_names, func_length=DEFAULT_FUNC_LENGTH)
@@ -38,9 +43,10 @@ class TableOnCUI
     @map_max_lengths = {}
 
     @index_names_to_hide = []
-    @shows_indexes = DEFAULT_SHOWS_INDEXES
 
-    @num_padding = DEFAULT_NUM_PADDING
+    @num_padding   = DEFAULT_NUM_PADDING
+    @shows_indexes = DEFAULT_SHOWS_INDEXES
+    @nil_display   = DEFAULT_NIL_DISPLAY
   end
 
   # 表の表示幅を半角文字単位で返す。
@@ -54,12 +60,6 @@ class TableOnCUI
   def shows_indexes=(value)
     @shows_indexes = value
     @map_max_lengths = make_map_max_lengths
-  end
-
-  # 表示項目の左右に置く半角スペースの個数を設定する
-  # <em>value</em> :: 設定する値
-  def num_padding=(value)
-    @num_padding = value
   end
 
   # 列を表示とすることを、new 時に渡した列名の列挙で設定する。
@@ -129,7 +129,9 @@ class TableOnCUI
       index_names_to_display.each do |index|
         is_right_align = false
         item = map_items[index]
-        if item.kind_of?(Fixnum)
+        if item.nil?
+          item = @nil_display
+        elsif item.kind_of?(Fixnum)
           is_right_align = true
           item = item.to_s
         end

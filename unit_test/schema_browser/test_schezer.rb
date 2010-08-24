@@ -227,11 +227,14 @@ class TestSchezer < Test::Unit::TestCase
     end
     actual_lines = actual.join("\n").split("\n")
     expected_lines = [
-      "1\t1\t1\t1234.56\t1",
-      "2\t1\t2\t3456.78\t2",
-      "3\t2\t1\t5678.90\t1",
-      "4\t2\t2\t7890.12\t2",
-      "Total of 4 rows"
+      "+--------------+------------+----------+---------+---------+",
+      "| synthetic_id | reserve_id | fluid_id | reserve | unit_id |",
+      "+--------------+------------+----------+---------+---------+",
+      "| 1            | 1          | 1        | 1234.56 | 1       |",
+      "| 2            | 1          | 2        | 3456.78 | 2       |",
+      "| 3            | 2          | 1        | 5678.90 | 1       |",
+      "| 4            | 2          | 2        | 7890.12 | 2       |",
+      "+--------------+------------+----------+---------+---------+",
     ]
     assert_in_lines(expected_lines, actual_lines, "Data in TABLE `reserve`")
 
@@ -242,16 +245,24 @@ class TestSchezer < Test::Unit::TestCase
     end
     actual_lines = actual.join("\n").split("\n")
     expected_lines = [
-      "1\tKL",
-      "2\tm3",
-      "4\tSCF",
-      "3\tSTB",
-      "Total of 4 rows",
-      "14\tHigashi-Niigata\t東新潟\t\t\t\t840",
-      "20\tIwafune-Oki\t岩船沖\t\t\t\t2100",
-      "3\tSarukawa\t申川\t\t\t\t320",
-      "1\tYufutsu\t勇払\t\t\t\t140",
-      "Total of 4 rows"
+      "TABLE `base_unit`",
+      "+--------------+-----------+",
+      "| base_unit_id | base_unit |",
+      "+--------------+-----------+",
+      "| 1            | KL        |",
+      "| 2            | m3        |",
+      "| 3            | STB       |",
+      "| 4            | SCF       |",
+      "+--------------+-----------+",
+      "TABLE `field`",
+      "+----------+-----------------+-----------+-----------------+------------+--------------+-------------+",
+      "| field_id | field           | field_zen | date_field_aban | date_added | date_removed | field_north |",
+      "+----------+-----------------+-----------+-----------------+------------+--------------+-------------+",
+      "| 1        | Yufutsu         | 勇払      | NULL            | NULL       | NULL         | 140         |",
+      "| 3        | Sarukawa        | 申川      | NULL            | NULL       | NULL         | 320         |",
+      "| 14       | Higashi-Niigata | 東新潟    | NULL            | NULL       | NULL         | 840         |",
+      "| 20       | Iwafune-Oki     | 岩船沖    | NULL            | NULL       | NULL         | 2100        |",
+      "+----------+-----------------+-----------+-----------------+------------+--------------+-------------+",
     ]
     assert_in_lines(expected_lines, actual_lines, "Data of TABLE `base_unit` and `field`")
   end

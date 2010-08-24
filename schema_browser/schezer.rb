@@ -879,6 +879,39 @@ class TableData
     return outs.join("\n")
   end
 
+  #TODO: Remove magic number from terminal_width
+  def to_table(terminal_width=120)
+    indexes = @table_schema.column_names
+    map_indexes = Hash.new
+    indexes.each do |index|
+      map_indexes[index] = index
+    end
+
+    result = get_result(includes_auto_increment=true)
+    table_items = Array.new
+    while hash_rows = result.fetch_hash
+      table_items << hash_rows
+    end
+
+    return nil if table_items.empty?
+
+    table = TableOnCUI.new(indexes, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
+    table.nil_display = "NULL"
+    table.set_data(table_items)
+    if table.width <= terminal_width
+      return table.to_table
+    else
+      #TODO: Implement properly
+      raise "Not supported yet"
+      table.hide(INDEX_COMMENT)
+      table0 = table.to_table
+      table.hide(:all)
+      table.show(INDEX_NAME, INDEX_COMMENT)
+      table1 = table.to_table
+      return [table0, table1].join("\n")
+    end
+  end
+
   private
 
     # Return -1, 0, 1 according to <, ==, >
@@ -1111,6 +1144,7 @@ class Schezer
         joint = "\n"
       when :data
         outs = to_disp_table_data(table_names, table_names2)
+        joint = "\n\n" unless @conn2
       when :sql_sync
         outs = to_disp_sql_to_sync(table_names, table_names2)
       when :yaml
@@ -1280,6 +1314,8 @@ class Schezer
       return outs.join("\n")
     end
 
+    NO_DATA_IN_TABLE = "(No data)"
+
     def to_disp_table_data(table_names, table_names2=nil)
       table_names2 = table_names.dup unless table_names2
       if @conn2
@@ -1289,6 +1325,7 @@ class Schezer
         outs = Array.new
       end
 
+      is_multiple_tables = table_names.size > 1
       table_names_both.each do |table_name|
         outs2 = Array.new
 
@@ -1296,7 +1333,10 @@ class Schezer
         table_data = TableData.new(table_schema, @conn)
         table_data.delimiter_out = @delimiter_field if @delimiter_field
         if @conn2.nil?
-          outs2 << table_data.to_s
+          outs2 << "TABLE `#{table_name}`" if is_multiple_tables
+          table_display = table_data.to_table
+          table_display = NO_DATA_IN_TABLE if table_display.nil? && is_multiple_tables
+          outs2 << table_display
         else
           table_schema2 = parse_table_schema(table_name, @conn2)
           table_data2 = TableData.new(table_schema2, @conn2)
