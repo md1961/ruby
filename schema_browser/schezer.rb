@@ -103,11 +103,46 @@ class ViewSchema < AbstractTableSchema
 
   def to_s
     outs = Array.new
-    @columns.each do |column| outs << column.to_s; end
-    @tables .each do |table | outs << table .to_s; end
+
+    outs << "VIEW `#{@name}`"
+
+    outs << to_columns_table
 
     return outs.join("\n")
   end
+
+  INDEX_NAME      = "name"
+  INDEX_SOURCE    = "source"
+  INDEX_TRUE_NAME = "true name"
+  INDEXES = [INDEX_NAME, INDEX_SOURCE, INDEX_TRUE_NAME].freeze
+
+  def to_columns_table
+    map_indexes = Hash.new
+    INDEXES.each do |index|
+      map_indexes[index] = index
+    end
+
+    table_items = Array.new
+    @columns.each do |column|
+      table_items << to_map_table_items(column)
+    end
+
+    table = TableOnCUI.new(INDEXES, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
+    table.set_data(table_items)
+    return table.to_table
+  end
+
+    def to_map_table_items(column)
+      map_items = Hash.new
+      INDEXES.each do |index|
+        column.instance_eval do
+          map_items[index] = instance_variable_get("@#{index.gsub(/ /, '_')}")
+        end
+      end
+
+      return map_items
+    end
+    private :to_map_table_items
 end
 
 # column / table identification in VIEW definition
