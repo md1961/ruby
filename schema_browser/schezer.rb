@@ -1015,11 +1015,14 @@ class TableData
     return outs.join("\n")
   end
 
-  def to_table(terminal_width)
+  def to_table(terminal_width, record_limit)
     result = get_result(includes_auto_increment=true)
     table_items = Array.new
+    count = 0
     while hash_rows = result.fetch_hash
       table_items << hash_rows
+      count += 1
+      break if record_limit && count >= record_limit
     end
 
     return nil if table_items.empty?
@@ -1473,7 +1476,7 @@ class Schezer
         table_data = TableData.new(table_schema, @conn)
         table_data.delimiter_out = @delimiter_field if @delimiter_field
         unless @conn2
-          table_display = table_data.to_table(@terminal_width)
+          table_display = table_data.to_table(@terminal_width, @record_limit)
           table_display = NO_DATA_DISPLAY if table_display.nil? && @verbose
           if table_display
             outs2 << "TABLE `#{table_name}`" << table_display
@@ -1857,6 +1860,7 @@ class Schezer
     DESC_V  = "Verbose output"
     DESC_W  = "Include view(s)"
     DESC_CT = "Capitalize COLUMN data types of TABLE schema"
+    DESC_LM = "Maximum number of records to display"
     DESC_PR = "Pretty indented XML outputs"
     DESC_TW = "Terminal column width to display (default is #{DEFAULT_TERMINAL_WIDTH})"
     DESC_UK = "Regard two records equal and output together if the unique key values are equal"
@@ -1867,6 +1871,7 @@ class Schezer
       @config_name2        = nil
       @terminal_width      = DEFAULT_TERMINAL_WIDTH
       @view_only           = false
+      @record_limit        = nil
       @is_pretty           = false
       @capitalizes_types   = false
       @unique_key_equalize = false
@@ -1884,6 +1889,7 @@ class Schezer
       @opt_parser.on("-v", "--verbose"              , DESC_V ) { |v| @verbose             = true   }
       @opt_parser.on("-w", "--view_only"            , DESC_W ) { |v| @view_only           = true   }
       @opt_parser.on("--capitalizes_types"          , DESC_CT) { |v| @capitalizes_types   = true   }
+      @opt_parser.on("--limit=VALUE"                , DESC_LM) { |v| @record_limit        = v.to_i }
       @opt_parser.on("--pretty"                     , DESC_PR) { |v| @is_pretty           = true   }
       @opt_parser.on("--terminal_width=VALUE"       , DESC_TW) { |v| @terminal_width      = v.to_i }
       @opt_parser.on("--unique_key_equalize"        , DESC_UK) { |v| @unique_key_equalize = true   }
