@@ -75,6 +75,14 @@ class AbstractTableSchema
     end
     return TableSchema.new(raw_schema, terminal_width, capitalizes_types)
   end
+
+  def column_names
+    return @columns.map { |column| column.name }
+  end
+
+  def column_names_to_sort(includes_auto_increment=false)
+    return Array.new
+  end
 end
 
 class ViewSchema < AbstractTableSchema
@@ -170,6 +178,11 @@ class ItemInView
 end
 
 class ColumnInView < ItemInView
+
+  def numerical_type?
+    return true if /_?id\z/ =~ name
+    return false
+  end
 end
 
 class TableInView  < ItemInView
@@ -216,10 +229,6 @@ class TableSchema < AbstractTableSchema
       set_default_column_comment_for_id
     end
     private :parse_raw_schema
-
-  def column_names
-    return @columns.map { |column| column.name }
-  end
 
   def columns_with_primary_key
     return @columns.select { |column| @primary_keys.include?(column.name) }
