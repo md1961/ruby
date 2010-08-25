@@ -13,6 +13,7 @@ require 'table_on_cui'
 class CannotGetTableNameException                < Exception; end
 class CannotGetTableOptionsException             < Exception; end
 class UnsupportedColumnDefinitionException       < Exception; end
+class UnsupportedViewDefinitionException         < Exception; end
 class DuplicatePrimaryKeyException               < Exception; end
 class SchemaDiscrepancyException                 < Exception; end
 class NotComparedYetException                    < Exception; end
@@ -63,10 +64,88 @@ class TableSchemaDifference
     end
 end
 
-class TableSchema
-  # @primary_keys は String.@unique_keys と @keys は Key.@foreign_keys は ForeignKey の
-  # それぞれ配列。
-  attr_reader :name, :columns, :primary_keys, :unique_keys, :foreign_keys, :keys
+class AbstractTableSchema
+  attr_reader :name, :columns
+
+  RE_VIEW_DEFINITION = /\A\s*CREATE\s+.*VIEW\s+`[\w_]+`\.`([\w_]+)`\s+AS\s+(.+)\z/i
+
+  def self.instance(raw_schema, terminal_width, capitalizes_types=false)
+    if RE_VIEW_DEFINITION =~ raw_schema
+      return ViewSchema.new($1, $2, terminal_width, capitalizes_types)
+    end
+    return TableSchema.new(raw_schema, terminal_width, capitalizes_types)
+  end
+end
+
+class ViewSchema < AbstractTableSchema
+  attr_reader :tables, :where
+
+  def initialize(name, select_statement, terminal_width, capitalizes_types=false)
+    @name = name
+    parse_raw_view_schema(select_statement, capitalizes_types)
+  end
+
+    RE_VIEW_AS_SELECT = /\A\s*SELECT\s+(.*\S)\s+FROM\s+(\S.*\S)(?:\s+WHERE\s+(\S.*\S))?\s*\z/i
+
+    def parse_raw_view_schema(select_statement, capitalizes_types)
+      unless RE_VIEW_AS_SELECT =~ select_statement
+        raise UnsupportedViewDefinitionException.new("Cannot parse 'AS SELECT' in VIEW definition: #{select_statement}")
+      end
+
+      column_str = $1
+      table_str  = $2
+      @where     = $3
+
+      @columns = column_str.split(/,\s*/).map { |s| ColumnInView.new(s) }
+      @tables  = table_str .split(/,\s*/).map { |s| TableInView .new(s) }
+    end
+    private :parse_raw_view_schema
+
+  def to_s
+    outs = Array.new
+    @columns.each do |column| outs << column.to_s; end
+    @tables .each do |table | outs << table .to_s; end
+
+    return outs.join("\n")
+  end
+end
+
+# column / table identification in VIEW definition
+class ItemInView
+  attr_reader :name, :source, :true_name
+  # `resman2`.`completion`.`reservoir_id` AS `reservoir_id` であれば
+  # @name = "reservoir_id", @source = "`resman2`.`completion`", @true_name = "reservoir_id" となる
+
+  RE_VIEW_ITEM_NAME = /(`\w[\w_.`]+\w`)\.`([\w_]+)`(?:\s+AS\s+`([\w_]+)`)?/
+
+  def initialize(definition)
+    unless RE_VIEW_ITEM_NAME =~ definition
+      raise UnsupportedViewDefinitionException.new("Cannot parse as column nor table in VIEW definition: #{item}")
+    end
+
+    @source    = $1
+    @true_name = $2
+    @name      = $3
+  end
+
+  def to_s
+    name = @name || @true_name
+    return "#{name} (#{true_name} FROM #{@source})"
+  end
+end
+
+class ColumnInView < ItemInView
+end
+
+class TableInView  < ItemInView
+end
+
+class TableSchema < AbstractTableSchema
+  # @primary_keys は String、
+  # @unique_keys と @keys は Key、
+  # @foreign_keys は ForeignKey
+  # のそれぞれ配列
+  attr_reader :primary_keys, :unique_keys, :foreign_keys, :keys
   attr_reader :engine, :auto_increment, :default_charset, :collate, :max_rows, :comment
 
   DEFAULT_COLUMN_COMMENT_FOR_ID = "RDBMSが生成する一意のID番号"
@@ -1009,7 +1088,7 @@ class Schezer
 
   COMMANDS_NOT_TO_RUN_WITH_TWO_ENVIRONMENTS   = [:raw, :xml, :columns]
   COMMANDS_NOT_TO_RUN_WITH_NO_TABLE_SPECIFIED = [:data, :yaml, :fixture]
-  COMMANDS_NOT_TO_RUN_WITH_VIEW_ONLY_OPTION   = [:table]
+  COMMANDS_NOT_TO_RUN_WITH_VIEW_ONLY_OPTION   = []
   DEFAULT_TABLE_NAME = ALL_TABLES
 
   JOINT_TABLE_NAME_OUTPUTS = "\n"
@@ -1478,7 +1557,7 @@ class Schezer
     def parse_table_schema(name, conn)
       raw_schema = get_raw_table_schema(name, conn)
       return nil unless raw_schema
-      ts = TableSchema.new(raw_schema, @terminal_width, @capitalizes_types)
+      ts = AbstractTableSchema.instance(raw_schema, @terminal_width, @capitalizes_types)
       return ts
     end
 
