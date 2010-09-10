@@ -110,13 +110,15 @@ class ProductAnalysisScanner < ExcelManipulator
     strs.concat(make_sqls_to_insert_well_and_completion_specs)
 
     id = 1
+    sample_type = 'Completion'
+    sample_id   = @completion_data.completion_id
     @analysis_datas.each do |analysis_data|
       unless sql_only
         strs << HR
         strs << analysis_data.to_s
       end
       strs << (sql_only ? "" : HR)
-      strs << analysis_data.to_sql_to_insert(id, @completion_data.completion_id, @fixes_creation_time_at_midnight)
+      strs << analysis_data.to_sql_to_insert(id, sample_type, sample_id, @fixes_creation_time_at_midnight)
       id += 1
     end
 
@@ -128,7 +130,8 @@ class ProductAnalysisScanner < ExcelManipulator
       sqls << ProductAnalysisScanner.make_sql_to_insert('well_specs',
                                  'id' => 0, 'well_id' => @completion_data.well_id, 'total_depth' => @completion_data.total_depth)
       sqls << ProductAnalysisScanner.make_sql_to_insert('completion_specs',
-                                 'id' => 0, 'completion_id'    => @completion_data.completion_id,
+                                 'id' => 0,
+                                 'completion_id'               => @completion_data.completion_id,
                                  'perforation_interval_top'    => @completion_data.perforation_interval_top,
                                  'perforation_interval_bottom' => @completion_data.perforation_interval_bottom)
       return sqls
@@ -256,7 +259,7 @@ class ProductAnalysisScanner < ExcelManipulator
     ]
 
     COLUMN_NAMES_OF_BASE_ANALYSES = [
-      :id, :completion_id, :analysis_type, :analysis_id,
+      :id, :sample_type, :sample_id, :analysis_type, :analysis_id,
       :report_no, :date_sampled, :date_analysed, :date_reported,
       :sample_point, :sample_pressure, :pressure_unit_id, :sample_temperature,
       :production_id,
@@ -293,10 +296,12 @@ class ProductAnalysisScanner < ExcelManipulator
     ]
 
     COLUMN_NAMES_IN_STRING_TYPE = [
-      # From GasAnalysisData
-      :analysis_type, :report_no, :sample_point, :note, :status, :created_at, :updated_at,
-      # From OilAnalysisData
+      # From BaseAnalysis
+      :sample_type, :analysis_type, :report_no, :sample_point, :note, :created_at, :updated_at,
+      # From OilAnalysis
       :reflecting_color, :transparent_color, :appearance,
+      # From Prodction
+      :status,
     ]
     COLUMN_NAMES_IN_DATE_TYPE = [
       :date_sampled, :date_analysed, :date_reported, :date_as_of,
@@ -591,13 +596,15 @@ class ProductAnalysisScanner < ExcelManipulator
       end
     end
 
-    def to_sql_to_insert(id, completion_id, fixes_creation_time_at_midnight=false)
+    def to_sql_to_insert(id, sample_type, sample_id, fixes_creation_time_at_midnight=false)
       hash_attrs = Hash.new
       attr_names.each do |attr_name|
         hash_attrs[attr_name.to_s] = instance_variable_get("@#{attr_name}")
       end
       hash_attrs['id']            = 0  # auto_increment
-      hash_attrs['completion_id'] = completion_id
+      hash_attrs['sample_type']   = sample_type
+      hash_attrs['sample_id']     = sample_id
+      hash_attrs['completion_id'] = sample_id  # for TABLE `productions`
       hash_attrs['analysis_type'] = analysis_type
       hash_attrs['analysis_id']   = '@analysis_id'
       hash_attrs['production_id'] = '@production_id'
