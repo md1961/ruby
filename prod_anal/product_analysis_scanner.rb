@@ -440,19 +440,17 @@ class ProductAnalysisScanner < ExcelManipulator
         first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
         @well_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
 
-        begin
-          read_completion_specs(rows)
-          return true
-        rescue IllegalFormatError => evar
-        end
-        return false
+        is_success = read_completion_specs(rows)
+        return is_success
       end
 
+      # Returns whether successfully read or not
       def read_completion_specs(rows)
         row_no = 0
         row = rows[row_no]
 
         index = SampleData.index(rows, row_no, /\A\s*成功年月日/)
+        return false unless index
         if /\A\s*成功年月日.*(\d+\/\d+\/\d+)/ =~ row[index]
           @date_completed = $1
         else
@@ -460,6 +458,7 @@ class ProductAnalysisScanner < ExcelManipulator
         end
 
         index = SampleData.index(rows, row_no, /\A\s*層名/)
+        return false unless index
         if /\A\s*層名[:：](.*[^\s　])[\s　]*\z/ =~ row[index]
           @reservoir_name = $1.to_s
         else
@@ -469,30 +468,31 @@ class ProductAnalysisScanner < ExcelManipulator
         end
 
         index = SampleData.index(rows, row_no, /\A\s*坑井深度/)
-        @total_depth = row[index + 1]
+        @total_depth = row[index + 1] if index
 
         index = SampleData.index(rows, row_no, /\A\s*仕上深度/)
-        if /\A\s*仕上深度.*([\d.]+).*([\d.]+)/ =~ row[index]
-          @perforation_interval_top    = $1
-          @perforation_interval_bottom = $2
-        else
-          row_no = 1
-          index = SampleData.index(rows, row_no, /\A\s*自/)
-          @perforation_interval_top    = rows[row_no][index + 1]
+        if index
+          if /\A\s*仕上深度.*([\d.]+).*([\d.]+)/ =~ row[index]
+            @perforation_interval_top    = $1
+            @perforation_interval_bottom = $2
+          else
+            row_no = 1
+            index = SampleData.index(rows, row_no, /\A\s*自/)
+            @perforation_interval_top    = rows[row_no][index + 1] if index
 
-          row_no = 2
-          index = SampleData.index(rows, row_no, /\A\s*至/)
-          @perforation_interval_bottom = rows[row_no][index + 1]
+            row_no = 2
+            index = SampleData.index(rows, row_no, /\A\s*至/)
+            @perforation_interval_bottom = rows[row_no][index + 1] if index
+          end
         end
+
+        return true
       end
 
       def self.index(rows, row_no, re_to_look)
         row = rows[row_no]
         cell_found = row.find { |cell| cell && re_to_look =~ cell.to_s.gsub(/[\s　]/, '') }
-        unless cell_found
-          raise IllegalFormatError.new("No cell found to match #{re_to_look} in row No.#{row_no + 1}")
-        end
-        return row.index(cell_found)
+        return cell_found ? row.index(cell_found) : nil
       end
 
       RE_WELL_NAME = /\A(.*)[A-Z]{2,}-\s*\d+/
@@ -503,6 +503,11 @@ class ProductAnalysisScanner < ExcelManipulator
           db_master_yaml = YAML.load(fp)
         end
 
+        look_up_well(db_master_yaml)
+        look_up_reservoir_and_completion(db_master_yaml)
+      end
+
+      def look_up_well(db_master_yaml)
         unless @well_name
           raise IllegalStateError.new("@well_name must be set to non-null")
         end
@@ -518,29 +523,31 @@ class ProductAnalysisScanner < ExcelManipulator
         unless hash_field
           raise IllegalStateError.new("No (oil/gas) field found to match '#{@field_name_to_look_up}'")
         end
-        field_id   = hash_field['field_id']
-        field_name = hash_field['field_zen']
+        @field_id   = hash_field['field_id']
+        @field_name = hash_field['field_zen']
 
-        hash_well = look_up_db_record(db_master_yaml, 'well', 'well_zen' => @well_name_to_look_up, 'field_id' => field_id)
+        hash_well = look_up_db_record(db_master_yaml, 'well', 'well_zen' => @well_name_to_look_up, 'field_id' => @field_id)
         unless hash_well
           raise IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'")
         end
         @well_id = hash_well['well_id']
+      end
 
+      def look_up_reservoir_and_completion(db_master_yaml)
         unless @reservoir_name
           raise IllegalStateError.new("@reservoir_name must be set to non-null")
         end
-        hash_reservoir_name = @@reservoir_name_conversion_table[field_name] || {}
+        hash_reservoir_name = @@reservoir_name_conversion_table[@field_name] || {}
         reservoir_name_converted = hash_reservoir_name[reservoir_name]
         reservoir_name_converted = reservoir_name_converted[@well_name_to_look_up] if reservoir_name_converted.kind_of?(Hash)
         @reservoir_name_to_look_up = reservoir_name_converted || reservoir_name
 
         hash_reservoir = look_up_db_record(db_master_yaml, 'reservoir',
-                                           'reservoir_zen' => @reservoir_name_to_look_up, 'field_id' => field_id)
+                                           'reservoir_zen' => @reservoir_name_to_look_up, 'field_id' => @field_id)
         if hash_reservoir
           @reservoir_id = hash_reservoir['reservoir_id']
         else
-          @reservoir_id = MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID[field_name]
+          @reservoir_id = MAP_FIELD_NAMES_TO_SINGLE_RESERVOIR_ID[@field_name]
           unless @reservoir_id
             raise IllegalStateError.new(
                     "No reservoir found to match '#{@reservoir_name_to_look_up}'(well '#{@well_name_to_look_up}')" )
