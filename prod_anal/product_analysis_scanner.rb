@@ -75,7 +75,7 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
     begin
-      strs = Array.new
+      outs = Array.new
 
       Dir.glob("#{@root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
         prepare_variables
@@ -83,10 +83,10 @@ class ProductAnalysisScanner < ExcelManipulator
         @out_verbose.puts "Processing '#{filename}'..." if @verbose
 
         scan(filename)
-        strs.concat(out_in_strs(@sql_only))
+        outs << out_in_strs(@sql_only).join("\n")
       end
 
-      return strs.join("\n")
+      return outs.join("\n\n")
     ensure
       close_excel
     end
@@ -421,20 +421,29 @@ class ProductAnalysisScanner < ExcelManipulator
       return strs.join("\n")
     end
 
+    private
+
       def read(rows)
         row = rows[0]
 
         first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
         @well_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
 
-        index = CompletionData.index(rows, 0, /\A\s*成功年月日/)
+        read_completion_specs(rows)
+      end
+
+      def read_completion_specs(rows)
+        row_no = 0
+        row = rows[row_no]
+
+        index = CompletionData.index(rows, row_no, /\A\s*成功年月日/)
         if /\A\s*成功年月日.*(\d+\/\d+\/\d+)/ =~ row[index]
           @date_completed = $1
         else
           @date_completed = row[index + 1]
         end
 
-        index = CompletionData.index(rows, 0, /\A\s*層名/)
+        index = CompletionData.index(rows, row_no, /\A\s*層名/)
         if /\A\s*層名[:：](.*[^\s　])[\s　]*\z/ =~ row[index]
           @reservoir_name = $1.to_s
         else
@@ -443,22 +452,23 @@ class ProductAnalysisScanner < ExcelManipulator
           @reservoir_name.gsub!(/[\s　]/, '')
         end
 
-        index = CompletionData.index(rows, 0, /\A\s*坑井深度/)
-        @total_depth    = row[index + 1]
+        index = CompletionData.index(rows, row_no, /\A\s*坑井深度/)
+        @total_depth = row[index + 1]
 
-        index = CompletionData.index(rows, 0, /\A\s*仕上深度/)
+        index = CompletionData.index(rows, row_no, /\A\s*仕上深度/)
         if /\A\s*仕上深度.*([\d.]+).*([\d.]+)/ =~ row[index]
           @perforation_interval_top    = $1
           @perforation_interval_bottom = $2
         else
-          index = CompletionData.index(rows, 1, /\A\s*自/)
-          @perforation_interval_top    = rows[1][index + 1]
+          row_no = 1
+          index = CompletionData.index(rows, row_no, /\A\s*自/)
+          @perforation_interval_top    = rows[row_no][index + 1]
 
-          index = CompletionData.index(rows, 2, /\A\s*至/)
-          @perforation_interval_bottom = rows[2][index + 1]
+          row_no = 2
+          index = CompletionData.index(rows, row_no, /\A\s*至/)
+          @perforation_interval_bottom = rows[row_no][index + 1]
         end
       end
-      private :read
 
       def self.index(rows, row_no, re_to_look)
         row = rows[row_no]
@@ -525,7 +535,6 @@ class ProductAnalysisScanner < ExcelManipulator
                                         + " and '#{@reservoir_name_to_look_up}'(id=#{@reservoir_id})" ) unless hash_completion
         @completion_id = hash_completion['completion_id']
       end
-      private :look_up_db_for_completion_id
 
       def look_up_db_record(db_yaml, table_name, hash_to_look)
         db_yaml[table_name].each do |hash_row|
@@ -539,12 +548,10 @@ class ProductAnalysisScanner < ExcelManipulator
         end
         return nil
       end
-      private :look_up_db_record
 
       def value_equal?(value1, value2, table_name)
         return value_for_comparison(value1, table_name) == value_for_comparison(value2, table_name)
       end
-      private :value_equal?
 
       def value_for_comparison(value, table_name)
         if table_name == 'well' && value.kind_of?(String)
@@ -552,7 +559,6 @@ class ProductAnalysisScanner < ExcelManipulator
         end
         return value
       end
-      private :value_for_comparison
   end
 
   class AnalysisData
