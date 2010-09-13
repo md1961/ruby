@@ -135,11 +135,14 @@ class ProductAnalysisScanner < ExcelManipulator
       sqls = Array.new
       sqls << ProductAnalysisScanner.make_sql_to_insert('well_specs',
                                  'id' => 0, 'well_id' => @sample_data.well_id, 'total_depth' => @sample_data.total_depth)
-      sqls << ProductAnalysisScanner.make_sql_to_insert('completion_specs',
+      if @sample_data.completion_id
+        sqls << ProductAnalysisScanner.make_sql_to_insert('completion_specs',
                                  'id' => 0,
                                  'completion_id'               => @sample_data.completion_id,
                                  'perforation_interval_top'    => @sample_data.perforation_interval_top,
                                  'perforation_interval_bottom' => @sample_data.perforation_interval_bottom)
+      end
+
       return sqls
     end
     private :make_sqls_to_insert_well_and_completion_specs
@@ -440,7 +443,7 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
     def identity
-      return @well_name
+      return @well_name + (@reservoir_name && ! @reservoir_name.empty? ? "(#{@reservoir_name})" : "")
     end
 
     private
