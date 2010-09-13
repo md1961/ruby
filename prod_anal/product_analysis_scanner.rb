@@ -86,7 +86,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
         scan(filename)
 
-        commentary = "#{COMMENT_ON_SQL}#{@completion_data.id} from #{filename}"
+        commentary = "#{COMMENT_ON_SQL}#{@sample_data.identity} from #{filename}"
         lines = [commentary]
         lines.concat(out_in_strs(@sql_only))
         outs << lines.join("\n")
@@ -99,7 +99,7 @@ class ProductAnalysisScanner < ExcelManipulator
   end
 
   def prepare_variables
-    @completion_data  = nil
+    @sample_data  = nil
     @is_index_checked = false
     @analysis_datas   = Array.new
   end
@@ -110,14 +110,14 @@ class ProductAnalysisScanner < ExcelManipulator
     strs = Array.new
 
     unless sql_only
-      strs << @completion_data.to_s
+      strs << @sample_data.to_s
       strs << HR
     end
     strs.concat(make_sqls_to_insert_well_and_completion_specs)
 
     id = 1
-    sample_type = 'Completion'
-    sample_id   = @completion_data.completion_id
+    sample_type = @sample_data.sample_type
+    sample_id   = @sample_data.sample_id
     @analysis_datas.each do |analysis_data|
       unless sql_only
         strs << HR
@@ -134,12 +134,12 @@ class ProductAnalysisScanner < ExcelManipulator
     def make_sqls_to_insert_well_and_completion_specs
       sqls = Array.new
       sqls << ProductAnalysisScanner.make_sql_to_insert('well_specs',
-                                 'id' => 0, 'well_id' => @completion_data.well_id, 'total_depth' => @completion_data.total_depth)
+                                 'id' => 0, 'well_id' => @sample_data.well_id, 'total_depth' => @sample_data.total_depth)
       sqls << ProductAnalysisScanner.make_sql_to_insert('completion_specs',
                                  'id' => 0,
-                                 'completion_id'               => @completion_data.completion_id,
-                                 'perforation_interval_top'    => @completion_data.perforation_interval_top,
-                                 'perforation_interval_bottom' => @completion_data.perforation_interval_bottom)
+                                 'completion_id'               => @sample_data.completion_id,
+                                 'perforation_interval_top'    => @sample_data.perforation_interval_top,
+                                 'perforation_interval_bottom' => @sample_data.perforation_interval_bottom)
       return sqls
     end
     private :make_sqls_to_insert_well_and_completion_specs
@@ -164,7 +164,7 @@ class ProductAnalysisScanner < ExcelManipulator
         @out_verbose.print "#{total_row_count + 1} " if @verbose
 
         cells = row2cells(row)
-        if @completion_data && cells.all? { |r| ExcelManipulator.blank?(r) }
+        if @sample_data && cells.all? { |r| ExcelManipulator.blank?(r) }
           break if total_row_count >= MIN_ROW - 1
         else
           rows << cells
@@ -209,10 +209,10 @@ class ProductAnalysisScanner < ExcelManipulator
     private :row2cells
 
     def process_rows(rows)
-      if @completion_data.nil? and rows.size == SampleData::NUM_ROWS_NEEDED_TO_INITIALIZE
-        @completion_data = SampleData.new(rows)
+      if @sample_data.nil? and rows.size == SampleData::NUM_ROWS_NEEDED_TO_INITIALIZE
+        @sample_data = SampleData.new(rows)
         rows.clear
-      elsif ! @completion_data.nil? and ! @is_index_checked and rows.size == AnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
+      elsif ! @sample_data.nil? and ! @is_index_checked and rows.size == AnalysisData::NUM_ROWS_NEEDED_TO_READ_INDEX
         data_classes = [GasAnalysisData, OilAnalysisData]
         evars = Array.new
         clazz = nil
@@ -368,8 +368,8 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
   class SampleData
-    attr_reader :well_name, :date_completed, :reservoir_name, :total_depth, \
-                :perforation_interval_top, :perforation_interval_bottom, \
+    attr_reader :sample_type, :well_name, :date_completed, :reservoir_name, \
+                :total_depth, :perforation_interval_top, :perforation_interval_bottom, \
                 :completion_id, :well_id, :reservoir_id
 
     DB_MASTER_FILENAME                          = "prod_anal/100723_marrs_field_well_reservoir_completion.yml"
@@ -414,6 +414,18 @@ class ProductAnalysisScanner < ExcelManipulator
           end
         end
       end
+      private :prepare_map_well_crown_names_to_field_name
+
+    def sample_id
+      return case sample_type
+        when 'Completion'
+          completion_id
+        when 'Well'
+          well_id
+        else
+          raise IllegalStateError.new("sample_type of '#{sample_type}' not supported")
+        end
+    end
 
     def to_s
       strs = Array.new
@@ -427,7 +439,7 @@ class ProductAnalysisScanner < ExcelManipulator
       return strs.join("\n")
     end
 
-    def id
+    def identity
       return @well_name
     end
 
@@ -446,10 +458,9 @@ class ProductAnalysisScanner < ExcelManipulator
 
       # Returns whether successfully read or not
       def read_completion_specs(rows)
-        row_no = 0
-        row = rows[row_no]
+        row = rows[0]
 
-        index = SampleData.index(rows, row_no, /\A\s*成功年月日/)
+        index = SampleData.index(row, /\A\s*成功年月日/)
         return false unless index
         if /\A\s*成功年月日.*(\d+\/\d+\/\d+)/ =~ row[index]
           @date_completed = $1
@@ -457,7 +468,7 @@ class ProductAnalysisScanner < ExcelManipulator
           @date_completed = row[index + 1]
         end
 
-        index = SampleData.index(rows, row_no, /\A\s*層名/)
+        index = SampleData.index(row, /\A\s*層名/)
         return false unless index
         if /\A\s*層名[:：](.*[^\s　])[\s　]*\z/ =~ row[index]
           @reservoir_name = $1.to_s
@@ -467,30 +478,29 @@ class ProductAnalysisScanner < ExcelManipulator
           @reservoir_name.gsub!(/[\s　]/, '')
         end
 
-        index = SampleData.index(rows, row_no, /\A\s*坑井深度/)
+        index = SampleData.index(row, /\A\s*坑井深度/)
         @total_depth = row[index + 1] if index
 
-        index = SampleData.index(rows, row_no, /\A\s*仕上深度/)
+        index = SampleData.index(row, /\A\s*仕上深度/)
         if index
           if /\A\s*仕上深度.*([\d.]+).*([\d.]+)/ =~ row[index]
             @perforation_interval_top    = $1
             @perforation_interval_bottom = $2
           else
-            row_no = 1
-            index = SampleData.index(rows, row_no, /\A\s*自/)
-            @perforation_interval_top    = rows[row_no][index + 1] if index
+            row = rows[1]
+            index = SampleData.index(row, /\A\s*自/)
+            @perforation_interval_top    = row[index + 1] if index
 
-            row_no = 2
-            index = SampleData.index(rows, row_no, /\A\s*至/)
-            @perforation_interval_bottom = rows[row_no][index + 1] if index
+            row = rows[2]
+            index = SampleData.index(row, /\A\s*至/)
+            @perforation_interval_bottom = row[index + 1] if index
           end
         end
 
         return true
       end
 
-      def self.index(rows, row_no, re_to_look)
-        row = rows[row_no]
+      def self.index(row, re_to_look)
         cell_found = row.find { |cell| cell && re_to_look =~ cell.to_s.gsub(/[\s　]/, '') }
         return cell_found ? row.index(cell_found) : nil
       end
@@ -502,6 +512,8 @@ class ProductAnalysisScanner < ExcelManipulator
         open(DB_MASTER_FILENAME, 'r') do |fp|
           db_master_yaml = YAML.load(fp)
         end
+        
+        @sample_type = 'Completion'
 
         look_up_well(db_master_yaml)
         look_up_reservoir_and_completion(db_master_yaml)
