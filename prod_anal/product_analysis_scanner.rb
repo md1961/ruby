@@ -453,7 +453,7 @@ class ProductAnalysisScanner < ExcelManipulator
         @well_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
 
         is_success = read_completion_specs(rows)
-        return is_success
+        return is_success && ! @reservoir_name.empty?
       end
 
       # Returns whether successfully read or not
@@ -513,10 +513,9 @@ class ProductAnalysisScanner < ExcelManipulator
           db_master_yaml = YAML.load(fp)
         end
         
-        @sample_type = 'Completion'
-
         look_up_well(db_master_yaml)
-        look_up_reservoir_and_completion(db_master_yaml)
+        @sample_type = is_completion ? 'Completion' : 'Well'
+        look_up_reservoir_and_completion(db_master_yaml) if is_completion
       end
 
       def look_up_well(db_master_yaml)
