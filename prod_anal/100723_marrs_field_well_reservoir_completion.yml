@@ -2848,6 +2848,14 @@ well :
   is_substantial : 1
   field_id : 14
   smap_field_id : 
+- well_id : 499
+  well : Higashi-Niigata MS-26
+  well_zen : 東新潟MS-26
+  date_well_comp : 
+  date_well_aban : 
+  is_substantial : 1
+  field_id : 14
+  smap_field_id : 
 - well_id : 308
   well : Mitsuke SK-3
   well_zen : 見附SK-3
