@@ -138,8 +138,10 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def make_sqls_to_insert_well_and_completion_specs
       sqls = Array.new
-      sqls << ProductAnalysisScanner.make_sql_to_insert('well_specs',
+      if @sample_data.well_id
+        sqls << ProductAnalysisScanner.make_sql_to_insert('well_specs',
                                  'id' => 0, 'well_id' => @sample_data.well_id, 'total_depth' => @sample_data.total_depth)
+      end
       if @sample_data.completion_id
         sqls << ProductAnalysisScanner.make_sql_to_insert('completion_specs',
                                  'id' => 0,
@@ -389,6 +391,8 @@ class ProductAnalysisScanner < ExcelManipulator
       '吉井' => 94,
     }
 
+    DB_COMBINED_FLUIDS                          = "prod_anal/combined_fluids.yml"
+
     NUM_ROWS_NEEDED_TO_INITIALIZE = 3
 
     @@reservoir_name_conversion_table    = nil
@@ -430,6 +434,8 @@ class ProductAnalysisScanner < ExcelManipulator
           completion_id
         when 'Well'
           well_id
+        when 'CombinedFluid'
+          @combined_fluid_id
         else
           raise IllegalStateError.new("sample_type of '#{sample_type}' not supported")
         end
@@ -521,17 +527,33 @@ class ProductAnalysisScanner < ExcelManipulator
           db_master_yaml = YAML.load(fp)
         end
         
-        look_up_well(db_master_yaml)
-        @sample_type = is_completion ? 'Completion' : 'Well'
-        look_up_reservoir_and_completion(db_master_yaml) if is_completion
+        evars = Array.new
+        got_well = look_up_well(db_master_yaml, evars)
+        if got_well
+          @sample_type = is_completion ? 'Completion' : 'Well'
+          if is_completion
+            look_up_reservoir_and_completion(db_master_yaml)
+          end
+        else
+          @sample_type = 'CombinedFluid'
+          begin
+            look_up_combined_fluid
+          rescue IllegalStateError => evar
+            evars.each do |e|
+              $stderr.puts e.message
+            end
+            raise evar
+          end
+        end
       end
 
-      def look_up_well(db_master_yaml)
+      def look_up_well(db_master_yaml, evars)
         unless @well_name
           raise IllegalStateError.new("@well_name must be set to non-null")
         end
         unless RE_WELL_NAME =~ @well_name
-          raise IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
+          evars << IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
+          return false
         end
 
         @well_name_to_look_up = $&
@@ -540,16 +562,34 @@ class ProductAnalysisScanner < ExcelManipulator
 
         hash_field = look_up_db_record(db_master_yaml, 'field', 'field_zen' => @field_name_to_look_up)
         unless hash_field
-          raise IllegalStateError.new("No (oil/gas) field found to match '#{@field_name_to_look_up}'")
+          evars << IllegalStateError.new("No (oil/gas) field found to match '#{@field_name_to_look_up}'")
+          return false
         end
         @field_id   = hash_field['field_id']
         @field_name = hash_field['field_zen']
 
         hash_well = look_up_db_record(db_master_yaml, 'well', 'well_zen' => @well_name_to_look_up, 'field_id' => @field_id)
         unless hash_well
-          raise IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'")
+          evars << IllegalStateError.new("No well found to match '#{@well_name_to_look_up}'")
+          return false
         end
+
         @well_id = hash_well['well_id']
+        return true
+      end
+
+      def look_up_combined_fluid
+        db_yaml = nil
+        open(DB_COMBINED_FLUIDS, 'r') do |fp|
+          db_yaml = YAML.load(fp)
+        end
+        
+        hash_record = look_up_db_record(db_yaml, nil, 'name_zen' => @well_name)
+        unless hash_record
+          raise IllegalStateError.new("No combined fluid found to match '#{well_name}'")
+        end
+
+        @combined_fluid_id = hash_record['id']
       end
 
       def look_up_reservoir_and_completion(db_master_yaml)
@@ -580,7 +620,8 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
       def look_up_db_record(db_yaml, table_name, hash_to_look)
-        db_yaml[table_name].each do |hash_row|
+        array_of_hash_rows = table_name.nil? ? db_yaml.values : db_yaml[table_name]
+        array_of_hash_rows.each do |hash_row|
           found = true
           hash_to_look.each do |column_name, value|
             next if value_equal?(hash_row[column_name], value, table_name)
