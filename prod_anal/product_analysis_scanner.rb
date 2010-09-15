@@ -71,6 +71,8 @@ class ProductAnalysisScanner < ExcelManipulator
   FILE_PATTERN_TO_PROCESS = '*.xls'
   TARGET_SHEETNAME        = 'SK-1'
 
+  FORMAT_MSG_NO_FILES = "No files to process in directory '%s'"
+
   def scan_all
     unless File.directory?(@root_dirname)
       raise NotADirectoryError.new("'#{@root_dirname}' is not a directory")
@@ -79,7 +81,10 @@ class ProductAnalysisScanner < ExcelManipulator
     begin
       outs = Array.new
 
-      Dir.glob("#{@root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}").each do |filename|
+      filenames = Dir.glob("#{@root_dirname}/**/#{FILE_PATTERN_TO_PROCESS}")
+      return sprintf(FORMAT_MSG_NO_FILES, @root_dirname) if filenames.empty?
+
+      filenames.each do |filename|
         prepare_variables
 
         @out_verbose.puts "Processing '#{filename}'..." if @verbose
