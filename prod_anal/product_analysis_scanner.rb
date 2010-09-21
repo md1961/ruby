@@ -378,7 +378,7 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
   class SampleData
-    attr_reader :sample_type, :well_name, :date_completed, :reservoir_name, \
+    attr_reader :sample_type, :sample_name, :date_completed, :reservoir_name, \
                 :total_depth, :perforation_interval_top, :perforation_interval_bottom, \
                 :completion_id, :well_id, :reservoir_id
 
@@ -443,7 +443,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     def to_s
       strs = Array.new
-      strs << "Well Name          = #{@well_name}"
+      strs << "Sample Name        = #{@sample_name}"
       strs << "Date Completed     = #{@date_completed}"
       strs << "Reservoir Name     = #{@reservoir_name}"
       strs << "Total Depth        = #{@total_depth}"
@@ -454,7 +454,9 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
     def identity
-      return @well_name + (@reservoir_name && ! @reservoir_name.empty? ? "(#{@reservoir_name})" : "")
+      retval = @sample_name 
+      retval += "(#{@reservoir_name})" if @reservoir_name && ! @reservoir_name.empty? 
+      return retval
     end
 
     private
@@ -464,7 +466,8 @@ class ProductAnalysisScanner < ExcelManipulator
         row = rows[0]
 
         first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
-        @well_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
+        @sample_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
+        @sample_name.gsub!(/[\s　]/, '')
 
         is_success = read_completion_specs(rows)
         return is_success && ! @reservoir_name.empty?
@@ -548,11 +551,11 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
       def look_up_well(db_master_yaml, evars)
-        unless @well_name
-          raise IllegalStateError.new("@well_name must be set to non-null")
+        unless @sample_name
+          raise IllegalStateError.new("@sample_name must be set to non-null")
         end
-        unless RE_WELL_NAME =~ @well_name
-          evars << IllegalStateError.new("Well name '#{@well_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
+        unless RE_WELL_NAME =~ @sample_name
+          evars << IllegalStateError.new("Well name '#{@sample_name}' is in unsupported format (not =~ #{RE_WELL_NAME})")
           return false
         end
 
@@ -584,9 +587,9 @@ class ProductAnalysisScanner < ExcelManipulator
           db_yaml = YAML.load(fp)
         end
         
-        hash_record = look_up_db_record(db_yaml, nil, 'name_zen' => @well_name)
+        hash_record = look_up_db_record(db_yaml, nil, 'name_zen' => @sample_name)
         unless hash_record
-          raise IllegalStateError.new("No combined fluid found to match '#{well_name}'")
+          raise IllegalStateError.new("No combined fluid found to match '#{sample_name}'")
         end
 
         @combined_fluid_id = hash_record['id']
