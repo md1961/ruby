@@ -465,9 +465,9 @@ class ProductAnalysisScanner < ExcelManipulator
       def read(rows)
         row = rows[0]
 
-        first_non_blank_cell = row.find { |cell| ! ExcelManipulator.blank?(cell) }
-        @sample_name = ProductAnalysisScanner.zenkaku2hankaku(first_non_blank_cell)
-        @sample_name.gsub!(/[\s　]/, '')
+        index_of_first_non_blank = row.index { |cell| ! ExcelManipulator.blank?(cell) }
+        @sample_name     = ProductAnalysisScanner.zenkaku2hankaku(row[index_of_first_non_blank]    ).gsub(/[\s　]/, '')
+        @sample_name_sub = ProductAnalysisScanner.zenkaku2hankaku(rows[1][index_of_first_non_blank]).gsub(/[\s　]/, '')
 
         is_success = read_completion_specs(rows)
         return is_success && ! @reservoir_name.empty?
@@ -586,10 +586,22 @@ class ProductAnalysisScanner < ExcelManipulator
         open(DB_COMBINED_FLUIDS, 'r') do |fp|
           db_yaml = YAML.load(fp)
         end
+
+        sample_names = Array.new
+        sample_names << @sample_name
+        if @sample_name_sub
+          sample_names << @sample_name       + @sample_name_sub
+          sample_names << @sample_name + ' ' + @sample_name_sub
+        end
         
-        hash_record = look_up_db_record(db_yaml, nil, 'name_zen' => @sample_name)
+        hash_record = nil
+        sample_names.each do |sample_name|
+          hash_record = look_up_db_record(db_yaml, nil, 'name_zen' => sample_name)
+          break if hash_record
+        end
         unless hash_record
-          raise IllegalStateError.new("No combined fluid found to match '#{sample_name}'")
+          sample_names_display = sample_names.map { |name| "'#{name}'" }.join(" or ")
+          raise IllegalStateError.new("No combined fluid found to match #{sample_names_display}")
         end
 
         @combined_fluid_id = hash_record['id']
