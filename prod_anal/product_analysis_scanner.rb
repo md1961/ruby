@@ -254,6 +254,7 @@ class ProductAnalysisScanner < ExcelManipulator
     private :process_rows
 
     def self.zenkaku2hankaku(str)
+      return nil unless str
       return NKF::nkf('-WwZ0', str)
     end
 
@@ -466,8 +467,10 @@ class ProductAnalysisScanner < ExcelManipulator
         row = rows[0]
 
         index_of_first_non_blank = row.index { |cell| ! ExcelManipulator.blank?(cell) }
-        @sample_name     = ProductAnalysisScanner.zenkaku2hankaku(row[index_of_first_non_blank]    ).gsub(/[\s　]/, '')
-        @sample_name_sub = ProductAnalysisScanner.zenkaku2hankaku(rows[1][index_of_first_non_blank]).gsub(/[\s　]/, '')
+        @sample_name     = ProductAnalysisScanner.zenkaku2hankaku(row[index_of_first_non_blank]    )
+        @sample_name    .gsub!(/[\s　]/, '') if @sample_name
+        @sample_name_sub = ProductAnalysisScanner.zenkaku2hankaku(rows[1][index_of_first_non_blank])
+        @sample_name_sub.gsub!(/[\s　]/, '') if @sample_name_sub
 
         is_success = read_completion_specs(rows)
         return is_success && ! @reservoir_name.empty?
