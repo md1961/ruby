@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+# vi: set fileencoding=utf-8 :
 
 require 'mysql'
 require 'yaml'
