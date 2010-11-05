@@ -24,3 +24,11 @@
     date_end:
     field_id:   19
 
+  tohoku_ep_niigata_delivery:
+    id:         4
+    name:       Tohoku Electric Power Niigata Delivery
+    name_zen:   東北電力受渡しガス
+    date_begin:
+    date_end:
+    field_id:   14
+
