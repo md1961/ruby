@@ -1946,7 +1946,20 @@ class Schezer
 
       # 返り値: Mysql::Result のインスタンス
       def get_query_result(sql)
-        return @conn.query(sql)
+        result = @conn.query(sql)
+        return result unless result
+
+        hash_encoded = Hash.new
+        result.fetch_hash.each do |key, value|
+          hash_encoded[key] = value.force_encoding("UTF-8")
+        end
+
+        result.instance_variable_set(:@__kumagai_hash_encoded__, hash_encoded)
+        def result.fetch_hash
+          @__kumagai_hash_encoded__
+        end
+
+        return result
       end
     end
 end

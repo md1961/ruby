@@ -1,3 +1,4 @@
+# vi: set fileencoding=utf-8 :
 
 #= CUI 上に表を表示するクラス
 # 列見出しを表示するか否かはメソッド shows_indexes で指定する（デフォルトは表示）。
