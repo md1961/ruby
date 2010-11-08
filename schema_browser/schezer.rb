@@ -1265,8 +1265,9 @@ class Schezer
         end
       when :xml
         xml_doc = to_xml(table_names)
-        indent = @is_pretty ? XML_INDENT_WHEN_PRETTY / 2 : -1
-        xml_doc.write($stdout, indent)
+        formatter = @is_pretty ? REXML::Formatters::Pretty .new(XML_INDENT_WHEN_PRETTY) \
+                               : REXML::Formatters::Default.new
+        formatter.write(xml_doc, $stdout)
         puts
       when :columns
         outs = to_disp_column_names(table_names)

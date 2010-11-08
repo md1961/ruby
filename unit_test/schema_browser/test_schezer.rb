@@ -871,7 +871,8 @@ class TestSchezer < Test::Unit::TestCase
     assert_in_lines = method(:assert_in_lines)
     schezer.instance_eval do
       actual = Array.new
-      to_xml(table_names).write(actual, indent=1)
+      formatter = REXML::Formatters::Pretty.new(indent=1)
+      formatter.write(to_xml(table_names), actual)
       actual_lines = actual.join.split("\n")
       assert_in_lines.call(expected_lines, actual_lines, "to_xml(#{table_names.inspect})")
     end
@@ -1769,7 +1770,8 @@ class TestSchezer < Test::Unit::TestCase
   def test_to_xml_of_class_table_schema
     table_schema = make_table_schema_for_test_to_xml
     actual = Array.new
-    table_schema.to_xml.write(actual, 1)
+    formatter = REXML::Formatters::Pretty.new(indent=1)
+    formatter.write(table_schema.to_xml, actual)
     actual_lines = actual.join.split("\n")
 
     assert_in_lines(EXPECTED_LINES_FOR_TEST_TO_XML, actual_lines, "TableSchema#to_xml")
@@ -2401,7 +2403,8 @@ class TestSchezer < Test::Unit::TestCase
     ]
 
     actual = Array.new
-    xml_doc.write(actual)
+    formatter = REXML::Formatters::Default.new
+    formatter.write(xml_doc, actual)
     actual_lines = actual.join.split("><").join(">\n<").split("\n")
 
     assert_in_lines(expected_lines, actual_lines, "TableSchema#add_table_options_as_xml()")
