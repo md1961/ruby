@@ -1612,10 +1612,16 @@ class Schezer
     def get_table_names(conn)
       sql = "SHOW TABLES"
       result = conn.get_query_result(sql)
+
       names = Array.new
-      result.each do |name|
+      result.each do |one_element_array_of_name|
+        unless one_element_array_of_name.size == 1
+          raise "Unexpected non-one-element-array from Mysql::Result (#{one_element_array_of_name.inspect})"
+        end
+
+        name = one_element_array_of_name.first
         next if view?(name, conn) ^ @view_only
-        names << name[0]
+        names << name
       end
       return names
     end
