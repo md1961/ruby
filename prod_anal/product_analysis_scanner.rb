@@ -1,4 +1,5 @@
 #! /usr/bin/ruby
+# vi: set fileencoding=utf-8 :
 
 # 原油、ガス、水の通常分析結果を保持する Excel ワークブックを読み込んで
 # 分析結果データをデータベースに書き込む SQL を出力するスクリプト。
@@ -6,8 +7,6 @@
 # 指定する。そのディレクトリ以下（サブディレクトリを含む）に
 # 存在する Excel ワークブックすべてが対象となる
 
-
-$KCODE = 'utf8'
 
 require 'kconv'
 require 'nkf'

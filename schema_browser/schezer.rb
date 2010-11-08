@@ -1114,7 +1114,6 @@ class Schezer
       exit_with_msg(e.message)
     end
 
-    $KCODE = @conn.encoding  # $KCODE は代入値の最初の文字のみによって決定される
     @argv = argv
   end
 

@@ -1,3 +1,4 @@
+# vi: set fileencoding=utf-8 :
 
 module Kuma
 
@@ -23,10 +24,7 @@ module Kuma
     # <em>x</em> :: 対象のオブジェクト
     # 返り値 :: 表示文字数の整数値
     def self.displaying_length(x)
-      return 0 unless x
-      str = x.to_s
-      return str.length unless $KCODE == UTF8
-      return (str.split(//).length + str.length) / 2
+      return x ? x.to_s.length : 0
     end
   end
 

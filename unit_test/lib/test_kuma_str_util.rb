@@ -1,3 +1,4 @@
+# vi: set fileencoding=utf-8 :
 
 require 'test/unit'
 
@@ -32,8 +33,6 @@ class TestKumaStrUtil < Test::Unit::TestCase
     private :arg_display
 
   def test_displaying_length
-    $KCODE = 'UTF-8'
-
     {
       nil        => 0,
       1          => 1,

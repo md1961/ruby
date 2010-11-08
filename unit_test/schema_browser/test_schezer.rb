@@ -2386,21 +2386,23 @@ class TestSchezer < Test::Unit::TestCase
     end
 
     expected_lines = [
-      "  <?xml version='1.0' encoding='UTF-8'?>",
-      "  <root>",
-      "    <table_options>",
-      "      <engine>Honda</engine>",
-      "      <default_charset>jis97</default_charset>",
-      "      <collate>england</collate>",
-      "      <max_rows>999</max_rows>",
-      "      <comment><![CDATA[No comment]]></comment>",
-      "    </table_options>",
-      "  </root>",
+      "<?xml version='1.0' encoding='UTF-8'?>",
+      "<root>",
+        "<table_options>",
+          "<engine>Honda</engine>",
+          "<default_charset>jis97</default_charset>",
+          "<collate>england</collate>",
+          "<max_rows>999</max_rows>",
+          "<comment>",
+            "<![CDATA[No comment]]>",
+          "</comment>",
+        "</table_options>",
+      "</root>",
     ]
 
     actual = Array.new
-    xml_doc.write(actual, indent=1)
-    actual_lines = actual.join.split("\n")
+    xml_doc.write(actual)
+    actual_lines = actual.join.split("><").join(">\n<").split("\n")
 
     assert_in_lines(expected_lines, actual_lines, "TableSchema#add_table_options_as_xml()")
   end
