@@ -1949,9 +1949,11 @@ class Schezer
         result = @conn.query(sql)
         return result unless result
 
+        encoding_obj = get_encoding_object
+
         hash_encoded = Hash.new
         result.fetch_hash.each do |key, value|
-          hash_encoded[key] = value.force_encoding("UTF-8")
+          hash_encoded[key] = value.force_encoding(encoding_obj)
         end
 
         result.instance_variable_set(:@__kumagai_hash_encoded__, hash_encoded)
@@ -1961,6 +1963,17 @@ class Schezer
 
         return result
       end
+
+        MAP_CHAR_SETS = {
+          :utf8 => "utf-8",
+          :ujis => "eucjp",
+        }
+
+        def get_encoding_object
+          encoding = MAP_CHAR_SETS[@encoding.downcase.intern] || @encoding.downcase
+          return Encoding.find(encoding)
+        end
+        private :get_encoding_object
     end
 end
 
