@@ -1951,14 +1951,18 @@ class Schezer
 
         encoding_obj = get_encoding_object
 
-        hash_encoded = Hash.new
-        result.fetch_hash.each do |key, value|
-          hash_encoded[key] = value.force_encoding(encoding_obj)
+        array_of_fetched_hash = Array.new
+        result.each_hash do |hash_fetched|
+          hash_encoded = Hash.new
+          hash_fetched.each do |key, value|
+            hash_encoded[key] = value && value.force_encoding(encoding_obj)
+          end
+          array_of_fetched_hash << hash_encoded
         end
 
-        result.instance_variable_set(:@__kumagai_hash_encoded__, hash_encoded)
+        result.instance_variable_set(:@__kumagai_hashes_encoded__, array_of_fetched_hash)
         def result.fetch_hash
-          @__kumagai_hash_encoded__
+          @__kumagai_hashes_encoded__.shift
         end
 
         return result
