@@ -841,39 +841,45 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal = method(:assert_equal)
     table_names = %w(base_unit)
     expected_lines = [
-      "  <?xml version='1.0' encoding='UTF-8'?>",
-      "  <table_schema>",
-      "    <table name='base_unit'>",
-      "      <column name='base_unit_id' primary_key='true' not_null='true' auto_increment='true'>",
-      "        <type>int(10) unsigned</type>",
-      "        <default/>",
-      "        <comment><![CDATA[]]></comment>",
-      "      </column>",
-      "      <column name='base_unit' primary_key='false' not_null='true' auto_increment='false'>",
-      "        <type>varchar(40)</type>",
-      "        <default/>",
-      "        <comment><![CDATA[]]></comment>",
-      "      </column>",
-      "      <unique_key name='unique_base_unit_1' unique='true'>",
-      "        <column_name>base_unit_id</column_name>",
-      "      </unique_key>",
-      "      <set_options/>",
-      "      <table_options>",
-      "        <engine>InnoDB</engine>",
-      "        <default_charset>utf8</default_charset>",
-      "        <collate/>",
-      "        <max_rows/>",
-      "        <comment><![CDATA[]]></comment>",
-      "      </table_options>",
-      "    </table>",
-      "  </table_schema>"
+      "<?xml version='1.0' encoding='UTF-8'?>",
+      "<table_schema>",
+        "<table name='base_unit'>",
+          "<column auto_increment='true' name='base_unit_id' not_null='true' primary_key='true'>",
+            "<type>int(10) unsigned</type>",
+            "<default/>",
+            "<comment>",
+              "<![CDATA[]]>",
+            "</comment>",
+          "</column>",
+          "<column auto_increment='false' name='base_unit' not_null='true' primary_key='false'>",
+            "<type>varchar(40)</type>",
+            "<default/>",
+            "<comment>",
+              "<![CDATA[]]>",
+            "</comment>",
+          "</column>",
+          "<unique_key name='unique_base_unit_1' unique='true'>",
+            "<column_name>base_unit_id</column_name>",
+          "</unique_key>",
+          "<set_options/>",
+          "<table_options>",
+            "<engine>InnoDB</engine>",
+            "<default_charset>utf8</default_charset>",
+            "<collate/>",
+            "<max_rows/>",
+            "<comment>",
+              "<![CDATA[]]>",
+            "</comment>",
+          "</table_options>",
+        "</table>",
+      "</table_schema>"
     ]
     assert_in_lines = method(:assert_in_lines)
     schezer.instance_eval do
       actual = Array.new
-      formatter = REXML::Formatters::Pretty.new(indent=1)
+      formatter = REXML::Formatters::Default.new
       formatter.write(to_xml(table_names), actual)
-      actual_lines = actual.join.split("\n")
+      actual_lines = actual.join.gsub(/></, ">\n<").split("\n")
       assert_in_lines.call(expected_lines, actual_lines, "to_xml(#{table_names.inspect})")
     end
   end
@@ -2405,7 +2411,7 @@ class TestSchezer < Test::Unit::TestCase
     actual = Array.new
     formatter = REXML::Formatters::Default.new
     formatter.write(xml_doc, actual)
-    actual_lines = actual.join.split("><").join(">\n<").split("\n")
+    actual_lines = actual.join.gsub(/></, ">\n<").split("\n")
 
     assert_in_lines(expected_lines, actual_lines, "TableSchema#add_table_options_as_xml()")
   end
