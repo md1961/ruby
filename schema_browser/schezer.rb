@@ -1614,7 +1614,8 @@ class Schezer
       result = conn.get_query_result(sql)
 
       names = Array.new
-      result.each do |one_element_array_of_name|
+      while hash_row = result.fetch_hash
+        one_element_array_of_name = hash_row.values
         unless one_element_array_of_name.size == 1
           raise "Unexpected non-one-element-array from Mysql::Result (#{one_element_array_of_name.inspect})"
         end
@@ -1963,6 +1964,15 @@ class Schezer
         result.instance_variable_set(:@__kumagai_hashes_encoded__, array_of_fetched_hash)
         def result.fetch_hash
           @__kumagai_hashes_encoded__.shift
+        end
+        def result.reject_use_of_method
+          raise NotImplementedError, "The method use was prohibited.  Use fetch_hash() instead"
+        end
+        def result.fetch_row
+          reject_use_of_method
+        end
+        def result.each
+          reject_use_of_method
         end
 
         return result
