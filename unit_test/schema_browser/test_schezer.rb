@@ -884,7 +884,7 @@ class TestSchezer < Test::Unit::TestCase
     assert_equal = method(:assert_equal)
     expected = \
         "<?xml version='1.0' encoding='UTF-8'?>" \
-      + "<table_schema host='pluto' database='resman2'/>"
+      + "<table_schema database='resman2' host='pluto'/>"
     schezer.instance_eval do
       @host     = 'pluto'
       @database = 'resman2'

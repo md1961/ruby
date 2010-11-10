@@ -24,7 +24,17 @@ module Kuma
     # <em>x</em> :: 対象のオブジェクト
     # 返り値 :: 表示文字数の整数値
     def self.displaying_length(x)
-      return x ? x.to_s.length : 0
+      return 0 unless x
+      str = x.to_s
+
+      case str.encoding
+      when Encoding::Shift_JIS, Encoding::EUC_JP
+        return str.bytesize
+      when Encoding::UTF_8
+        return (str.length + str.bytesize) / 2
+      end
+
+      return str.length
     end
   end
 
