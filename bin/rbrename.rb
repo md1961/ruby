@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+# vi: set fileencoding=utf-8 :
 
 # Ruby の正規表現を用いた rename を実現するスクリプト
 

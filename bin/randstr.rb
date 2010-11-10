@@ -1,4 +1,5 @@
 #! /bin/env ruby
+# vi: set fileencoding=utf-8 :
 
 # 英子文字と数字からならランダムな文字列を生成するスクリプト
 

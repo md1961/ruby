@@ -1,9 +1,11 @@
 #! /bin/env ruby
+# vi: set fileencoding=utf-8 :
 
 # 端末表示幅を計測するためのスクリプト
 
 if ARGV.size != 1 || (n = ARGV[0].to_i) <= 0
   $stderr.puts "#{$0}: Specify one positive integer"
+  exit
 end
 
 (n / 10).times do |i|
