@@ -22,7 +22,7 @@ class RubyGrep
     @re = Regexp.compile(pattern, compile_option)
 
     @filenames = argv
-    check_file_existence(@options[:r] || @filenames)
+    check_file_existence((dir = @options[:r]) ? [dir] : @filenames)
   end
 
   # コンストラクト時の引数に基づき grep を実行し、結果を出力する
