@@ -124,6 +124,11 @@ class RubyGrep
     end
 
     def check_file_existence(filenames)
+      if filenames.empty?
+        puts "No files to search in specified"
+        exit_with_usage
+      end
+
       filenames.each do |filename|
         unless File.exist?(filename)
           STDERR.puts "Cannot find file '#{filename}'"
