@@ -9,7 +9,7 @@ require 'optparse'
 class RubyGrep
   MAX_LINES_FOR_MULTI_LINES = 20
   JOINT_FOR_MULTI_LINES = ' '
-  DEFAULT_FILENAMES_FOR_OPTION_R = '*rb'
+  DEFAULT_FILENAMES_FOR_OPTION_R = ["*rb"]
 
   # コンストラクタ
   # <em>argv</em> :: コマンドライン引数
