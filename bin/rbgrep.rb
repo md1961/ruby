@@ -10,6 +10,7 @@ require 'optparse'
 class RubyGrep
   MAX_LINES_FOR_MULTI_LINES = 20
   JOINT_FOR_MULTI_LINES = ' '
+  DEFAULT_FILENAMES_FOR_OPTION_R = '*rb'
 
   # コンストラクタ
   # <em>argv</em> :: コマンドライン引数
@@ -23,6 +24,7 @@ class RubyGrep
     @re = Regexp.compile(pattern, compile_option)
 
     @filenames = argv
+    @filenames = DEFAULT_FILENAMES_FOR_OPTION_R if @options[:r] && argv.empty?
     check_file_existence((dir = @options[:r]) ? [dir] : @filenames)
   end
 
@@ -123,18 +125,23 @@ class RubyGrep
     end
 
     def check_file_existence(filenames)
+      if filenames.empty?
+        exit_with_usage("No files to search in specified")
+      end
+
       filenames.each do |filename|
         unless File.exist?(filename)
-          STDERR.puts "Cannot find file '#{filename}'"
+          $stderr.puts "Cannot find file '#{filename}'"
           exit
         end
       end
     end
 
-    def exit_with_usage
+    def exit_with_usage(error_message=nil)
+      $stderr.puts error_message if error_message
       command = File.basename($0)
-      puts "Usage: #{command} [options] pattern filename ..."
-      system("#{$0} --help | grep -v '^Usage'")
+      $stderr.puts "Usage: #{command} [options] pattern filename ..."
+      $stderr.puts `#{$0} --help | grep -v '^Usage'`
       exit(1)
     end
 end
