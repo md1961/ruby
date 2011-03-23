@@ -21,6 +21,7 @@ class NotComparedYetException                    < Exception; end
 class NoPrimaryKeyException                      < Exception; end
 class MultipleRowsExpectingUniqueResultException < Exception; end
 class IllegalStateException                      < Exception; end
+class UnsupportedDBAdapterException              < Exception; end
 
 
 class TableSchemaDifference
@@ -1828,7 +1829,7 @@ class Schezer
       return nil unless hash_conf
 
       hash_conf['environment'] = name
-      return DBConnection.new(hash_conf)
+      return DBConnection.instance(hash_conf)
     end
 
     COMMAND_OPTIONS_AND_SUBCOMMAND = \
@@ -1919,9 +1920,22 @@ class Schezer
       opt_parser.banner = banners.join("\n")
     end
 
+    class DBConnection
+      def self.instance(hash_conf)
+        adapter = hash_conf['adapter']
+        class_name = "Schezer::DBConnection" + adapter.capitalize
+        clazz = eval(class_name)
+        begin
+          return clazz.new(hash_conf)
+        rescue NameError => e
+          raise UnsupportedDBAdapterException.new("Adapter '#{adapter}' not supported")
+        end
+      end
+    end
+
     # データベースの接続情報を受け取って、データベースに接続し、
     # Mysql のインスタンスを保持するクラス
-    class DBConnection
+    class DBConnectionMysql
       attr_reader :host, :username, :password, :database, :encoding, :environment
 
       def initialize(hash_conf)
