@@ -47,10 +47,11 @@ class RubyGrep
         @filenames = glob_filenames
       end
 
+      @filenames = [STDIN] if @filenames.empty?
       @filenames.each do |filename|
         count = 0
         lineno = 0
-        File.open(filename, 'r').each do |line|
+        (filename == STDIN ? STDIN : File.open(filename, 'r')).each do |line|
           matched, is_over_multi_lines = match(line, multi_lines)
           lineno += 1
 
@@ -125,10 +126,6 @@ class RubyGrep
     end
 
     def check_file_existence(filenames)
-      if filenames.empty?
-        exit_with_usage("No files to search in specified")
-      end
-
       filenames.each do |filename|
         unless File.exist?(filename)
           $stderr.puts "Cannot find file '#{filename}'"
