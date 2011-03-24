@@ -2,6 +2,7 @@
 # vi: set fileencoding=utf-8 :
 
 require 'mysql'
+require 'sqlite3'
 require 'yaml'
 require 'optparse'
 require 'rexml/document'
@@ -22,6 +23,7 @@ class NoPrimaryKeyException                      < Exception; end
 class MultipleRowsExpectingUniqueResultException < Exception; end
 class IllegalStateException                      < Exception; end
 class UnsupportedDBAdapterException              < Exception; end
+class UnsupportedQueryException                  < Exception; end
 
 
 class TableSchemaDifference
@@ -444,7 +446,8 @@ class TableSchema < AbstractTableSchema
     end
 
     RE_TABLE_OPTIONS = %r!
-      ^\s*\)\s+ENGINE=(\w+)
+      ^\s*\)
+      (?:\s+ENGINE=(\w+))?
       (?:\s+AUTO_INCREMENT=(\d+))?
       (?:\s+DEFAULT\ CHARSET=(\w+))?
       (?:\s+COLLATE=(\w+))?
@@ -1611,8 +1614,7 @@ class Schezer
     end
 
     def get_table_names(conn)
-      sql = "SHOW TABLES"
-      result = conn.get_query_result(sql)
+      result = conn.get_query_result(:show_tables)
 
       names = Array.new
       while hash_row = result.fetch_hash
@@ -1657,11 +1659,11 @@ class Schezer
     def get_create_table_result(name, conn)
       raise ArgumentError.new("Argument name must be non-null") unless name
 
-      sql = "SHOW CREATE TABLE #{name}"
+      args = [:table_schema, name]
       begin
-        result = conn.get_query_result(sql)
-      rescue Mysql::Error => evar
-        raise InfrastructureException.new("Failed to get the schema of TABLE '#{name}' due to Mysql::Error('#{evar}')")
+        result = conn.get_query_result(*args)
+      rescue => evar
+        raise InfrastructureException.new("Failed to get the schema of TABLE '#{name}' due to '#{evar}'")
       end
       return result
     end
@@ -1954,9 +1956,27 @@ class Schezer
         raise NotImplementedError.new("Sub-class must implement this")
       end
 
-      def get_query_result(sql)
+      def get_query_result(*args)
         raise NotImplementedError.new("Sub-class must implement this")
       end
+
+        def hash_dependent_sqls
+          raise NotImplementedError.new("Sub-class must implement this")
+        end
+        private :hash_dependent_sqls
+
+        def parse_args_of_get_query_result(args)
+          first, *rest = args
+          case first
+          when String
+            return first % rest
+          when Symbol
+            return hash_dependent_sqls[first] % rest
+          else
+            raise ArgumentError, "First argument must be String or Symbol (#{first.class} given)"
+          end
+        end
+        private :parse_args_of_get_query_result
     end
 
     # データベースの接続情報を受け取って、データベースに接続し、
@@ -1964,7 +1984,111 @@ class Schezer
     class DBConnectionSqlite3 < DBConnection
 
       def initialize(hash_conf)
+        super(hash_conf)
       end
+
+        def connect
+          return SQLite3::Database.new(@database)
+        end
+        private :connect
+
+      def configuration_suffices?
+        return ! @database.nil?
+      end
+
+      def get_query_result(*args)
+        result = nil
+        if args[0] == :table_schema
+          name = args[1]
+          enum_result = @conn.table_info(name)
+          result = make_table_schema_result(name, enum_result)
+        else
+          sql = parse_args_of_get_query_result(args)
+          result = @conn.query(sql)
+        end
+
+        if result
+          column_names = result.columns
+          hash_rows = Array.new
+          result.each do |row|
+            hash_row = Hash.new
+            column_names.zip(row) do |column_name, value|
+              hash_row[column_name] = value
+            end
+            hash_rows << hash_row
+          end
+          hash_result = Object.new
+          hash_result.instance_variable_set(:@__hash_rows__, hash_rows)
+          hash_result.instance_variable_set(:@__index__, 0)
+          def hash_result.fetch_hash
+            retval = @__hash_rows__[@__index__]
+            @__index__ += 1
+            retval
+          end
+          def hash_result.fetch_fields
+            retval = @__hash_rows__[@__index__]
+            @__index__ += 1
+            unless retval
+              nil
+            else
+              fields = Array.new
+              retval.values.each do |value|
+                field = Object.new
+                field.instance_variable_set(:@__name__, value)
+                def field.name
+                  @__name__
+                end
+                fields << field
+              end
+              fields
+            end
+          end
+
+          return hash_result
+        end
+
+        raise UnsupportedQueryException, "Cannot handle argument (#{args.inspect})"
+      end
+
+        def make_table_schema_result(name, enum_result)
+          strs = Array.new
+          strs << "CREATE TABLE `#{name}` ("
+          primary_keys = Array.new
+          enum_result.each do |h|
+            name = h['name']
+            type = h['type']
+            not_null = h['notnull'] == 1 ? "NOT NULL" : nil
+            default = h['dflt_value']
+            default = "DEFAULT #{default}" if default
+            primary_keys << name if h['pk'] == 1
+
+            additionals = Array.new
+            additionals << default  if default
+            additionals << not_null if not_null
+            strs << "  `#{name}` #{type} #{additionals.join(' ')}"
+          end
+          strs << "  PRIMARY KEY (`#{primary_keys.join('`, `')}`)" if primary_keys.size > 0
+          strs << ")"
+
+          schema = strs.join("\n")
+
+          result = Object.new
+          result.instance_variable_set(:@__schema__, schema)
+          def result.columns
+            ["Create Table"]
+          end
+          def result.each
+            yield [@__schema__]
+          end
+
+          return result
+        end
+
+        def hash_dependent_sqls
+          return {
+            :show_tables => "SELECT name FROM sqlite_master WHERE type = 'table'",
+          }
+        end
     end
 
     # データベースの接続情報を受け取って、データベースに接続し、
@@ -1987,7 +2111,8 @@ class Schezer
       end
 
       # 返り値: Mysql::Result のインスタンス
-      def get_query_result(sql)
+      def get_query_result(*args)
+        sql = parse_args_of_get_query_result(args)
         result = @conn.query(sql)
         return result unless result
 
@@ -2029,6 +2154,14 @@ class Schezer
           return Encoding.find(encoding)
         end
         private :get_encoding_object
+
+        def hash_dependent_sqls
+          return {
+            :show_tables  => "SHOW TABLES",
+            :table_schema => "SHOW CREATE TABLE %s",
+          }
+        end
+        private :hash_dependent_sqls
     end
 end
 
