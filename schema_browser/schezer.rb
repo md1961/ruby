@@ -1921,6 +1921,8 @@ class Schezer
     end
 
     class DBConnection
+      attr_reader :host, :username, :password, :database, :encoding, :environment
+
       def self.instance(hash_conf)
         adapter = hash_conf['adapter']
         class_name = "Schezer::DBConnection" + adapter.capitalize
@@ -1931,12 +1933,6 @@ class Schezer
           raise UnsupportedDBAdapterException.new("Adapter '#{adapter}' not supported")
         end
       end
-    end
-
-    # データベースの接続情報を受け取って、データベースに接続し、
-    # Mysql のインスタンスを保持するクラス
-    class DBConnectionMysql
-      attr_reader :host, :username, :password, :database, :encoding, :environment
 
       def initialize(hash_conf)
         @host        = hash_conf['host']
@@ -1947,6 +1943,37 @@ class Schezer
         @environment = hash_conf['environment']
 
         @conn = connect
+      end
+
+        def connect
+          raise NotImplementedError.new("Sub-class must implement this")
+        end
+        private :connect
+
+      def configuration_suffices?
+        raise NotImplementedError.new("Sub-class must implement this")
+      end
+
+      def get_query_result(sql)
+        raise NotImplementedError.new("Sub-class must implement this")
+      end
+    end
+
+    # データベースの接続情報を受け取って、データベースに接続し、
+    # Sqlite3 のインスタンスを保持するクラス
+    class DBConnectionSqlite3 < DBConnection
+
+      def initialize(hash_conf)
+      end
+    end
+
+    # データベースの接続情報を受け取って、データベースに接続し、
+    # Mysql のインスタンスを保持するクラス
+    class DBConnectionMysql < DBConnection
+
+      def initialize(hash_conf)
+        super(hash_conf)
+
         get_query_result("SET NAMES #{@encoding}")
       end
 
