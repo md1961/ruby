@@ -2043,6 +2043,9 @@ class Schezer
               fields
             end
           end
+          def hash_result.num_rows
+            @__hash_rows__.size
+          end
 
           return hash_result
         end
