@@ -1049,7 +1049,7 @@ class TableData
       return table.to_table
     else
       #TODO: Implement properly
-      raise "Not supported yet"
+      raise "Table display width (#{table.width}) too large, max is #{terminal_width}"
       table.hide(INDEX_COMMENT)
       table0 = table.to_table
       table.hide(:all)
