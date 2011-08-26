@@ -13,18 +13,21 @@ end
 
 ENVIRONMENTS = %w(development production).freeze
 
-SOURCE_DIR = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script'))
+SOURCE_DIR = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script')).freeze
 
 DIR_CONFIG = 'config'
 DIR_SCRIPT = 'script'
 
-TARGET_FILES = [
-                 [DIR_CONFIG, 'unicorn-config.rb'],
-                 [DIR_CONFIG, 'unicorn_env'      ],
-                 [DIR_CONFIG, 'unicorn_port'     ],
-                 [DIR_SCRIPT, 'unicorn.sh'       ],
-               ]
-TARGET_SCRIPT_FILE = File.join(DIR_SCRIPT, 'start_server.sh')
+TARGET_FILES_TO_COPY  = [
+                          [DIR_CONFIG, 'unicorn-config.rb'],
+                          [DIR_SCRIPT, 'unicorn.sh'       ],
+                        ].freeze
+TARGET_FILES_TO_WRITE = [
+                          [DIR_CONFIG, 'unicorn_env'      ],
+                          [DIR_CONFIG, 'unicorn_port'     ],
+                        ].freeze
+TARGET_FILES = TARGET_FILES_TO_COPY + TARGET_FILES_TO_WRITE
+TARGET_SCRIPT_FILE = File.join(DIR_SCRIPT, 'start_server.sh').freeze
 
 TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir.first }.uniq.freeze
 
@@ -40,7 +43,7 @@ unless dirs_not_exist.empty?
 end
 
 
-# Main routine
+# Ask input and verify
 
 hl = HighLine.new
 
@@ -73,4 +76,8 @@ unless files_exist.empty?
     exit
   end
 end
+
+
+# Write the files
+
 
