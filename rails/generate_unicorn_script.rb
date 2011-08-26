@@ -43,6 +43,7 @@ begin
   appname     = hl.ask("Application Name: ") { |q| q.validate = /^[a-z]\w{3,}$/ }
   adds_d      = hl.agree("Add 'd' at end of '#{appname}' for script name?(Y/n)") { |q| q.default = 'yes' }
   environment = hl.choose(*ENVIRONMENTS) { |q| q.default = ENVIRONMENTS.first }
+  port        = hl.ask("Port No.: ", Integer) { |q| q.above = 99; q.below = 100000 }
 
   appname_disp = appname.upcase
   scriptname = appname + (adds_d ? 'd' : '') + '.sh'
@@ -51,6 +52,7 @@ begin
   puts "its displaying name = " + hl.color(appname_disp, COLOR_FOR_INPUT)
   puts "script name         = " + hl.color(scriptname  , COLOR_FOR_INPUT)
   puts "environment         = " + hl.color(environment , COLOR_FOR_INPUT)
+  puts "port No.            = " + hl.color(port        , COLOR_FOR_INPUT)
 end until hl.agree("OK to proceed(y/n)")
 
 target_files = (TARGET_FILES + [[scriptname, DIR_SCRIPT]]).map { |file_and_dir| file_and_dir.reverse.join(File::SEPARATOR) }
@@ -61,6 +63,9 @@ unless files_exist.empty?
   msg = "The following file#{is_multiple ? 's' : ''} exist#{is_multiple ? '' : 's'}:\n" \
       + files_exist.map { |file| '  ' + file }.join("\n")
   ok_to_overwrite = hl.agree(msg + "\nOK to overwrite?(y/N)") { |q| q.default = 'no' }
-  exit unless ok_to_overwrite
+  unless ok_to_overwrite
+    $stderr.puts "Exit to prevent from overwriting the existing file(s)"
+    exit
+  end
 end
 
