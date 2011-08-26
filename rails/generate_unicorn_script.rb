@@ -21,7 +21,7 @@ TARGET_FILES = [
                  ['unicorn_port'     , DIR_CONFIG],
                  ['unicorn.sh'       , DIR_SCRIPT],
                ]
-TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir[1] }.freeze
+TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir[1] }.uniq.freeze
 
 COLOR_FOR_INPUT = :yellow
 
