@@ -13,15 +13,20 @@ end
 
 ENVIRONMENTS = %w(development production).freeze
 
+SOURCE_DIR = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script'))
+
 DIR_CONFIG = 'config'
 DIR_SCRIPT = 'script'
+
 TARGET_FILES = [
-                 ['unicorn-config.rb', DIR_CONFIG],
-                 ['unicorn_env'      , DIR_CONFIG],
-                 ['unicorn_port'     , DIR_CONFIG],
-                 ['unicorn.sh'       , DIR_SCRIPT],
+                 [DIR_CONFIG, 'unicorn-config.rb'],
+                 [DIR_CONFIG, 'unicorn_env'      ],
+                 [DIR_CONFIG, 'unicorn_port'     ],
+                 [DIR_SCRIPT, 'unicorn.sh'       ],
                ]
-TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir[1] }.uniq.freeze
+TARGET_SCRIPT_FILE = File.join(DIR_SCRIPT, 'start_server.sh')
+
+TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir.first }.uniq.freeze
 
 COLOR_FOR_INPUT = :yellow
 
@@ -55,7 +60,7 @@ begin
   puts "port No.            = " + hl.color(port        , COLOR_FOR_INPUT)
 end until hl.agree("OK to proceed(y/n)")
 
-target_files = (TARGET_FILES + [[scriptname, DIR_SCRIPT]]).map { |file_and_dir| file_and_dir.reverse.join(File::SEPARATOR) }
+target_files = (TARGET_FILES + [[scriptname, DIR_SCRIPT]]).map { |file_and_dir| File.join(file_and_dir) }
 
 files_exist = target_files.select { |file| File.exist?(file) }
 unless files_exist.empty?
