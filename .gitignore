@@ -1,4 +1,5 @@
 *~
 .svn
 note.txt
-config/
+rails/config/
+rails/script/

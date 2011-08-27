@@ -8,19 +8,24 @@ rescue LoadError => e
              + "  $ sudo gem install highline"
 end         
 
+require 'fileutils'
+
 
 # Constants
 
 ENVIRONMENTS = %w(development production).freeze
 
-SOURCE_DIR = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script')).freeze
+DIR_SOURCE = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script')).freeze
 
 DIR_CONFIG = 'config'
 DIR_SCRIPT = 'script'
 
+FILE_UNICORN_CONFIG = 'unicorn-config.rb'
+FILE_UNICORN_SCRIPT = 'unicorn.sh'
+
 TARGET_FILES_TO_COPY  = [
-                          [DIR_CONFIG, 'unicorn-config.rb'],
-                          [DIR_SCRIPT, 'unicorn.sh'       ],
+                          [DIR_CONFIG, FILE_UNICORN_CONFIG],
+                          [DIR_SCRIPT, FILE_UNICORN_SCRIPT],
                         ].freeze
 TARGET_FILE_ENV  = 'unicorn_env'
 TARGET_FILE_PORT = 'unicorn_port'
@@ -82,13 +87,16 @@ end
 
 # Write the files
 
-TARGET_DIR_TO_WRITE = TARGET_FILES_TO_WRITE.first.first.freeze
-
-File.open(File.join(TARGET_DIR_TO_WRITE, TARGET_FILE_ENV) , 'w') do |f|
+File.open(File.join(DIR_CONFIG, TARGET_FILE_ENV) , 'w') do |f|
   f.write environment
 end
-
-File.open(File.join(TARGET_DIR_TO_WRITE, TARGET_FILE_PORT), 'w') do |f|
+File.open(File.join(DIR_CONFIG, TARGET_FILE_PORT), 'w') do |f|
   f.write port
 end
+
+FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_CONFIG), File.join(DIR_CONFIG, FILE_UNICORN_CONFIG))
+FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_SCRIPT), File.join(DIR_SCRIPT, FILE_UNICORN_SCRIPT))
+
+
+#[EOF]
 
