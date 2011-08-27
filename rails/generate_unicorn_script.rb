@@ -20,8 +20,9 @@ DIR_SOURCE = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_gener
 DIR_CONFIG = 'config'
 DIR_SCRIPT = 'script'
 
-FILE_UNICORN_CONFIG = 'unicorn-config.rb'
-FILE_UNICORN_SCRIPT = 'unicorn.sh'
+FILE_UNICORN_CONFIG      = 'unicorn-config.rb'
+FILE_UNICORN_SCRIPT      = 'unicorn.sh'
+FILE_SERVER_START_SCRIPT = 'start_server.sh'
 
 TARGET_FILES_TO_COPY  = [
                           [DIR_CONFIG, FILE_UNICORN_CONFIG],
@@ -34,7 +35,6 @@ TARGET_FILES_TO_WRITE = [
                           [DIR_CONFIG, TARGET_FILE_PORT],
                         ].freeze
 TARGET_FILES = TARGET_FILES_TO_COPY + TARGET_FILES_TO_WRITE
-TARGET_SCRIPT_FILE = File.join(DIR_SCRIPT, 'start_server.sh').freeze
 
 TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir.first }.uniq.freeze
 
@@ -87,15 +87,33 @@ end
 
 # Write the files
 
+# unicorn_env
 File.open(File.join(DIR_CONFIG, TARGET_FILE_ENV) , 'w') do |f|
   f.write environment
 end
+# unicorn_port
 File.open(File.join(DIR_CONFIG, TARGET_FILE_PORT), 'w') do |f|
   f.write port
 end
-
+# unicorn-config.rb
 FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_CONFIG), File.join(DIR_CONFIG, FILE_UNICORN_CONFIG))
+# unicorn.sh
 FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_SCRIPT), File.join(DIR_SCRIPT, FILE_UNICORN_SCRIPT))
+
+RE_USERNAME = /%username%/
+RE_APPNAME  = /%appname%/
+
+# server-start script
+username = `whoami`.chomp
+File.open(File.join(DIR_SOURCE, FILE_SERVER_START_SCRIPT), 'r') do |f_in|
+  File.open(File.join(DIR_SCRIPT, scriptname), 'w') do |f_out|
+    f_in.each do |line|
+      line.gsub!(RE_USERNAME, username    )
+      line.gsub!(RE_APPNAME , appname_disp)
+      f_out.write line
+    end
+  end
+end
 
 
 #[EOF]
