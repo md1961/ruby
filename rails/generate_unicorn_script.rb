@@ -22,9 +22,11 @@ TARGET_FILES_TO_COPY  = [
                           [DIR_CONFIG, 'unicorn-config.rb'],
                           [DIR_SCRIPT, 'unicorn.sh'       ],
                         ].freeze
+TARGET_FILE_ENV  = 'unicorn_env'
+TARGET_FILE_PORT = 'unicorn_port'
 TARGET_FILES_TO_WRITE = [
-                          [DIR_CONFIG, 'unicorn_env'      ],
-                          [DIR_CONFIG, 'unicorn_port'     ],
+                          [DIR_CONFIG, TARGET_FILE_ENV ],
+                          [DIR_CONFIG, TARGET_FILE_PORT],
                         ].freeze
 TARGET_FILES = TARGET_FILES_TO_COPY + TARGET_FILES_TO_WRITE
 TARGET_SCRIPT_FILE = File.join(DIR_SCRIPT, 'start_server.sh').freeze
@@ -80,4 +82,13 @@ end
 
 # Write the files
 
+TARGET_DIR_TO_WRITE = TARGET_FILES_TO_WRITE.first.first.freeze
+
+File.open(File.join(TARGET_DIR_TO_WRITE, TARGET_FILE_ENV) , 'w') do |f|
+  f.write environment
+end
+
+File.open(File.join(TARGET_DIR_TO_WRITE, TARGET_FILE_PORT), 'w') do |f|
+  f.write port
+end
 
