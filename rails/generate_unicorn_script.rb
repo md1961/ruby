@@ -14,6 +14,9 @@ require 'fileutils'
 # Constants
 
 ENVIRONMENTS = %w(development production).freeze
+# leftmost element is a default value
+
+DEFAULT_PORT = 3000
 
 DIR_SOURCE = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script')).freeze
 
@@ -60,7 +63,7 @@ begin
   appname     = hl.ask("Application Name: ") { |q| q.validate = RE_APPNAME_INNPUT }
   adds_d      = hl.agree("Add 'd' at end of '#{appname}' for script name?(Y/n)") { |q| q.default = 'yes' }
   environment = hl.choose(*ENVIRONMENTS) { |q| q.default = ENVIRONMENTS.first }
-  port        = hl.ask("Port No.: ", Integer) { |q| q.above = 99; q.below = 100000 }
+  port        = hl.ask("Port No.: ", Integer) { |q| q.above = 99; q.below = 100000; q.default = DEFAULT_PORT }
 
   appname_disp = appname.upcase
   scriptname = appname + (adds_d ? 'd' : '') + '.sh'
@@ -116,6 +119,17 @@ File.open(File.join(DIR_SOURCE, FILE_SERVER_START_SCRIPT), 'r') do |f_in|
     end
   end
 end
+
+# Add permission to execute to scripts
+script_files = [FILE_UNICORN_SCRIPT, scriptname]
+script_files.each do |filename|
+  file = File.join(DIR_SCRIPT, filename)
+  mode = File.stat(file).mode
+  str_mode = "%o" % mode
+  str_mode.gsub!('6', '7')
+  File.chmod("0#{str_mode}".to_i(8), file)
+end
+
 
 
 #[EOF]
