@@ -38,6 +38,8 @@ TARGET_FILES = TARGET_FILES_TO_COPY + TARGET_FILES_TO_WRITE
 
 TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir.first }.uniq.freeze
 
+RE_APPNAME_INNPUT = /^[a-z]\w{2,}$/
+
 COLOR_FOR_INPUT = :yellow
 
 
@@ -55,7 +57,7 @@ end
 hl = HighLine.new
 
 begin
-  appname     = hl.ask("Application Name: ") { |q| q.validate = /^[a-z]\w{3,}$/ }
+  appname     = hl.ask("Application Name: ") { |q| q.validate = RE_APPNAME_INNPUT }
   adds_d      = hl.agree("Add 'd' at end of '#{appname}' for script name?(Y/n)") { |q| q.default = 'yes' }
   environment = hl.choose(*ENVIRONMENTS) { |q| q.default = ENVIRONMENTS.first }
   port        = hl.ask("Port No.: ", Integer) { |q| q.above = 99; q.below = 100000 }
@@ -100,16 +102,16 @@ FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_CONFIG), File.join(DIR_CONFIG, F
 # unicorn.sh
 FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_SCRIPT), File.join(DIR_SCRIPT, FILE_UNICORN_SCRIPT))
 
-RE_USERNAME = /%username%/
-RE_APPNAME  = /%appname%/
+RE_USERNAME_IN_START_SCRIPT = /%username%/
+RE_APPNAME_IN_START_SCRIPT  = /%appname%/
 
 # server-start script
 username = `whoami`.chomp
 File.open(File.join(DIR_SOURCE, FILE_SERVER_START_SCRIPT), 'r') do |f_in|
   File.open(File.join(DIR_SCRIPT, scriptname), 'w') do |f_out|
     f_in.each do |line|
-      line.gsub!(RE_USERNAME, username    )
-      line.gsub!(RE_APPNAME , appname_disp)
+      line.gsub!(RE_USERNAME_IN_START_SCRIPT, username    )
+      line.gsub!(RE_APPNAME_IN_START_SCRIPT , appname_disp)
       f_out.write line
     end
   end
