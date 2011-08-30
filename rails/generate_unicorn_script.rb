@@ -72,7 +72,7 @@ begin
   puts "port No.            = " + hl.color(port        , COLOR_FOR_INPUT)
 end until hl.agree("OK to proceed(y/n)")
 
-target_files = (TARGET_FILES + [[scriptname, DIR_SCRIPT]]).map { |file_and_dir| File.join(file_and_dir) }
+target_files = (TARGET_FILES + [[DIR_SCRIPT, scriptname]]).map { |dir_and_file| File.join(dir_and_file) }
 
 files_exist = target_files.select { |file| File.exist?(file) }
 unless files_exist.empty?
