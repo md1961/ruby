@@ -3,7 +3,7 @@
 # Please prepare file 'config/unicorn_port' and 'config/unicorn_env'
 # which has only port No. and Rails environment, respectively, in it
 
-RAILS_ROOT_DIR=$(dirname $(dirname $(readlink -f $0)))
+RAILS_ROOT_DIR=$(dirname $(dirname $(readlink $0)))
 
 START_SCRIPT=$RAILS_ROOT_DIR/script/unicorn.sh
 

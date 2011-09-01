@@ -1,6 +1,6 @@
 #! /bin/sh
 
-RAILS_ROOT_DIR=$(dirname $(dirname $(readlink -f $0)))
+RAILS_ROOT_DIR=$(dirname $(dirname $(readlink $0)))
 
 CONFIG_FILE=$RAILS_ROOT_DIR/config/unicorn-config.rb
 
