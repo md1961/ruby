@@ -16,9 +16,9 @@ require 'fileutils'
 ENVIRONMENTS = %w(development production).freeze
 # leftmost element is a default value
 
-DEFAULT_PORT = 3000
-
+DEFAULT_PORT     = 3000
 DEFAULT_USERNAME = `whoami`.chomp
+DEFAULT_APPNAME  = File.basename(File.expand_path("."))
 
 DIR_SOURCE = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script')).freeze
 
@@ -43,7 +43,7 @@ TARGET_FILES = TARGET_FILES_TO_COPY + TARGET_FILES_TO_WRITE
 
 TARGET_DIRS  = TARGET_FILES.map { |file_and_dir| file_and_dir.first }.uniq.freeze
 
-RE_APPNAME_INNPUT = /^[a-z]\w{2,}$/
+RE_APPNAME_INNPUT = /^([a-z]\w{2,})|q$/
 
 COLOR_FOR_INPUT = :yellow
 
@@ -62,7 +62,8 @@ end
 hl = HighLine.new
 
 begin
-  appname     = hl.ask("Application name: ")         { |q| q.validate = RE_APPNAME_INNPUT }
+  appname     = hl.ask("Application name: ")         { |q| q.validate = RE_APPNAME_INNPUT; q.default = DEFAULT_APPNAME }
+  exit if appname == 'q'
   adds_d      = hl.agree("Add 'd' at end of '#{appname}' for script name?(Y/n)") \
                                                      { |q| q.default = 'yes' }
   environment = hl.choose(*ENVIRONMENTS)             { |q| q.default = ENVIRONMENTS.first }
