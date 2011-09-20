@@ -2112,6 +2112,57 @@ class Schezer
       def configuration_suffices?
         return Kuma::StrUtil.non_empty_string?(@host, @username, @database)
       end
+
+      # 返り値: PGconn のインスタンス
+      def get_query_result(*args)
+        sql = parse_args_of_get_query_result(args)
+        result = @conn.query(sql)
+        return result unless result
+
+        array_of_fetched_hash = Array.new
+        result.values.each do |values|
+          hash_not_encoded = Hash.new
+          result.fields.zip(values) do |colname, value|
+            hash_not_encoded[colname] = value
+          end
+          array_of_fetched_hash << hash_not_encoded
+        end
+
+        result_wrapper = Object.new
+        result_wrapper.instance_variable_set(:@__kumagai_pg_result       , result)
+        result_wrapper.instance_variable_set(:@__kumagai_hashes_encoded__, array_of_fetched_hash)
+        def result_wrapper.fetch_hash
+          @__kumagai_hashes_encoded__.shift
+        end
+        def result_wrapper.fetch_fields
+          #retval = @__hash_rows__[@__index__]
+          #@__index__ += 1
+          unless true
+            nil
+          else
+            fields = Array.new
+            @__kumagai_pg_result.values.each do |value|
+              field = Object.new
+              field.instance_variable_set(:@__name__, value)
+              def field.name
+                @__name__
+              end
+              fields << field
+            end
+            fields
+          end
+        end
+
+        return result_wrapper
+      end
+
+        def hash_dependent_sqls
+          return {
+            :show_tables  => "SELECT tablename FROM pg_tables WHERE schemaname = 'public'",
+            :table_schema => "",
+          }
+        end
+        private :hash_dependent_sqls
     end
 
     # データベースの接続情報を受け取って、データベースに接続し、
