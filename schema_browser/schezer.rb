@@ -27,6 +27,9 @@ class UnsupportedDBAdapterException              < Exception; end
 class UnsupportedQueryException                  < Exception; end
 
 
+COLUMN_NAME_FOR_TABLE_SCHEMA = "Create Table"
+
+
 class TableSchemaDifference
   attr_reader :column_names_only1, :column_names_only2, :column_names_both
 
@@ -1653,7 +1656,7 @@ class Schezer
     def get_raw_table_schema(name, conn)
       result = get_create_table_result(name, conn)
       h_result = result.fetch_hash
-      schema = h_result[@view_only ? 'Create View' : 'Create Table']
+      schema = h_result[@view_only ? 'Create View' : COLUMN_NAME_FOR_TABLE_SCHEMA]
       return schema
     end
 
@@ -2077,22 +2080,24 @@ class Schezer
           schema = strs.join("\n")
 
           result = Object.new
-          result.instance_variable_set(:@__schema__, schema)
+          result.instance_variable_set(:@__kumagai_schema__, schema)
           def result.columns
-            ["Create Table"]
+            [COLUMN_NAME_FOR_TABLE_SCHEMA]
           end
           def result.each
-            yield [@__schema__]
+            yield [@__kumagai_schema__]
           end
 
           return result
         end
+        private :make_table_schema_result
 
         def hash_dependent_sqls
           return {
             :show_tables => "SELECT name FROM sqlite_master WHERE type = 'table'",
           }
         end
+        private :hash_dependent_sqls
     end
 
     # データベースの接続情報を受け取って、データベースに接続し、
@@ -2113,33 +2118,30 @@ class Schezer
         return Kuma::StrUtil.non_empty_string?(@host, @username, @database)
       end
 
-      # 返り値: PGconn のインスタンス
       def get_query_result(*args)
         sql = parse_args_of_get_query_result(args)
         result = @conn.query(sql)
         return result unless result
 
-        array_of_fetched_hash = Array.new
-        result.values.each do |values|
-          hash_not_encoded = Hash.new
-          result.fields.zip(values) do |colname, value|
-            hash_not_encoded[colname] = value
+        if args[0] == :table_schema
+          result_wrapper = make_table_schema_result(result)
+        else
+          array_of_fetched_hash = Array.new
+          result.values.each do |values|
+            hash_not_encoded = Hash.new
+            result.fields.zip(values) do |colname, value|
+              hash_not_encoded[colname] = value
+            end
+            array_of_fetched_hash << hash_not_encoded
           end
-          array_of_fetched_hash << hash_not_encoded
-        end
 
-        result_wrapper = Object.new
-        result_wrapper.instance_variable_set(:@__kumagai_pg_result       , result)
-        result_wrapper.instance_variable_set(:@__kumagai_hashes_encoded__, array_of_fetched_hash)
-        def result_wrapper.fetch_hash
-          @__kumagai_hashes_encoded__.shift
-        end
-        def result_wrapper.fetch_fields
-          #retval = @__hash_rows__[@__index__]
-          #@__index__ += 1
-          unless true
-            nil
-          else
+          result_wrapper = Object.new
+          result_wrapper.instance_variable_set(:@__kumagai_pg_result       , result)
+          result_wrapper.instance_variable_set(:@__kumagai_hashes_encoded__, array_of_fetched_hash)
+          def result_wrapper.fetch_hash
+            @__kumagai_hashes_encoded__.shift
+          end
+          def result_wrapper.fetch_fields
             fields = Array.new
             @__kumagai_pg_result.values.each do |value|
               field = Object.new
@@ -2156,10 +2158,57 @@ class Schezer
         return result_wrapper
       end
 
+        def make_table_schema_result(result)
+          name = result.field_values('table_name').first
+
+          strs = Array.new
+          strs << "CREATE TABLE `#{name}` ("
+          primary_keys = Array.new
+          result.each do |hash_values|
+            name     = hash_values['column_name']
+            type     = hash_values['data_type']
+            not_null = hash_values['is_nullable'] == 'NO' ? "NOT NULL" : nil
+            default  = hash_values['column_default']
+            default  = "DEFAULT #{default}" if default
+            primary_keys << name if false
+
+            additionals = Array.new
+            additionals << default  if default
+            additionals << not_null if not_null
+            strs << "  `#{name}` #{type} #{additionals.join(' ')}"
+          end
+          strs << "  PRIMARY KEY (`#{primary_keys.join('`, `')}`)" if primary_keys.size > 0
+          strs << ")"
+
+          schema = strs.join("\n")
+
+          result_wrapper = Object.new
+          result_wrapper.instance_variable_set(:@__kumagai_schema__, schema)
+          def result_wrapper.columns
+            [COLUMN_NAME_FOR_TABLE_SCHEMA]
+          end
+          def result_wrapper.fetch_fields
+            field = Object.new
+            def field.name
+              COLUMN_NAME_FOR_TABLE_SCHEMA
+            end
+            [field]
+          end
+          def result_wrapper.each
+            yield [@__kumagai_schema__]
+          end
+          def result_wrapper.fetch_hash
+            {COLUMN_NAME_FOR_TABLE_SCHEMA => @__kumagai_schema__}
+          end
+
+          return result_wrapper
+        end
+        private :make_table_schema_result
+
         def hash_dependent_sqls
           return {
             :show_tables  => "SELECT tablename FROM pg_tables WHERE schemaname = 'public'",
-            :table_schema => "",
+            :table_schema => "SELECT * FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '%s'",
           }
         end
         private :hash_dependent_sqls
