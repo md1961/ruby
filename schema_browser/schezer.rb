@@ -2,6 +2,7 @@
 # vi: set fileencoding=utf-8 :
 
 require 'mysql'
+require 'pg'
 require 'sqlite3'
 require 'yaml'
 require 'optparse'
@@ -1932,7 +1933,7 @@ class Schezer
         begin
           return clazz.new(hash_conf)
         rescue NameError => e
-          raise UnsupportedDBAdapterException.new("Adapter '#{adapter}' not supported")
+          raise UnsupportedDBAdapterException.new("Adapter '#{adapter}' not supported, due to #{e}")
         end
       end
 
@@ -2092,6 +2093,25 @@ class Schezer
             :show_tables => "SELECT name FROM sqlite_master WHERE type = 'table'",
           }
         end
+    end
+
+    # データベースの接続情報を受け取って、データベースに接続し、
+    # PostgreSQL のインスタンスを保持するクラス
+    class DBConnectionPostgresql < DBConnection
+
+      def initialize(hash_conf)
+        super(hash_conf)
+      end
+
+        def connect
+          port = options = tty = nil
+          return PGconn.new(@host, port, options, tty, @database, @username, @password)
+        end
+        private :connect
+
+      def configuration_suffices?
+        return Kuma::StrUtil.non_empty_string?(@host, @username, @database)
+      end
     end
 
     # データベースの接続情報を受け取って、データベースに接続し、
