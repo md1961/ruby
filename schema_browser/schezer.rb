@@ -340,7 +340,7 @@ class TableSchema < AbstractTableSchema
     indexes = INDEXES - (all_columns_comments_blank? ? [INDEX_COMMENT] : [])
     table = TableOnCUI.new(indexes, lambda { |x| Kuma::StrUtil.displaying_length(x.to_s) })
     table.set_data(table_items)
-    if table.width <= @terminal_width
+    if all_columns_comments_blank? || table.width <= @terminal_width
       return table.to_table
     else
       table.hide(INDEX_COMMENT)
@@ -640,7 +640,8 @@ class ColumnSchema
       end
     end
 
-    TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill binary ascii unicode collate utf8_unicode_ci)
+    TERMS_TO_SUPPLEMENT_TYPE = %w(unsigned zerofill binary ascii unicode collate utf8_unicode_ci
+                                  varying without time zone)
 
     # Return the first term and the following terms included in TERMS_TO_SUPPLEMENT_TYPE, joined by ' '
     def get_type(terms, capitalizes_types)
@@ -678,13 +679,18 @@ class ColumnSchema
         elsif term0 == 'DEFAULT'
           terms.shift
           default = terms.shift
+
           if /^'[^']+$/ =~ default # unclosed quotation
             begin
               default += ' ' + (term = terms.shift)
             end until term.index("'")
           end
-          if /^'([^']+)'$/ =~ default # removed single quotations
+          if /^'([^']+)'$/ =~ default # removed closed single quotations
             default = $1
+          end
+
+          if terms[0] && TERMS_TO_SUPPLEMENT_TYPE.include?(terms[0])
+            default += ' ' + terms.shift
           end
         elsif term0 == 'AUTO_INCREMENT'
           auto_increment = true
