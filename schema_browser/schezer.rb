@@ -449,32 +449,21 @@ class TableSchema < AbstractTableSchema
       return m[1]
     end
 
-    RE_TABLE_OPTIONS = %r!
-      ^\s*\)
-      (?:\s+ENGINE=(\w+))?
-      (?:\s+AUTO_INCREMENT=(\d+))?
-      (?:\s+DEFAULT\ CHARSET=(\w+))?
-      (?:\s+COLLATE=(\w+))?
-      (?:\s+MAX_ROWS=(\d+))?
-      (?:\s+COMMENT='(.+)')?\s*$
-    !xi
+    RE_TABLE_OPTION_ENGINE          = /ENGINE=(\w+)/
+    RE_TABLE_OPTION_AUTO_INCREMENT  = /AUTO_INCREMENT=(\d+)/
+    RE_TABLE_OPTION_DEFAULT_CHARSET = /DEFAULT\ CHARSET=(\w+)/
+    RE_TABLE_OPTION_COLLATE         = /COLLATE=(\w+)/
+    RE_TABLE_OPTION_MAX_ROWS        = /MAX_ROWS=(\d+)/
+    RE_TABLE_OPTION_COMMENT         = /COMMENT='(.+)'/
+
+    TABLE_OPTION_NAMES = %w(engine auto_increment default_charset collate max_rows comment)
 
     def get_table_options(line)
-      m = Regexp.compile(RE_TABLE_OPTIONS).match(line)
-      raise CannotGetTableOptionsException.new("in \"#{line}\"") unless m
-      @engine          = m[1]
-      @auto_increment  = m[2]
-      @default_charset = m[3]
-      @collate         = m[4]
-      @max_rows        = m[5]
-      @comment         = m[6]
-    end
-
-    #FIXME: Re-definition ot the above two
-    RE_TABLE_OPTION_COMMENT = /COMMENT='(.+)'/
-    def get_table_options(line)
-      m = Regexp.compile(RE_TABLE_OPTION_COMMENT).match(line)
-      @comment = m[1] if m
+      TABLE_OPTION_NAMES.each do |option_name|
+        re = eval("RE_TABLE_OPTION_#{option_name.upcase}")
+        m = Regexp.compile(re).match(line)
+        instance_variable_set(:"@#{option_name}", m[1]) if m
+      end
     end
 
     def add_table_options_as_xml(root_element)
