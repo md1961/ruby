@@ -2110,6 +2110,8 @@ class Schezer
     # PostgreSQL のインスタンスを保持するクラス
     class DBConnectionPostgresql < DBConnection
 
+      DEFAULT_SCHEMA_NAME = 'public'
+
       def initialize(hash_conf)
         super(hash_conf)
       end
@@ -2166,22 +2168,32 @@ class Schezer
 
         def make_table_schema_result(result)
           name = result.field_values('table_name').first
+          oid = get_oid_of_table(name)
 
           strs = Array.new
           strs << "CREATE TABLE `#{name}` ("
           primary_keys = Array.new
+          column_num = 1
           result.each do |hash_values|
             name     = hash_values['column_name']
             type     = hash_values['data_type']
             not_null = hash_values['is_nullable'] == 'NO' ? "NOT NULL" : nil
             default  = hash_values['column_default']
+
             default  = "DEFAULT #{default}" if default
+
             primary_keys << name if false
+
+            comment = get_column_comment(oid, column_num)
+            comment = "COMMENT '#{comment}'" if comment
 
             additionals = Array.new
             additionals << default  if default
             additionals << not_null if not_null
+            additionals << comment  if comment
             strs << "  `#{name}` #{type} #{additionals.join(' ')}"
+
+            column_num += 1
           end
           strs << "  PRIMARY KEY (`#{primary_keys.join('`, `')}`)" if primary_keys.size > 0
           strs << ")"
@@ -2211,10 +2223,43 @@ class Schezer
         end
         private :make_table_schema_result
 
+        def get_oid_of_table(table_name)
+          sql = "SELECT relid FROM pg_stat_all_tables WHERE schemaname = '#{DEFAULT_SCHEMA_NAME}' and relname = '#{table_name}'"
+          result = @conn.exec(sql)
+          msg = "(N/A)"
+          begin
+            oid = result.values.first.first.to_i
+          rescue => e
+            oid = 0
+            msg = e.message
+          end
+          unless oid > 0
+            raise "Cannot get OID of TABLE #{table_name} (result.values = #{result.values.inspect}) due to #{msg}"
+          end
+
+          return oid
+        end
+        private :get_oid_of_table
+
+        def get_column_comment(table_oid, column_num)
+          sql = "SELECT col_description(#{table_oid}, #{column_num})"
+          result = @conn.exec(sql)
+          begin
+            comment = result.values.first.first
+          rescue => e
+            raise "Cannot get COMMENT of COLUMN ##{column_num} of TABLE #{table_name}" \
+                + " (result.values = #{result.values.inspect}) due to #{e.message}"
+          end
+
+          return comment
+        end
+        private :get_column_comment
+
         def hash_dependent_sqls
           return {
-            :show_tables  => "SELECT tablename FROM pg_tables WHERE schemaname = 'public'",
-            :table_schema => "SELECT * FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '%s'",
+            :show_tables  => "SELECT tablename FROM pg_tables WHERE schemaname = '#{DEFAULT_SCHEMA_NAME}'",
+            :table_schema => "SELECT * FROM information_schema.columns" \
+                             + " WHERE table_schema = '#{DEFAULT_SCHEMA_NAME}' AND table_name = '%s'",
           }
         end
         private :hash_dependent_sqls
