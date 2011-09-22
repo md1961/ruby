@@ -1685,7 +1685,7 @@ class Schezer
       rescue Mysql::Error => evar
         raise InfrastructureException.new("Failed to get the row count of TABLE '#{table_name}'")
       end
-      return result.fetch_hash['COUNT(*)'].to_i
+      return result.fetch_hash.values.first.to_i
     end
 
     def row_count_equal?(table_name, conn, conn2)
