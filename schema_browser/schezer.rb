@@ -470,6 +470,13 @@ class TableSchema < AbstractTableSchema
       @comment         = m[6]
     end
 
+    #FIXME: Re-definition ot the above two
+    RE_TABLE_OPTION_COMMENT = /COMMENT='(.+)'/
+    def get_table_options(line)
+      m = Regexp.compile(RE_TABLE_OPTION_COMMENT).match(line)
+      @comment = m[1] if m
+    end
+
     def add_table_options_as_xml(root_element)
       element_options = REXML::Element.new('table_options')
 
@@ -2197,6 +2204,7 @@ class Schezer
           end
           strs << "  PRIMARY KEY (`#{primary_keys.join('`, `')}`)" if primary_keys.size > 0
           strs << ")"
+          strs << " COMMENT='#{get_table_comment(oid)}'" if true
 
           schema = strs.join("\n")
 
@@ -2240,6 +2248,20 @@ class Schezer
           return oid
         end
         private :get_oid_of_table
+
+        def get_table_comment(table_oid)
+          sql = "SELECT obj_description(#{table_oid}, 'pg_class')"
+          result = @conn.exec(sql)
+          begin
+            comment = result.values.first.first
+          rescue => e
+            raise "Cannot get COMMENT of TABLE with OID of #{table_oid}" \
+                + " (result.values = #{result.values.inspect}) due to #{e.message}"
+          end
+
+          return comment
+        end
+        private :get_table_comment
 
         def get_column_comment(table_oid, column_num)
           sql = "SELECT col_description(#{table_oid}, #{column_num})"
