@@ -1633,7 +1633,7 @@ class Schezer
         next if view?(name, conn) ^ @view_only
         names << name
       end
-      return names
+      return names.sort
     end
 
     def get_table_names_with_regexp(conn, str_re)
