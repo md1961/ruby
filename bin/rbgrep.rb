@@ -44,23 +44,28 @@ class RubyGrep
         @filenames.each do |filename|
           glob_filenames += Dir.glob("#{dir}/**/#{filename}")
         end
-        @filenames = glob_filenames
+        @filenames = glob_filenames.select { |filename| File.file?(filename) && File.readable?(filename) }
       end
 
       @filenames = [STDIN] if @filenames.empty?
       @filenames.each do |filename|
         count = 0
         lineno = 0
-        (filename == STDIN ? STDIN : File.open(filename, 'r')).each do |line|
-          matched, is_over_multi_lines = match(line, multi_lines)
-          lineno += 1
+        begin
+          (filename == STDIN ? STDIN : File.open(filename, 'r')).each do |line|
+            matched, is_over_multi_lines = match(line, multi_lines)
+            lineno += 1
 
-          if matched
-            count += 1
-            multi_lines = Array.new
-            finishes_file = print_matched(matched, filename, lineno, is_over_multi_lines)
-            break if finishes_file
+            if matched
+              count += 1
+              multi_lines = Array.new
+              finishes_file = print_matched(matched, filename, lineno, is_over_multi_lines)
+              break if finishes_file
+            end
           end
+        rescue ArgumentError => e
+          $stderr.puts "Skip #{filename} due to #{e}"
+          next
         end
 
         if @options[:c] && count > 0
