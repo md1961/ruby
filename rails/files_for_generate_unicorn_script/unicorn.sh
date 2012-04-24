@@ -17,5 +17,7 @@ CONFIG_FILE=$RAILS_ROOT_DIR/config/unicorn-config.rb
 ENVIRONMENT_FILE=$RAILS_ROOT_DIR/config/unicorn_env
 ENVIRONMENT=$(head -1 $ENVIRONMENT_FILE) || exit
 
-/usr/local/bin/unicorn_rails --config-file $CONFIG_FILE --env $ENVIRONMENT --daemonize
+pushd $RAILS_ROOT_DIR > /dev/null
+bundle exec /usr/local/bin/unicorn_rails --config-file $CONFIG_FILE --env $ENVIRONMENT --daemonize
+popd > /dev/null
 
