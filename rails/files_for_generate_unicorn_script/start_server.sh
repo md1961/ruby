@@ -25,9 +25,10 @@ ENVIRONMENT=$(head -1 $ENVIRONMENT_FILE) || exit
 PORT_FILE=$RAILS_ROOT_DIR/config/unicorn_port
 PORT=$(head -1 $PORT_FILE) || exit
 
-PS_GREP_PATTERN="$PID.*unicorn_rails"
+USER_FILE=$RAILS_ROOT_DIR/config/unicorn_user
+USER=$(head -1 $USER_FILE) || exit
 
-USER=%username%
+PS_GREP_PATTERN="$PID.*unicorn_rails"
 
 START_SCRIPT=$RAILS_ROOT_DIR/script/unicorn.sh
 STOP_SCRIPT="kill $PID"

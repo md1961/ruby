@@ -35,9 +35,11 @@ TARGET_FILES_TO_COPY  = [
                         ].freeze
 TARGET_FILE_ENV  = 'unicorn_env'
 TARGET_FILE_PORT = 'unicorn_port'
+TARGET_FILE_USER = 'unicorn_user'
 TARGET_FILES_TO_WRITE = [
                           [DIR_CONFIG, TARGET_FILE_ENV ],
                           [DIR_CONFIG, TARGET_FILE_PORT],
+                          [DIR_CONFIG, TARGET_FILE_USER],
                         ].freeze
 TARGET_FILES = TARGET_FILES_TO_COPY + TARGET_FILES_TO_WRITE
 
@@ -106,19 +108,22 @@ end
 File.open(File.join(DIR_CONFIG, TARGET_FILE_PORT), 'w') do |f|
   f.write port
 end
+# unicorn_user
+File.open(File.join(DIR_CONFIG, TARGET_FILE_USER), 'w') do |f|
+  f.write username
+end
+
 # unicorn-config.rb
 FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_CONFIG), File.join(DIR_CONFIG, FILE_UNICORN_CONFIG))
 # unicorn.sh
 FileUtils.cp(File.join(DIR_SOURCE, FILE_UNICORN_SCRIPT), File.join(DIR_SCRIPT, FILE_UNICORN_SCRIPT))
 
-RE_USERNAME_IN_START_SCRIPT = /%username%/
 RE_APPNAME_IN_START_SCRIPT  = /%appname%/
 
 # server-start script
 File.open(File.join(DIR_SOURCE, FILE_SERVER_START_SCRIPT), 'r') do |f_in|
   File.open(File.join(DIR_SCRIPT, scriptname), 'w') do |f_out|
     f_in.each do |line|
-      line.gsub!(RE_USERNAME_IN_START_SCRIPT, username    )
       line.gsub!(RE_APPNAME_IN_START_SCRIPT , appname_disp)
       f_out.write line
     end
