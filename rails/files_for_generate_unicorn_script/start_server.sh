@@ -35,8 +35,9 @@ STOP_SCRIPT="kill $PID"
 
 prog="%appname%"
 
-msg_running="$prog is already running (PID=$PID, environment=$ENVIRONMENT, port=$PORT)"
-msg_not_running="$prog is out of service (environment=$ENVIRONMENT, port=$PORT)"
+config_vars="environment=$ENVIRONMENT, port=$PORT, user=$USER"
+msg_running="$prog is running (PID=$PID, $config_vars)"
+msg_not_running="$prog is out of service ($config_vars)"
 
 
 start() {
