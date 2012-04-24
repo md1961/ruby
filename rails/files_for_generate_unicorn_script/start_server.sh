@@ -15,8 +15,6 @@ fi
 
 RAILS_ROOT_DIR=$(dirname $(dirname $(readlink $READLINK_OPTIONS $0 || echo $0)))
 
-START_SCRIPT=$RAILS_ROOT_DIR/script/unicorn.sh
-
 PID_FILE=$RAILS_ROOT_DIR/tmp/pids/unicorn.pid
 PID=$(head -1 $PID_FILE 2> /dev/null)
 PS_RUNNING=$(ps h -p $PID 2> /dev/null)
@@ -30,6 +28,9 @@ PORT=$(head -1 $PORT_FILE) || exit
 PS_GREP_PATTERN="$PID.*unicorn_rails"
 
 USER=%username%
+
+START_SCRIPT=$RAILS_ROOT_DIR/script/unicorn.sh
+STOP_SCRIPT="kill $PID"
 
 prog="%appname%"
 
@@ -49,7 +50,7 @@ start() {
 
 do_start() {
   echo $"Starting $prog ..."
-  su - -c $START_SCRIPT $USER
+  su - -c "$START_SCRIPT" $USER
 }
 
 stop() {
@@ -58,7 +59,7 @@ stop() {
     echo $"$msg_not_running"
   else
     echo $"Stopping $prog ..."
-    kill $PID
+    su - -c "$STOP_SCRIPT" $USER
   fi
   return $?
 }
