@@ -13,7 +13,7 @@ date_start  = '2012-01-01'
 date_end    = '2012-12-31'
 max_results = 50
 
-target_url = '/calendar/feeds/japanese@holiday.calendar.google.com/public/full-noattendees?start-min=%s&start-max=%s&max-results=%s&alt=json-in-script&callback=callbackHoliday' % [date_start, date_end, max_results]
+target_url = '/calendar/feeds/japanese__ja@holiday.calendar.google.com/public/full-noattendees?start-min=%s&start-max=%s&max-results=%s&alt=json-in-script&callback=callbackHoliday' % [date_start, date_end, max_results]
 
 proxy = Net::HTTP::Proxy(proxy_address, proxy_port)
 
