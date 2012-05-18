@@ -24,13 +24,23 @@ proxy.start(target_address) do |http|
   json = JSON.parse(body)
   entries = json['feed']['entry']
 
-  puts JSON.pretty_generate(entries[0])
+  #puts JSON.pretty_generate(entries[0])
 
+  h_holidays = Hash.new
   entries.each do |entry|
     title = entry['title']['$t']
     whens = entry['gd$when']
     date_starts = whens.map { |x| x['startTime'] }
-    puts "%s : %s" % [title, date_starts]
+    date_starts.each do |date_start|
+      if h_holidays[date_start]
+        raise "'#{date_start}' has two entries, '#{h_holidays[date_start]}' and '#{title}'"
+      end
+      h_holidays[date_start] = title
+    end
+  end
+
+  h_holidays.keys.sort.each do |date_start|
+    puts "%s : %s" % [date_start, h_holidays[date_start]]
   end
 end
 
