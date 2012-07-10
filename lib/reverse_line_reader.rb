@@ -3,7 +3,6 @@ class ReverseLineReader
     @io = io
     @io.seek(0, IO::SEEK_END)
     @buffer = ""
-    @data = ""
   end
 
   def each
@@ -30,15 +29,14 @@ class ReverseLineReader
       bytes_per_read = BYTES_PER_READ
     end
 
-    if bytes_per_read.zero?
-      @data.replace("")
-    else
+    retval = ''
+    unless bytes_per_read.zero?
       @io.seek(-bytes_per_read, IO::SEEK_CUR)
-      @io.read(bytes_per_read, @data)
+      @io.read(bytes_per_read, retval)
       @io.seek(-bytes_per_read, IO::SEEK_CUR)
     end
 
-    @data
+    retval
   end
 
   def read_to_buffer
