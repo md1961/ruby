@@ -1,4 +1,5 @@
 class ReverseLineReader
+
   def initialize(io)
     @io = io
     @io.seek(0, IO::SEEK_END)
@@ -19,33 +20,30 @@ class ReverseLineReader
     yield(@buffer) unless @buffer.empty?
   end
 
+  MAXIMUM_BYTES_TO_READ = 4096
+
   private
-  BYTES_PER_READ = 4096
-  def read
-    position = @io.pos
-    if position < BYTES_PER_READ
-      bytes_per_read = position
-    else
-      bytes_per_read = BYTES_PER_READ
+
+    def read
+      bytes_to_read = [@io.pos, MAXIMUM_BYTES_TO_READ].min
+
+      retval = ''
+      unless bytes_to_read.zero?
+        @io.seek(-bytes_to_read, IO::SEEK_CUR)
+        @io.read(bytes_to_read, retval)
+        @io.seek(-bytes_to_read, IO::SEEK_CUR)
+      end
+
+      retval
     end
 
-    retval = ''
-    unless bytes_per_read.zero?
-      @io.seek(-bytes_per_read, IO::SEEK_CUR)
-      @io.read(bytes_per_read, retval)
-      @io.seek(-bytes_per_read, IO::SEEK_CUR)
+    def read_to_buffer
+      data = read
+      if data.empty?
+        false
+      else
+        @buffer.insert(0, data)
+        true
+      end
     end
-
-    retval
-  end
-
-  def read_to_buffer
-    data = read
-    if data.empty?
-      false
-    else
-      @buffer.insert(0, data)
-      true
-    end
-  end
 end
