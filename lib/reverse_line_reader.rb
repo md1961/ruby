@@ -3,7 +3,7 @@ class ReverseLineReader
   def initialize(io)
     @io = io
     @io.seek(0, IO::SEEK_END)
-    @buffer = ""
+    @buffer = "".force_encoding(Encoding.default_external)
   end
 
   def each
@@ -12,7 +12,7 @@ class ReverseLineReader
     while read_to_buffer
       loop do
         index = @buffer.rindex(separator, @buffer.length - 1 - separator_length)
-        break if index.nil? or index.zero?
+        break if index.nil? || index.zero?
         last_line = @buffer.slice!((index + separator_length)..-1)
         yield(last_line)
       end
@@ -34,7 +34,7 @@ class ReverseLineReader
         @io.seek(-bytes_to_read, IO::SEEK_CUR)
       end
 
-      retval
+      retval.force_encoding(Encoding.default_external)
     end
 
     def read_to_buffer

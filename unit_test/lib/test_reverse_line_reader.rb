@@ -1,3 +1,4 @@
+# vi: set fileencoding=utf-8 :
 
 require 'test/unit'
 
@@ -36,7 +37,7 @@ class TestReverseLineReader < Test::Unit::TestCase
     original_lines = [
       " 1: class Test",
       " 2:   def test",
-      " 3:     # Do nothing",
+      " 3:     # 何もしない",
       " 4:   end",
       " 5: end",
     ].map { |line| line + $/ }
