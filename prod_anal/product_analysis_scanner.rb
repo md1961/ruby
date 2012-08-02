@@ -260,7 +260,7 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
     def self.check_existence_of(expected, actual, where)
-      act = actual.gsub(/ +/, '').gsub(/　+/, '')
+      act = actual.remove_spaces_including_zenkaku
       unless act[0, expected.length] == expected
         raise IllegalFormatError.new("No '#{expected}' found ('#{actual}' instead) " + where)
       end
@@ -469,9 +469,9 @@ class ProductAnalysisScanner < ExcelManipulator
 
         index_of_first_non_blank = row.index { |cell| ! ExcelManipulator.blank?(cell) }
         @sample_name     = ProductAnalysisScanner.zenkaku2hankaku(row[index_of_first_non_blank]    )
-        @sample_name    .gsub!(/[\s　]/, '') if @sample_name
+        @sample_name     = @sample_name    .remove_spaces_including_zenkaku if @sample_name
         @sample_name_sub = ProductAnalysisScanner.zenkaku2hankaku(rows[1][index_of_first_non_blank])
-        @sample_name_sub.gsub!(/[\s　]/, '') if @sample_name_sub
+        @sample_name_sub = @sample_name_sub.remove_spaces_including_zenkaku if @sample_name_sub
 
         is_success = read_completion_specs(rows)
         return is_success && ! @reservoir_name.empty?
@@ -496,7 +496,7 @@ class ProductAnalysisScanner < ExcelManipulator
         else
           @reservoir_name = row[index + 1] || ''
           @reservoir_name = Integer(@reservoir_name).to_s if @reservoir_name.kind_of?(Numeric)
-          @reservoir_name.gsub!(/[\s　]/, '')
+          @reservoir_name = @reservoir_name.remove_spaces_including_zenkaku
         end
 
         index = SampleData.index(row, /\A\s*坑井深度/)
@@ -522,7 +522,7 @@ class ProductAnalysisScanner < ExcelManipulator
       end
 
       def self.index(row, re_to_look)
-        cell_found = row.find { |cell| cell && re_to_look =~ cell.to_s.gsub(/[\s　]/, '') }
+        cell_found = row.find { |cell| cell && re_to_look =~ cell.to_s.remove_spaces_including_zenkaku }
         return cell_found ? row.index(cell_found) : nil
       end
 
@@ -775,7 +775,7 @@ class ProductAnalysisScanner < ExcelManipulator
         ProductAnalysisScanner.check_existence_of(expected, actual, " at column #{i + 1} in index row")
       end
 
-      row_trimmed = row.map { |cell| cell ? cell.gsub(/[\s　.]/, '') : "" }
+      row_trimmed = row.map { |cell| cell ? cell.remove_spaces_including_zenkaku : "" }
       @@unit_excel_columns = Array.new
       unit_indexes_offsets_and_unit_id_names.each do |index_name, offset, instance_variable_name|
         @@unit_excel_columns << UnitExcelColumn.new(row_trimmed.index(index_name), offset, instance_variable_name)
@@ -988,11 +988,20 @@ class ProductAnalysisScanner < ExcelManipulator
       return nil if unit_name.nil? || unit_name.kind_of?(Numeric)
 
       name = unit_name.gsub(/\d+#{DEG_C}/, '')  # Remove ' \d+degC' from such as "mPa.s 25degC"
-      name = name     .gsub(/\s+/, '')
-      name = name     .gsub(/[\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
+      name = name     .remove_spaces_including_zenkaku
+      name = name     .gsub(/[\/()\[\]（）・薑]/, '')  # '・' は '薑' に変換されている
 
       return MAP_UNIT_IDS[name.downcase]
     end
+  end
+end
+
+
+class String
+  ZENKAKU_SPACE = '　'
+
+  def remove_spaces_including_zenkaku
+    self.gsub(/\s+/, '').gsub(/#{ZENKAKU_SPACE}+/, '')
   end
 end
 
