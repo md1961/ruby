@@ -258,7 +258,7 @@ class ProductAnalysisScanner < ExcelManipulator
     end
 
     def self.check_existence_of(expected, actual, where)
-      act = actual.gsub(/[\s　]/, '')
+      act = actual.gsub(/ +/, '').gsub(/　+/, '')
       unless act[0, expected.length] == expected
         raise IllegalFormatError.new("No '#{expected}' found ('#{actual}' instead) " + where)
       end
