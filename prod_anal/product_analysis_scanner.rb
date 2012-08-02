@@ -985,8 +985,10 @@ class ProductAnalysisScanner < ExcelManipulator
     def self.convert_unit_name_to_DB_id(unit_name)
       return nil if unit_name.nil? || unit_name.kind_of?(Numeric)
 
-      name = unit_name.gsub(/[\s\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
-      name = name     .gsub(/\d+#{DEG_C}/, '')  # Remove ' \d+degC' from such as "mPa.s 25degC"
+      name = unit_name.gsub(/\d+#{DEG_C}/, '')  # Remove ' \d+degC' from such as "mPa.s 25degC"
+      name = name     .gsub(/\s+/, '')
+      name = name     .gsub(/[\/()\[\]　（）・薑]/, '')  # '・' は '薑' に変換されている
+
       return MAP_UNIT_IDS[name.downcase]
     end
   end
