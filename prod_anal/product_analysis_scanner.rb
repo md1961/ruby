@@ -796,7 +796,7 @@ class ProductAnalysisScanner < ExcelManipulator
 
     # :allows takes an Array of literal(s) and/or Regexp('s)
     PARAM_DATE       = {:type => :date   , :min => "1900-1-1", :max => "2099-12-31"}
-    PARAM_PERCENTAGE = {:type => :numeric, :min => 0         , :max => 100         , :allows => [/\A\s*Tr\.?\s*\z/]}
+    PARAM_PERCENTAGE = {:type => :numeric, :min => 0         , :max => 100         , :allows => [/\A\s*(Tr\.?|-0-)\s*\z/]}
 
     PARAMETERS = {
       :date_sampled  => PARAM_DATE,

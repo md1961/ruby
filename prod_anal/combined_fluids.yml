@@ -32,3 +32,67 @@
     date_end:
     field_id:   14
 
+  higashi_niigata_base_k_40k_line_gas:
+    id:         5
+    name:       Higashi-Niigata Base K 40K-Line Gas
+    name_zen:   東新潟K基地40Kラインガス
+    date_begin:
+    date_end:
+    field_id:   14
+
+  higashi_niigata_base_k_5k_line_gas:
+    id:         6
+    name:       Higashi-Niigata Base K 5K-Line Gas
+    name_zen:   東新潟K基地5Kラインガス
+    date_begin:
+    date_end:
+    field_id:   14
+
+  nakakido_chuuetsu_inflow_gas:
+    id:         7
+    name:       Nakakido Chuuetsu Inflow Gas
+    name_zen:   中木戸中越受入ガス
+    date_begin:
+    date_end:
+    field_id:   14
+
+  yoshii_nishi_nagaoka_outflow_gas:
+    id:         8
+    name:       Yoshii Nishi-Nagaoka Outflow Gas
+    name_zen:   吉井鉱場西長岡送りガス
+    date_begin:
+    date_end:
+    field_id:   18
+
+  katakai_nishi_nagaoka_outflow_gas:
+    id:         9
+    name:       Katakai Nishi-Nagaoka Outflow Gas
+    name_zen:   片貝鉱場西長岡送りガス
+    date_begin:
+    date_end:
+    field_id:   19
+
+  shiunji_combined_gas:
+    id:         10
+    name:       Shiunji Combined Gas
+    name_zen:   紫雲寺総合ガス
+    date_begin:
+    date_end:
+    field_id:   12
+
+  mitsuke_ngpp_outlet_gas:
+    id:         11
+    name:       Mitsuke NGPP Outlet Gas
+    name_zen:   見附鉱場NGPP出口ガス
+    date_begin:
+    date_end:
+    field_id:   15
+
+  mitsuke_main_line_inflow_gas:
+    id:         12
+    name:       Mitsuke Main Line Inflow Gas
+    name_zen:   見附鉱場幹線受入ガス
+    date_begin:
+    date_end:
+    field_id:   15
+
