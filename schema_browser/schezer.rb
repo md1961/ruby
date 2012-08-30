@@ -2348,6 +2348,8 @@ class Schezer
         end
         private :hash_dependent_sqls
     end
+
+    DBConnectionMysql2 = DBConnectionMysql
 end
 
 
