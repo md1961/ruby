@@ -1,4 +1,7 @@
 #! /bin/bash
+# chkconfig: 2345 99 01
+# description: (describe the process)
+# processname: %appname%
 
 # Please prepare file 'config/unicorn_port' and 'config/unicorn_env'
 # which has only port No. and Rails environment, respectively, in it
