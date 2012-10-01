@@ -55,7 +55,12 @@ start() {
 
 do_start() {
   echo $"Starting $prog ..."
-  su - -c "$START_SCRIPT" $USER
+  if [ "$USER" = "" ]
+  then
+    $START_SCRIPT
+  else
+    su - -c "$START_SCRIPT" $USER
+  fi
 }
 
 stop() {
@@ -64,7 +69,12 @@ stop() {
     echo $"$msg_not_running"
   else
     echo $"Stopping $prog ..."
-    su - -c "$STOP_SCRIPT" $USER
+    if [ "$USER" = "" ]
+    then
+      $STOP_SCRIPT
+    else
+      su - -c "$STOP_SCRIPT" $USER
+    fi
   fi
   return $?
 }
