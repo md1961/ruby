@@ -30,6 +30,7 @@ PORT=$(head -1 $PORT_FILE) || exit
 
 USER_FILE=$RAILS_ROOT_DIR/config/unicorn_user
 USER=$(head -1 $USER_FILE) || exit
+CURRENT_USER=`whoami`
 
 PS_GREP_PATTERN="$PID.*unicorn_rails"
 
@@ -55,7 +56,7 @@ start() {
 
 do_start() {
   echo $"Starting $prog ..."
-  if [ "$USER" = "" ]
+  if [ "$USER" = "" -o "$USER" = "$CURRENT_USER" ]
   then
     $START_SCRIPT
   else
@@ -69,7 +70,7 @@ stop() {
     echo $"$msg_not_running"
   else
     echo $"Stopping $prog ..."
-    if [ "$USER" = "" ]
+    if [ "$USER" = "" -o "$USER" = "$CURRENT_USER" ]
     then
       $STOP_SCRIPT
     else
