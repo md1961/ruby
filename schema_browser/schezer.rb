@@ -1,9 +1,14 @@
 #! /usr/bin/env ruby
 # vi: set fileencoding=utf-8 :
 
-require 'mysql'
-require 'pg'
-require 'sqlite3'
+begin
+  require 'mysql'
+  require 'pg'
+  require 'sqlite3'
+rescue LoadError
+  # Just ignore
+end
+
 require 'yaml'
 require 'optparse'
 require 'rexml/document'
