@@ -3,7 +3,17 @@
 
 begin
   require 'mysql'
+rescue LoadError
+  # Just ignore
+end
+
+begin
   require 'pg'
+rescue LoadError
+  # Just ignore
+end
+
+begin
   require 'sqlite3'
 rescue LoadError
   # Just ignore
