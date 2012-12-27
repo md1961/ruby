@@ -79,7 +79,7 @@ begin
   puts "its displaying name      = " + hl.color(appname_disp, COLOR_FOR_INPUT)
   puts "script name              = " + hl.color(scriptname  , COLOR_FOR_INPUT)
   puts "environment              = " + hl.color(environment , COLOR_FOR_INPUT)
-  puts "port No.                 = " + hl.color(port        , COLOR_FOR_INPUT)
+  puts "port No.                 = " + hl.color(port.to_s   , COLOR_FOR_INPUT)
   puts "username to start server = " + hl.color(username    , COLOR_FOR_INPUT)
 end until hl.agree("OK to proceed(y/n)")
 
