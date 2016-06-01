@@ -1,0 +1,2 @@
+class RaisingHash < Hash
+end
