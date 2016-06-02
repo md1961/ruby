@@ -5,18 +5,34 @@ describe 'RaisingHash' do
   let(:raising_hash) { RaisingHash.new }
 
   describe '#[]' do
-    it 'returns nil to any key' do
-      expect(raising_hash[:any]).to be_nil
+    context 'empty' do
+      it 'raises KeyError to any key' do
+        expect { raising_hash[:any_key] }.to raise_error KeyError
+      end
+    end
+
+    context 'not empty' do
+      before { raising_hash[:key] = :value }
+
+      it 'raises KeyError when non-existing key given' do
+        expect { raising_hash[:key_no] }.to raise_error KeyError
+      end
+
+      it 'returns the corresponding value when an existing key given' do
+        expect(raising_hash[:key]).to be :value
+      end
     end
   end
 
   describe '#[]=' do
+    before { raising_hash[:key] = :value }
+
     it 'returns a given value' do
       expect( raising_hash[:key] = :value ).to eq :value
     end
 
     it 'assigns a given value' do
-      expect { raising_hash[:key] = :value }.to change { raising_hash[:key] }.from(nil).to(:value)
+      expect(raising_hash[:key]).to be :value
     end
   end
 
@@ -186,6 +202,25 @@ describe 'RaisingHash' do
         expect { raising_hash.each { |k, v| accumulator << [k, v] } }.to \
             change { accumulator }.from([]).to(match_array [[:key1, :value1], [:key2, :value2],  [:key3, :value3]]) 
       end
+    end
+  end
+
+  describe '#freeze' do
+    before do
+      raising_hash[:key] = :value
+      raising_hash.freeze
+    end
+
+    it 'is frozen' do
+      expect(raising_hash.frozen?).to be_truthy
+    end
+
+    it 'key deletion raises RuntimeError' do
+      expect { raising_hash.delete(:key) }.to raise_error RuntimeError
+    end
+
+    it 'value change raises RuntimeError' do
+      expect { raising_hash[:key] = :next_value }.to raise_error RuntimeError
     end
   end
 end
