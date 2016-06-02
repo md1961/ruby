@@ -1,12 +1,17 @@
+require 'forwardable'
+
 class RaisingHash
+  extend Forwardable
+
+  def_delegators(:@hash, :[]=, :empty?, :has_key?, :each, :delete, :keys, :values, :size)
 
 =begin
-=end
   Hash.public_instance_methods(false).each do |name|
     define_method(name) do |*args, &block|
       @hash.send(name, *args, &block)
     end
   end
+=end
 
   def initialize
     @hash = {}
