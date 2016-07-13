@@ -23,7 +23,7 @@ DEFAULT_APPNAME  = File.basename(File.expand_path("."))
 DIR_SOURCE = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_unicorn_script')).freeze
 
 DIR_CONFIG = 'config'
-DIR_SCRIPT = 'script'
+DIR_SCRIPT = 'bin'
 
 FILE_UNICORN_CONFIG      = 'unicorn-config.rb'
 FILE_UNICORN_SCRIPT      = 'unicorn.sh'

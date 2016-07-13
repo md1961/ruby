@@ -34,7 +34,7 @@ CURRENT_USER=`whoami`
 
 PS_GREP_PATTERN="$PID.*unicorn_rails"
 
-START_SCRIPT=$RAILS_ROOT_DIR/script/unicorn.sh
+START_SCRIPT=$RAILS_ROOT_DIR/bin/unicorn.sh
 STOP_SCRIPT="kill $PID"
 
 prog="%appname%"
@@ -42,6 +42,12 @@ prog="%appname%"
 config_vars="environment=$ENVIRONMENT, port=$PORT, user=$USER"
 msg_running="$prog is running (PID=$PID, $config_vars)"
 msg_not_running="$prog is out of service ($config_vars)"
+
+
+if [ "$ENVIRONMENT" = "development" ]
+then
+  export WEB_CONCURRENCY=1
+fi
 
 
 start() {
