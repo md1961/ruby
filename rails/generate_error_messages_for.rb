@@ -1,33 +1,17 @@
 #! /bin/env ruby
 
 require 'tempfile'
+require_relative 'rails_util'
 
 
-FILES_FOR_RAILS_DIR = [
-  %w(app models),
-  %w(app controllers),
-  %w(app views),
-  %w(config application.rb),
-  %w(db migrate),
-].freeze
-
-FILES_FOR_RAILS_DIR.map { |array| File.join(*array) }.each do |file|
-  unless File.exist?(file)
-    STDERR.puts "Quit execution as you're not in a Rails root directory."
-    exit
-  end
+unless RailsUtil.rails_dir?
+  STDERR.puts "Quit execution as you're not in a Rails root directory."
+  exit
 end
 
-
-FILES_FOR_GIT_REPOSITORY = [
-  %w(.git config),
-].freeze
-
-FILES_FOR_GIT_REPOSITORY.map { |array| File.join(*array) }.each do |file|
-  unless File.exist?(file)
-    STDERR.puts "Quit execution as you're not in a git repository."
-    exit
-  end
+unless RailsUtil.git_repository?
+  STDERR.puts "Quit execution as you're not in a git repository."
+  exit
 end
 
 
