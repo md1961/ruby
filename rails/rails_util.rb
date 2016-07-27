@@ -7,7 +7,6 @@ module RailsUtil
       %w(app controllers),
       %w(app views),
       %w(config application.rb),
-      %w(db migrate),
     ].freeze
 
     def rails_dir?
