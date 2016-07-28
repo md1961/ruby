@@ -1,0 +1,23 @@
+.table_base {
+  background-color: #FFFFFF;
+  border: 2px black solid;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.table_base th {
+  font-weight: normal;
+  color: white;
+  background-color: #7F7F7F;
+  padding: 0px 4px 0px;
+  border: 1px black solid;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.table_base td {
+  padding: 0px 4px 0px;
+  border: 1px black solid;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
