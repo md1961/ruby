@@ -130,3 +130,8 @@ FileUtils.cp(File.join(DIR_SOURCE, 'table_base.css'), File.join(%w(app assets st
 
 system(File.join(DIR_BASE, 'generate_error_messages_for.rb'))
 
+
+# Configure translation for :ja
+system(%Q(sed -i -e "s/^\\(  *\\)# \\(config.i18n.default_locale = \\):de/\\1\\2:ja/" config/application.rb))
+system('wget https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/ja.yml -P config/locales/ --no-check-certificate')
+
