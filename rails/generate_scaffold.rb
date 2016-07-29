@@ -23,7 +23,10 @@ if ARGV.size <= 0
   exit
 end
 
-model_name = ARGV.first
+
+model_name = ARGV.first.singularize.underscore
+attribute_names = ARGV[1..-1].map { |x| x.split(':').first }
+
 
 DIR_BASE = File.expand_path(File.dirname(__FILE__)).freeze
 DIR_SOURCE = File.join(DIR_BASE, 'files_for_generate_scaffold').freeze
@@ -118,7 +121,7 @@ system('rake db:migrate')
 
 # Add root route
 ROUTE_FILE = File.join(%w(config routes.rb))
-system(%Q(sed -i -e "s/^  # root 'welcome#/  root '#{model_name.underscore.pluralize}#/" #{ROUTE_FILE}))
+system(%Q(sed -i -e "s/^  # root 'welcome#/  root '#{model_name.pluralize}#/" #{ROUTE_FILE}))
 
 
 # Copy table_base.css
@@ -134,4 +137,32 @@ system(File.join(DIR_BASE, 'generate_error_messages_for.rb'))
 # Configure translation for :ja
 system(%Q(sed -i -e "s/^\\(  *\\)# \\(config.i18n.default_locale = \\):de/\\1\\2:ja/" config/application.rb))
 system('wget https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/ja.yml -P config/locales/ --no-check-certificate')
+
+target_file = File.join(DIR_CONFIG, File.join(%w(locales ja.yml)))
+f_tmp = Tempfile.open('config-ja.yml')
+indent = ' ' * 2
+File.open(target_file, 'r') do |f|
+  f.each do |line|
+    f_tmp.write line
+    if line =~ /\Aja:\s*\z/
+      f_tmp.write %Q(#{indent * 1}#{model_name.pluralize}:\n)
+      f_tmp.write %Q(#{indent * 2}index:\n)
+      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の一覧"\n)
+      f_tmp.write %Q(#{indent * 2}show:\n)
+      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の詳細"\n)
+    elsif line =~ /\A(\s+)activerecord:\s*\z/
+      indent_ar = Regexp.last_match(1)
+      f_tmp.write %Q(#{indent_ar}#{indent * 1}models:\n)
+      f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}: "#{model_name.camelize}"\n)
+      f_tmp.write %Q(#{indent_ar}#{indent * 1}attributes:\n)
+      f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}:\n)
+      attribute_names.each do |attr_name|
+        f_tmp.write %Q(#{indent_ar}#{indent * 3}#{attr_name}: "#{attr_name.camelize}"\n)
+      end
+    end
+  end
+end
+f_tmp.close
+
+FileUtils.cp(f_tmp.path, target_file)
 

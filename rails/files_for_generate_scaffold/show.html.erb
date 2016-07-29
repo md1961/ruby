@@ -1,11 +1,11 @@
-<h1>Showing <%= singular_table_name.titleize %></h1>
+<h1><%%= t(".page_title") % {model_name: <%= singular_table_name.camelize %>.model_name.human} %></h1>
 
 <p id="notice"><%%= notice %></p>
 
 <table class="table_base">
 <% attributes.reject(&:password_digest?).each do |attribute| -%>
   <tr>
-    <th><%= attribute.human_name %>:</th>
+    <th><%%= <%= singular_table_name.camelize %>.human_attribute_name(:<%= attribute.name %>) %></th>
     <td><%%= @<%= singular_table_name %>.<%= attribute.name %> %></td>
   </tr>
 <% end -%>
