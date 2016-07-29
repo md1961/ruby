@@ -36,6 +36,12 @@ VIMRC_FILENAME = '.vimrc'.freeze
 FileUtils.cp(File.join(DIR_SOURCE, VIMRC_FILENAME), '.') unless File.exist?(VIMRC_FILENAME)
 
 
+# Add Gemfile entries for Rspec
+
+system("cat #{File.join(DIR_SOURCE, 'Gemfile_for_rspec')} >> Gemfile")
+system('bundle install')
+
+
 # Add generator configurations
 
 DIR_CONFIG = 'config'.freeze
