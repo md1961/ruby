@@ -1,10 +1,13 @@
 #! /bin/env ruby
 
 require 'tempfile'
-require_relative 'rails_util'
+require 'optparse'
+require 'yaml'
 
 require 'active_support'
 require 'active_support/core_ext'
+
+require_relative 'rails_util'
 
 
 unless RailsUtil.rails_dir?
@@ -19,10 +22,22 @@ end
 
 if ARGV.size <= 0
   STDERR.puts "Specify at least model name."
-  STDERR.puts "Usage: #{File.basename $0} model_name [field[:type][:index] field[:type][:index]]"
+  STDERR.puts "Usage: #{File.basename $0} [-f model_data_file] model_name [field[:type][:index] field[:type][:index]]"
   exit
 end
 
+
+opt = OptionParser.new
+model_data_file = nil
+opt.on('-f model_data_file') { |v| model_data_file = v }
+opt.parse!(ARGV)
+
+h_model_data = {}
+if model_data_file
+  open(model_data_file, 'r') do |f|
+    h_model_data = YAML.load_file(f)
+  end
+end
 
 model_name = ARGV.first.singularize.underscore
 attribute_names = ARGV[1..-1].map { |x| x.split(':').first }
@@ -153,11 +168,13 @@ File.open(target_file, 'r') do |f|
     elsif line =~ /\A(\s+)activerecord:\s*\z/
       indent_ar = Regexp.last_match(1)
       f_tmp.write %Q(#{indent_ar}#{indent * 1}models:\n)
-      f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}: "#{model_name.camelize}"\n)
+      t_model_name = h_model_data[:t_model] || model_name.camelize
+      f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}: "#{t_model_name}"\n)
       f_tmp.write %Q(#{indent_ar}#{indent * 1}attributes:\n)
       f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}:\n)
-      attribute_names.each do |attr_name|
-        f_tmp.write %Q(#{indent_ar}#{indent * 3}#{attr_name}: "#{attr_name.camelize}"\n)
+      attribute_names.each_with_index do |attr_name, index|
+        t_attr_name = h_model_data[:t_attrs].try(:[], index) || attr_name.camelize
+        f_tmp.write %Q(#{indent_ar}#{indent * 3}#{attr_name}: "#{t_attr_name}"\n)
       end
     end
   end
