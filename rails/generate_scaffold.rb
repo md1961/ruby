@@ -25,7 +25,8 @@ end
 
 model_name = ARGV.first
 
-DIR_SOURCE = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_generate_scaffold')).freeze
+DIR_BASE = File.expand_path(File.dirname(__FILE__)).freeze
+DIR_SOURCE = File.join(DIR_BASE, 'files_for_generate_scaffold').freeze
 
 
 # Copy .vimrc
@@ -81,8 +82,9 @@ end
 DIR_SCAFFOLD_TEMPLATE = 'lib/templates/erb/scaffold'.freeze
 TEMPLATE_INDEX_FILENAME = 'index.html.erb'.freeze
 TEMPLATE_SHOW_FILENAME  =  'show.html.erb'.freeze
+TEMPLATE_FORM_FILENAME  = '_form.html.erb'.freeze
 
-[TEMPLATE_INDEX_FILENAME, TEMPLATE_SHOW_FILENAME].each do |template_filename|
+[TEMPLATE_INDEX_FILENAME, TEMPLATE_SHOW_FILENAME, TEMPLATE_FORM_FILENAME].each do |template_filename|
   original_file = File.join(DIR_SOURCE, template_filename + '.orig')
   current_file  = File.join(DIR_SCAFFOLD_TEMPLATE, template_filename)
   unless FileUtils.compare_file(original_file, current_file)
@@ -95,6 +97,7 @@ end
 
 FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_INDEX_FILENAME), DIR_SCAFFOLD_TEMPLATE)
 FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_SHOW_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
+FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_FORM_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
 
 
 # Remove gem 'jbuilder'
@@ -115,4 +118,9 @@ system(%Q(sed -i -e "s/^  # root 'welcome#/  root '#{model_name.underscore.plura
 # Copy table_base.css
 
 FileUtils.cp(File.join(DIR_SOURCE, 'table_base.css'), File.join(%w(app assets stylesheets)))
+
+
+# Add helper error_messages_for()
+
+system(File.join(DIR_BASE, 'generate_error_messages_for.rb'))
 
