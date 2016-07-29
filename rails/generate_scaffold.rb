@@ -1,6 +1,6 @@
 #! /bin/env ruby
 
-require 'fileutils'
+require 'tempfile'
 require_relative 'rails_util'
 
 require 'active_support'
@@ -33,6 +33,35 @@ DIR_SOURCE = File.expand_path(File.join(File.dirname(__FILE__), 'files_for_gener
 VIMRC_FILENAME = '.vimrc'.freeze
 
 FileUtils.cp(File.join(DIR_SOURCE, VIMRC_FILENAME), '.') unless File.exist?(VIMRC_FILENAME)
+
+
+# Add generator configurations
+
+DIR_CONFIG = 'config'.freeze
+TARGET_CONFIG_FILENAME = 'application.rb'.freeze
+GENERATOR_CONFIG = 'generator_config.rb'.freeze
+
+target_file = File.join(DIR_CONFIG, TARGET_CONFIG_FILENAME)
+f_tmp = Tempfile.open(TARGET_CONFIG_FILENAME)
+indent = ''
+File.open(target_file, 'r') do |f|
+  f.each do |line|
+    if line =~ /\A(\s*)class Application/
+      indent = Regexp.last_match(1)
+    elsif line =~ /\A#{indent}end\s*\z/
+      File.open(File.join(DIR_SOURCE, GENERATOR_CONFIG)) do |f2|
+        f2.each do |line2|
+          f_tmp.write indent unless line2 == "\n"
+          f_tmp.write line2
+        end
+      end
+    end
+    f_tmp.write line
+  end
+end
+f_tmp.close
+
+FileUtils.cp(f_tmp.path, target_file)
 
 
 # Copy scaffold templates by rake
