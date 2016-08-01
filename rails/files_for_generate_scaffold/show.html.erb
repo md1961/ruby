@@ -13,5 +13,5 @@
 
 <br>
 
-<%%= link_to 'Edit', edit_<%= singular_table_name %>_path(@<%= singular_table_name %>) %> |
-<%%= link_to 'Back', <%= index_helper %>_path %>
+<%%= link_to t("link.edit"), edit_<%= singular_table_name %>_path(@<%= singular_table_name %>) %> |
+<%%= link_to t("link.back"), <%= index_helper %>_path %>

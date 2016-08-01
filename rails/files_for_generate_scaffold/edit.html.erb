@@ -2,5 +2,5 @@
 
 <%%= render 'form' %>
 
-<%%= link_to 'Show', @<%= singular_table_name %> %> |
-<%%= link_to 'Back', <%= index_helper %>_path %>
+<%%= link_to t("link.show"), @<%= singular_table_name %> %> |
+<%%= link_to t("link.cancel"), <%= index_helper %>_path %>

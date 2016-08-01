@@ -190,6 +190,8 @@ system(File.join(DIR_SCRIPT_BASE, 'generate_error_messages_for.rb'))
 system(%Q(sed -i -e "s/^\\(  *\\)# \\(config.i18n.default_locale = \\):de/\\1\\2:ja/" config/application.rb))
 system('wget https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/ja.yml -P config/locales/ --no-check-certificate')
 
+t_model_name = h_model_data[:t_model] || model_name.camelize
+
 target_file = File.join(DIR_CONFIG, File.join(%w(locales ja.yml)))
 f_tmp = Tempfile.open('config-ja.yml')
 indent = ' ' * 2
@@ -206,10 +208,21 @@ File.open(target_file, 'r') do |f|
       f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の新規作成"\n)
       f_tmp.write %Q(#{indent * 2}edit:\n)
       f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の編集"\n)
+
+      f_tmp.write %Q(#{indent * 1}link:\n)
+      f_tmp.write %Q(#{indent * 2}cancel: "キャンセル"\n)
+      f_tmp.write %Q(#{indent * 2}back: "戻る"\n)
+      f_tmp.write %Q(#{indent * 2}show: "詳細"\n)
+      f_tmp.write %Q(#{indent * 2}new: "新規作成"\n)
+      f_tmp.write %Q(#{indent * 2}edit: "編集"\n)
+      f_tmp.write %Q(#{indent * 2}destroy: "削除"\n)
+
+      f_tmp.write %Q(#{indent * 1}confirm:\n)
+      f_tmp.write %Q(#{indent * 2}#{model_name}:\n)
+      f_tmp.write %Q(#{indent * 3}destroy: "#{t_model_name}「%{#{model_name}}」を削除してよろしいですか？"\n)
     elsif line =~ /\A(\s+)activerecord:\s*\z/
       indent_ar = Regexp.last_match(1)
       f_tmp.write %Q(#{indent_ar}#{indent * 1}models:\n)
-      t_model_name = h_model_data[:t_model] || model_name.camelize
       f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}: "#{t_model_name}"\n)
       f_tmp.write %Q(#{indent_ar}#{indent * 1}attributes:\n)
       f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}:\n)
