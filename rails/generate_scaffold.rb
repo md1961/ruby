@@ -49,6 +49,13 @@ unless h_model_data.key?(:attrs)
   exit
 end
 
+array_of_validates = h_model_data[:validates]
+if array_of_validates && ! array_of_validates.is_a?(Array)
+  STDERR.puts "Specify array of strings eligible for model validates() arguments for :validates"
+  STDERR.puts "('#{array_of_validates}' specified.)"
+  exit
+end
+
 
 model_name = h_model_data[:model].singularize.underscore
 attribute_names = h_model_data[:attrs].map { |x| x.split(':').first }
@@ -202,4 +209,27 @@ end
 f_tmp.close
 
 FileUtils.cp(f_tmp.path, target_file)
+
+
+# Add validations to the model.
+
+if array_of_validates
+  TARGET_MODEL_FILENAME = "#{model_name}.rb".freeze
+
+  target_file = File.join(%w(app models), TARGET_MODEL_FILENAME)
+  f_tmp = Tempfile.open(TARGET_MODEL_FILENAME)
+  File.open(target_file, 'r') do |f|
+    f.each do |line|
+      if line =~ /\Aend\s*\z/
+        array_of_validates.each do |arg|
+          f_tmp.write "  validates #{arg}\n"
+        end
+      end
+      f_tmp.write line
+    end
+  end
+  f_tmp.close
+
+  FileUtils.cp(f_tmp.path, target_file)
+end
 

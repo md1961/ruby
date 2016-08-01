@@ -14,9 +14,9 @@
 - 年齢
 - 男性か
 
-# 
 :validates:
 - ':name, presence: true, uniqueness: true'
+- ':age , presence: true'
 
 :data:
 - - 山田 太郎
