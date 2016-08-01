@@ -225,7 +225,7 @@ f_tmp.close
 FileUtils.cp(f_tmp.path, target_file)
 
 
-# Add validations to the model.
+# Add validations to the model, and to_s() definition if requested.
 
 if array_of_validates
   TARGET_MODEL_FILENAME = "#{model_name}.rb".freeze
@@ -237,6 +237,13 @@ if array_of_validates
       if line =~ /\Aend\s*\z/
         array_of_validates.each do |arg|
           f_tmp.write "  validates #{arg}\n"
+        end
+
+        if h_model_data[:attr_for_to_s]
+          f_tmp.write "\n"
+          f_tmp.write "  def to_s\n"
+          f_tmp.write "    #{h_model_data[:attr_for_to_s]}\n"
+          f_tmp.write "  end\n"
         end
       end
       f_tmp.write line

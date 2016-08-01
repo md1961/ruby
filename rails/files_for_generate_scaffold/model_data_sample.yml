@@ -18,6 +18,8 @@
 - ':name, presence: true, uniqueness: true'
 - ':age , presence: true'
 
+:attr_for_to_s: name
+
 :data:
 - - 山田 太郎
   - 55
