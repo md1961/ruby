@@ -58,7 +58,7 @@ end
 
 
 model_name = h_model_data[:model].singularize.underscore
-attribute_names = h_model_data[:attrs].map { |x| x.split(':').first }
+attr_names = h_model_data[:attrs].map { |x| x.split(':').first }
 
 
 DIR_BASE = File.expand_path(File.dirname(__FILE__)).freeze
@@ -199,7 +199,7 @@ File.open(target_file, 'r') do |f|
       f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}: "#{t_model_name}"\n)
       f_tmp.write %Q(#{indent_ar}#{indent * 1}attributes:\n)
       f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}:\n)
-      attribute_names.each_with_index do |attr_name, index|
+      attr_names.each_with_index do |attr_name, index|
         t_attr_name = h_model_data[:t_attrs].try(:[], index) || attr_name.camelize
         f_tmp.write %Q(#{indent_ar}#{indent * 3}#{attr_name}: "#{t_attr_name}"\n)
       end
@@ -232,4 +232,18 @@ if array_of_validates
 
   FileUtils.cp(f_tmp.path, target_file)
 end
+
+
+# Create seed data and load.
+
+File.open(File.join(%w(db seeds.rb)), 'a') do |f|
+  f.write "\n"
+  f.write "#{model_name.camelize}.create!([\n"
+  h_model_data[:data].each do |values|
+    f.write "  #{Hash[attr_names.zip(values)].symbolize_keys},\n"
+  end
+  f.write "])\n"
+end
+
+system('rake db:seed')
 
