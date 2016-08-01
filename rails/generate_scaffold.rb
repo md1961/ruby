@@ -61,8 +61,8 @@ model_name = h_model_data[:model].singularize.underscore
 attr_names = h_model_data[:attrs].map { |x| x.split(':').first }
 
 
-DIR_BASE = File.expand_path(File.dirname(__FILE__)).freeze
-DIR_SOURCE = File.join(DIR_BASE, 'files_for_generate_scaffold').freeze
+DIR_SCRIPT_BASE = File.expand_path(File.dirname(__FILE__)).freeze
+DIR_SOURCE = File.join(DIR_SCRIPT_BASE, 'files_for_generate_scaffold').freeze
 
 
 # Copy .vimrc
@@ -124,9 +124,17 @@ end
 DIR_SCAFFOLD_TEMPLATE = 'lib/templates/erb/scaffold'.freeze
 TEMPLATE_INDEX_FILENAME = 'index.html.erb'.freeze
 TEMPLATE_SHOW_FILENAME  =  'show.html.erb'.freeze
+TEMPLATE_NEW_FILENAME   =   'new.html.erb'.freeze
+TEMPLATE_EDIT_FILENAME  =  'edit.html.erb'.freeze
 TEMPLATE_FORM_FILENAME  = '_form.html.erb'.freeze
 
-[TEMPLATE_INDEX_FILENAME, TEMPLATE_SHOW_FILENAME, TEMPLATE_FORM_FILENAME].each do |template_filename|
+[
+  TEMPLATE_INDEX_FILENAME, 
+  TEMPLATE_SHOW_FILENAME, 
+  TEMPLATE_NEW_FILENAME,
+  TEMPLATE_EDIT_FILENAME,
+  TEMPLATE_FORM_FILENAME,
+].each do |template_filename|
   original_file = File.join(DIR_SOURCE, template_filename + '.orig')
   current_file  = File.join(DIR_SCAFFOLD_TEMPLATE, template_filename)
   unless FileUtils.compare_file(original_file, current_file)
@@ -139,6 +147,8 @@ end
 
 FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_INDEX_FILENAME), DIR_SCAFFOLD_TEMPLATE)
 FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_SHOW_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
+FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_NEW_FILENAME  ), DIR_SCAFFOLD_TEMPLATE)
+FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_EDIT_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
 FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_FORM_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
 
 
@@ -173,7 +183,7 @@ FileUtils.cp(File.join(DIR_SOURCE, 'table_base.css'), File.join(%w(app assets st
 
 # Add helper error_messages_for()
 
-system(File.join(DIR_BASE, 'generate_error_messages_for.rb'))
+system(File.join(DIR_SCRIPT_BASE, 'generate_error_messages_for.rb'))
 
 
 # Configure translation for :ja
@@ -192,6 +202,10 @@ File.open(target_file, 'r') do |f|
       f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の一覧"\n)
       f_tmp.write %Q(#{indent * 2}show:\n)
       f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の詳細"\n)
+      f_tmp.write %Q(#{indent * 2}new:\n)
+      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の新規作成"\n)
+      f_tmp.write %Q(#{indent * 2}edit:\n)
+      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の編集"\n)
     elsif line =~ /\A(\s+)activerecord:\s*\z/
       indent_ar = Regexp.last_match(1)
       f_tmp.write %Q(#{indent_ar}#{indent * 1}models:\n)

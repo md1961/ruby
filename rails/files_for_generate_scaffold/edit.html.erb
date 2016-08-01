@@ -1,0 +1,6 @@
+<h1><%%= t(".page_title") % {model_name: <%= singular_table_name.camelize %>.model_name.human} %></h1>
+
+<%%= render 'form' %>
+
+<%%= link_to 'Show', @<%= singular_table_name %> %> |
+<%%= link_to 'Back', <%= index_helper %>_path %>
