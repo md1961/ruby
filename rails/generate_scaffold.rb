@@ -1,7 +1,6 @@
 #! /bin/env ruby
 
 require 'tempfile'
-require 'optparse'
 require 'yaml'
 
 require 'active_support'
@@ -20,27 +19,39 @@ unless RailsUtil.git_repository?
   exit
 end
 
-if ARGV.size <= 0
-  STDERR.puts "Specify at least model name."
-  STDERR.puts "Usage: #{File.basename $0} [-f model_data_file] model_name [field[:type][:index] field[:type][:index]]"
+
+if ARGV.size != 1
+  STDERR.puts "Specify only model data file."
+  STDERR.puts "Usage: #{File.basename $0} model_data_file"
   exit
 end
 
 
-opt = OptionParser.new
-model_data_file = nil
-opt.on('-f model_data_file') { |v| model_data_file = v }
-opt.parse!(ARGV)
+model_data_file = ARGV[0]
 
-h_model_data = {}
-if model_data_file
-  open(model_data_file, 'r') do |f|
-    h_model_data = YAML.load_file(f)
-  end
+unless File.exist?(model_data_file)
+  STDERR.puts "Cannot open file '#{model_data_file}'."
+  exit
 end
 
-model_name = ARGV.first.singularize.underscore
-attribute_names = ARGV[1..-1].map { |x| x.split(':').first }
+
+h_model_data = open(model_data_file, 'r') do |f|
+  YAML.load_file(f)
+end
+
+unless h_model_data.key?(:model)
+  STDERR.puts "Cannot find model name with key :model in '#{File.basename(model_data_file)}'."
+  exit
+end
+
+unless h_model_data.key?(:attrs)
+  STDERR.puts "Cannot find attribute name(s) with key :attrs in '#{File.basename(model_data_file)}'."
+  exit
+end
+
+
+model_name = h_model_data[:model].singularize.underscore
+attribute_names = h_model_data[:attrs].map { |x| x.split(':').first }
 
 
 DIR_BASE = File.expand_path(File.dirname(__FILE__)).freeze
@@ -130,7 +141,16 @@ system(%q(sed -i -e "s/^gem 'jbuilder'/# &/" Gemfile))
 
 
 # Generate scaffold
-system("rails generate scaffold #{ARGV.join(' ')}")
+
+SCAFFOLD_GENERATE_COMMAND = "rails generate scaffold #{model_name} #{h_model_data[:attrs].join(' ')}"
+
+is_success = system(SCAFFOLD_GENERATE_COMMAND)
+unless is_success
+  STDERR.puts
+  STDERR.puts "Quit execution as '#{SCAFFOLD_GENERATE_COMMAND}' failed."
+  exit
+end
+
 system('rake db:migrate')
 
 

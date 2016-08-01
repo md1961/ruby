@@ -1,17 +1,30 @@
 ---
-:validates: ":name, presence: true, uniqueness: true"
-:t_model: "従業員"
+
+# Arguments for 'rails generate scaffold' command
+:model: Employee
+:attrs:
+- name
+- age:integer
+- is_male:boolean
+
+# Locale translations
+:t_model: 従業員
 :t_attrs:
-- "氏名"
-- "年齢"
-- "男性か"
+- 氏名
+- 年齢
+- 男性か
+
+# 
+:validates:
+- ':name, presence: true, uniqueness: true'
+
 :data:
-- - "山田 太郎"
+- - 山田 太郎
   - 55
   - true
-- - "田中 幸治"
+- - 田中 幸治
   - 43
   - true
-- - "小林 花子"
+- - 小林 花子
   - 39
   - false
