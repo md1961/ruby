@@ -182,6 +182,7 @@ TRANSLATIONS_FOR_NON_ACTIVERECORD = [
   %Q(  #{model_name.pluralize}:),
   %Q(    index:),
   %Q(      page_title: "%{model_name}の一覧"),
+  %Q(      no_record_exists: "%{model_name}は存在しません。"),
   %Q(    show:),
   %Q(      page_title: "%{model_name}の詳細"),
   %Q(    new:),

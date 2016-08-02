@@ -3,7 +3,7 @@
 <p id="notice"><%%= notice %></p>
 
 <%% if @<%= plural_table_name %>.empty? %>
-  <h3><%%= 'There is no <%= human_name %>' %></h3>
+  <h3><%%= t(".no_record_exists") % {model_name: <%= singular_table_name.camelize %>.model_name.human} %></h3>
 <%% else %>
   <table class="table_base">
     <thead>
