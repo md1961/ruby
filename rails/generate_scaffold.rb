@@ -116,19 +116,9 @@ end
 # Modify scaffold templates
 
 DIR_SCAFFOLD_TEMPLATE = 'lib/templates/erb/scaffold'.freeze
-TEMPLATE_INDEX_FILENAME = 'index.html.erb'.freeze
-TEMPLATE_SHOW_FILENAME  =  'show.html.erb'.freeze
-TEMPLATE_NEW_FILENAME   =   'new.html.erb'.freeze
-TEMPLATE_EDIT_FILENAME  =  'edit.html.erb'.freeze
-TEMPLATE_FORM_FILENAME  = '_form.html.erb'.freeze
-
-[
-  TEMPLATE_INDEX_FILENAME, 
-  TEMPLATE_SHOW_FILENAME, 
-  TEMPLATE_NEW_FILENAME,
-  TEMPLATE_EDIT_FILENAME,
-  TEMPLATE_FORM_FILENAME,
-].each do |template_filename|
+TEMPLATE_FILENAMES = %w(index show new edit _form).map { |x| "#{x}.html.erb".freeze }.freeze
+  
+TEMPLATE_FILENAMES.each do |template_filename|
   original_file = File.join(DIR_SOURCE, template_filename + '.orig')
   current_file  = File.join(DIR_SCAFFOLD_TEMPLATE, template_filename)
   unless FileUtils.compare_file(original_file, current_file)
@@ -139,11 +129,9 @@ TEMPLATE_FORM_FILENAME  = '_form.html.erb'.freeze
   end
 end
 
-FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_INDEX_FILENAME), DIR_SCAFFOLD_TEMPLATE)
-FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_SHOW_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
-FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_NEW_FILENAME  ), DIR_SCAFFOLD_TEMPLATE)
-FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_EDIT_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
-FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_FORM_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
+TEMPLATE_FILENAMES.each do |template_filename|
+  FileUtils.cp(File.join(DIR_SOURCE, template_filename), DIR_SCAFFOLD_TEMPLATE)
+end
 
 
 # Remove gem 'jbuilder', and add Gemfile entries for Rspec
@@ -158,6 +146,7 @@ system('bundle install')
 
 SCAFFOLD_GENERATE_COMMAND = "rails generate scaffold #{model_name} #{h_model_data[:attrs].join(' ')}".freeze
 
+puts "Executing '#{SCAFFOLD_GENERATE_COMMAND}'..."
 is_success = system(SCAFFOLD_GENERATE_COMMAND)
 unless is_success
   STDERR.puts
