@@ -3,30 +3,41 @@
 # Arguments for 'rails generate scaffold' command
 :model: Employee
 :attrs:
-- name
-- age:integer
+- name:uniq
 - is_male:boolean
+- born_on:date
+- age:integer
+- last_logged_in_at:datetime
 
-# Locale translations
+# Locale translations in config/locales/ja.yml
 :t_model: 従業員
 :t_attrs:
 - 氏名
+- 男性
+- 生年月日
 - 年齢
-- 男性か
+- 最終ログイン日時
 
+# Used for validates() arguments of the model as they are.
 :validates:
 - ':name, presence: true, uniqueness: true'
 - ':age , presence: true'
 
+# (to_s() of the model is used for confirmation message before destroy.)
 :attr_for_to_s: name
 
+# Used for db/seeds.rb
 :data:
 - - 山田 太郎
+  - true
+  - 1961-07-10
   - 55
-  - true
+  - 2016-02-03 09:15
 - - 田中 幸治
-  - 43
   - true
+  - 1973-05-25
+  - 43
 - - 小林 花子
-  - 39
   - false
+  - 1977-12-14
+  - 39

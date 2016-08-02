@@ -274,6 +274,7 @@ File.open(File.join(%w(db seeds.rb)), 'a') do |f|
   f.write "\n"
   f.write "#{model_name.camelize}.create!([\n"
   h_model_data[:data].each do |values|
+    values = values.map { |v| v.is_a?(Date) ? v.strftime('%Y-%m-%d') : v }
     f.write "  #{Hash[attr_names.zip(values)].symbolize_keys},\n"
   end
   f.write "])\n"
