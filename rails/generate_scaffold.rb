@@ -178,49 +178,59 @@ system('wget https://raw.github.com/svenfuchs/rails-i18n/master/rails/locale/ja.
 
 t_model_name = h_model_data[:t_model] || model_name.camelize
 
+TRANSLATIONS_FOR_NON_ACTIVERECORD = [
+  %Q(  #{model_name.pluralize}:),
+  %Q(    index:),
+  %Q(      page_title: "%{model_name}の一覧"),
+  %Q(    show:),
+  %Q(      page_title: "%{model_name}の詳細"),
+  %Q(    new:),
+  %Q(      page_title: "%{model_name}の新規作成"),
+  %Q(    create:),
+  %Q(      notice: "%{model_name}を新規に作成しました"),
+  %Q(    edit:),
+  %Q(      page_title: "%{model_name}の編集"),
+  %Q(    update:),
+  %Q(      notice: "%{model_name}を更新しました"),
+  %Q(    destroy:),
+  %Q(      notice: "%{model_name}を削除しました"),
+  %Q(  link:),
+  %Q(    cancel: "キャンセル"),
+  %Q(    back: "戻る"),
+  %Q(    show: "詳細"),
+  %Q(    new: "新規作成"),
+  %Q(    edit: "編集"),
+  %Q(    destroy: "削除"),
+  %Q(  confirm:),
+  %Q(    #{model_name}:),
+  %Q(      destroy: "#{t_model_name}「%{#{model_name}}」を削除してよろしいですか？"),
+]
+
+a = [] \
+  << %Q(  models:) \
+  << %Q(    #{model_name}: "#{t_model_name}") \
+  << %Q(  attributes:) \
+  << %Q(    #{model_name}:)
+attr_names.each_with_index do |attr_name, index|
+  t_attr_name = h_model_data[:t_attrs].try(:[], index) || attr_name.camelize
+  a \
+  << %Q(      #{attr_name}: "#{t_attr_name}")
+end
+TRANSLATIONS_FOR_ACTIVERECORD = a.freeze
+
 target_file = File.join(DIR_CONFIG, File.join(%w(locales ja.yml)))
 f_tmp = Tempfile.open('config-ja.yml')
-indent = ' ' * 2
 File.open(target_file, 'r') do |f|
   f.each do |line|
     f_tmp.write line
     if line =~ /\Aja:\s*\z/
-      f_tmp.write %Q(#{indent * 1}#{model_name.pluralize}:\n)
-      f_tmp.write %Q(#{indent * 2}index:\n)
-      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の一覧"\n)
-      f_tmp.write %Q(#{indent * 2}show:\n)
-      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の詳細"\n)
-      f_tmp.write %Q(#{indent * 2}new:\n)
-      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の新規作成"\n)
-      f_tmp.write %Q(#{indent * 2}create:\n)
-      f_tmp.write %Q(#{indent * 3}notice: "%{model_name}を新規に作成しました"\n)
-      f_tmp.write %Q(#{indent * 2}edit:\n)
-      f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の編集"\n)
-      f_tmp.write %Q(#{indent * 2}update:\n)
-      f_tmp.write %Q(#{indent * 3}notice: "%{model_name}を更新しました"\n)
-      f_tmp.write %Q(#{indent * 2}destroy:\n)
-      f_tmp.write %Q(#{indent * 3}notice: "%{model_name}を削除しました"\n)
-
-      f_tmp.write %Q(#{indent * 1}link:\n)
-      f_tmp.write %Q(#{indent * 2}cancel: "キャンセル"\n)
-      f_tmp.write %Q(#{indent * 2}back: "戻る"\n)
-      f_tmp.write %Q(#{indent * 2}show: "詳細"\n)
-      f_tmp.write %Q(#{indent * 2}new: "新規作成"\n)
-      f_tmp.write %Q(#{indent * 2}edit: "編集"\n)
-      f_tmp.write %Q(#{indent * 2}destroy: "削除"\n)
-
-      f_tmp.write %Q(#{indent * 1}confirm:\n)
-      f_tmp.write %Q(#{indent * 2}#{model_name}:\n)
-      f_tmp.write %Q(#{indent * 3}destroy: "#{t_model_name}「%{#{model_name}}」を削除してよろしいですか？"\n)
+      TRANSLATIONS_FOR_NON_ACTIVERECORD.each do |t|
+        f_tmp.puts t
+      end
     elsif line =~ /\A(\s+)activerecord:\s*\z/
       indent_ar = Regexp.last_match(1)
-      f_tmp.write %Q(#{indent_ar}#{indent * 1}models:\n)
-      f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}: "#{t_model_name}"\n)
-      f_tmp.write %Q(#{indent_ar}#{indent * 1}attributes:\n)
-      f_tmp.write %Q(#{indent_ar}#{indent * 2}#{model_name}:\n)
-      attr_names.each_with_index do |attr_name, index|
-        t_attr_name = h_model_data[:t_attrs].try(:[], index) || attr_name.camelize
-        f_tmp.write %Q(#{indent_ar}#{indent * 3}#{attr_name}: "#{t_attr_name}"\n)
+      TRANSLATIONS_FOR_ACTIVERECORD.each do |t|
+        f_tmp.puts indent_ar + t
       end
     end
   end
