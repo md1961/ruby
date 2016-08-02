@@ -206,8 +206,14 @@ File.open(target_file, 'r') do |f|
       f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の詳細"\n)
       f_tmp.write %Q(#{indent * 2}new:\n)
       f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の新規作成"\n)
+      f_tmp.write %Q(#{indent * 2}create:\n)
+      f_tmp.write %Q(#{indent * 3}notice: "%{model_name}を新規に作成しました"\n)
       f_tmp.write %Q(#{indent * 2}edit:\n)
       f_tmp.write %Q(#{indent * 3}page_title: "%{model_name}の編集"\n)
+      f_tmp.write %Q(#{indent * 2}update:\n)
+      f_tmp.write %Q(#{indent * 3}notice: "%{model_name}を更新しました"\n)
+      f_tmp.write %Q(#{indent * 2}destroy:\n)
+      f_tmp.write %Q(#{indent * 3}notice: "%{model_name}を削除しました"\n)
 
       f_tmp.write %Q(#{indent * 1}link:\n)
       f_tmp.write %Q(#{indent * 2}cancel: "キャンセル"\n)
@@ -266,6 +272,12 @@ if array_of_validates
 
   FileUtils.cp(f_tmp.path, target_file)
 end
+
+
+# Modify scaffold controller
+TARGET_CONTROLLER = "app/controllers/#{model_name.pluralize}_controller.rb"
+NOTICE_STATEMENT = %Q(t(".notice") % {model_name: #{model_name.camelize}.model_name.human})
+system(%Q(sed -i -e 's/^\\(.*notice: \\).*$/\\1#{NOTICE_STATEMENT}/' #{TARGET_CONTROLLER}))
 
 
 # Create seed data and load.
