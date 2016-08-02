@@ -72,12 +72,6 @@ VIMRC_FILENAME = '.vimrc'.freeze
 FileUtils.cp(File.join(DIR_SOURCE, VIMRC_FILENAME), '.') unless File.exist?(VIMRC_FILENAME)
 
 
-# Add Gemfile entries for Rspec
-
-system("cat #{File.join(DIR_SOURCE, 'Gemfile_for_rspec')} >> Gemfile")
-system('bundle install')
-
-
 # Add generator configurations
 
 DIR_CONFIG = 'config'.freeze
@@ -152,14 +146,17 @@ FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_EDIT_FILENAME ), DIR_SCAFFOLD_TEMPLA
 FileUtils.cp(File.join(DIR_SOURCE, TEMPLATE_FORM_FILENAME ), DIR_SCAFFOLD_TEMPLATE)
 
 
-# Remove gem 'jbuilder'
+# Remove gem 'jbuilder', and add Gemfile entries for Rspec
 
 system(%q(sed -i -e "s/^gem 'jbuilder'/# &/" Gemfile))
+system("cat #{File.join(DIR_SOURCE, 'Gemfile_for_rspec')} >> Gemfile")
+
+system('bundle install')
 
 
 # Generate scaffold
 
-SCAFFOLD_GENERATE_COMMAND = "rails generate scaffold #{model_name} #{h_model_data[:attrs].join(' ')}"
+SCAFFOLD_GENERATE_COMMAND = "rails generate scaffold #{model_name} #{h_model_data[:attrs].join(' ')}".freeze
 
 is_success = system(SCAFFOLD_GENERATE_COMMAND)
 unless is_success
