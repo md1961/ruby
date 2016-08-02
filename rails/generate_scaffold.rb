@@ -271,10 +271,14 @@ if array_of_validates
 end
 
 
-# Modify scaffold controller
+# Modify model controller;
+# 1)  to use locale translations for notice.
+# 2)  not to use comments.
+
 TARGET_CONTROLLER = "app/controllers/#{model_name.pluralize}_controller.rb"
 NOTICE_STATEMENT = %Q(t(".notice") % {model_name: #{model_name.camelize}.model_name.human})
 system(%Q(sed -i -e 's/^\\(.*notice: \\).*$/\\1#{NOTICE_STATEMENT}/' #{TARGET_CONTROLLER}))
+system(%Q(sed -i -e '/^  *#/d' #{TARGET_CONTROLLER}))
 
 
 # Create seed data and load.
