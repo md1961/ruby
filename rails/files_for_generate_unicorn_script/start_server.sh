@@ -3,8 +3,9 @@
 # description: (describe the process)
 # processname: %appname%
 
-# Please prepare file 'config/unicorn_port' and 'config/unicorn_env'
-# which has only port No. and Rails environment, respectively, in it
+# Please prepare file 'config/unicorn_env', 'config/unicorn_port' and
+# 'config/unicorn_user' which has only Rails environment, port No. and
+# script-executing user in each of them, respectively.
 
 if [ `uname` = "Darwin" ]
 then
