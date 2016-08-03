@@ -59,7 +59,7 @@ end
 
 model_name = h_model_data[:model].singularize.underscore
 attr_names = h_model_data[:attrs].map { |x| x.split(':').first }
-
+uses_secure_password = h_model_data[:attrs].include?('password:digest')
 
 DIR_SCRIPT_BASE = File.expand_path(File.dirname(__FILE__)).freeze
 DIR_SOURCE = File.join(DIR_SCRIPT_BASE, 'files_for_generate_scaffold').freeze
@@ -134,9 +134,13 @@ TEMPLATE_FILENAMES.each do |template_filename|
 end
 
 
-# Remove gem 'jbuilder', and add Gemfile entries for Rspec
+# Modify Gemfile:
+#   Remove gem 'jbuilder'
+#   Add gem 'bcrypt' if attribute password:digest requested
+#   Add Gemfile entries for Rspec
 
 system(%q(sed -i -e "s/^gem 'jbuilder'/# &/" Gemfile))
+system(%q(sed -i -e "s/^# \\(gem 'bcrypt'\\)/\\1/" Gemfile)) if uses_secure_password
 system("cat #{File.join(DIR_SOURCE, 'Gemfile_for_rspec')} >> Gemfile")
 
 system('bundle install')
@@ -216,6 +220,8 @@ attr_names.each_with_index do |attr_name, index|
   t_attr_name = h_model_data[:t_attrs].try(:[], index) || attr_name.camelize
   a \
   << %Q(      #{attr_name}: "#{t_attr_name}")
+  a \
+  << %Q(      password_confirmation: "もう一度#{t_attr_name}") if uses_secure_password && attr_name == 'password'
 end
 TRANSLATIONS_FOR_ACTIVERECORD = a.freeze
 
@@ -283,11 +289,17 @@ system(%Q(sed -i -e '/^  *#/d' #{TARGET_CONTROLLER}))
 
 # Create seed data and load.
 
+if uses_secure_password
+  index_password = attr_names.index('password')
+  attr_names.insert(index_password + 1, 'password_confirmation')
+end
+
 File.open(File.join(%w(db seeds.rb)), 'a') do |f|
   f.write "\n"
   f.write "#{model_name.camelize}.create!([\n"
   h_model_data[:data].each do |values|
     values = values.map { |v| v.is_a?(Date) ? v.strftime('%Y-%m-%d') : v }
+    values.insert(index_password + 1, values[index_password]) if uses_secure_password
     f.write "  #{Hash[attr_names.zip(values)].symbolize_keys},\n"
   end
   f.write "])\n"

@@ -1,0 +1,25 @@
+---
+
+# Arguments for 'rails generate scaffold' command
+:model: User
+:attrs:
+- name:uniq
+- password:digest
+
+# Locale translations in config/locales/ja.yml
+:t_model: ユーザ
+:t_attrs:
+- ユーザ名
+- パスワード
+
+# Used for validates() arguments of the model as they are.
+:validates:
+- ':name, presence: true, uniqueness: true'
+
+# (to_s() of the model is used for confirmation message before destroy.)
+:attr_for_to_s: name
+
+# Used for db/seeds.rb
+:data:
+- - guest
+  - guest
