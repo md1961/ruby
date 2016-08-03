@@ -26,4 +26,8 @@ module RailsUtil
       end
       true
     end
+    
+    def git_repository_clean?
+      `git status` =~ /nothing to commit.*working directory clean\Z/m
+    end
 end

@@ -19,6 +19,11 @@ unless RailsUtil.git_repository?
   exit
 end
 
+unless RailsUtil.git_repository_clean?
+  STDERR.puts "Quit execution as the git repository is not clean."
+  exit
+end
+
 
 if ARGV.size != 1
   STDERR.puts "Specify only model data file."
