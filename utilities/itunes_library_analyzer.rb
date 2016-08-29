@@ -2,7 +2,28 @@
 
 require 'rexml/document'
 
-doc = File.open(ARGV[0]) do |f|
+USAGE = "Usage: #{$0} [column|[data]] LIBRARY.xml"
+
+if ARGV.empty?
+  STDERR.puts USAGE
+  exit
+end
+
+is_retrieving_data = true
+if %w(column data).include?(ARGV[0])
+  is_retrieving_data = ARGV.shift == 'data'
+end
+
+filename = ARGV[0]
+if filename.nil?
+  STDERR.puts USAGE
+  exit
+elsif ! File.exist?(filename)
+  STDERR.puts "Cannot file file '#{filename}'"
+  exit
+end
+
+doc = File.open(filename) do |f|
   REXML::Document.new(f)
 end
 
@@ -90,7 +111,7 @@ COLUMN_NAMES_AND_TYPES = [
   'Library Folder Count:integer',
 ]
 
-if true
+if is_retrieving_data
   column_names = COLUMN_NAMES_AND_TYPES.map { |x| x.split(':').first }
   puts (%w(id) + column_names + %w(created_at updated_at)).map { |x| x.downcase.gsub(/\s+/, '_') }.join("\t")
 
@@ -105,9 +126,7 @@ if true
     values << now << now
     puts values.join("\t")
   end
-end
-
-if false
+else
   columns = []
   tracks.each do |track|
     next_columns = track.find_all_children_by_name(:key).map { |e|
@@ -130,10 +149,4 @@ if false
     end
   end
   puts columns.join("\n")
-end
-
-if false
-  puts tracks.map { |e|
-    e.find_child_by_name_and_text(:key, :Album).find_next_sibling_by_name(:string).text
-  }.uniq
 end
