@@ -7,9 +7,9 @@ COMMAND_SCAFFOLD = 'scaffold'.freeze
 COMMAND_DATA     = 'data'    .freeze
 ALL_COMMANDS = [COMMAND_COLUMN, COMMAND_SCAFFOLD, COMMAND_DATA]
 
-USAGE = "Usage: COMMAND column LIBRARY.xml\n" \
+USAGE = "Usage: COMMAND column   LIBRARY.xml\n" \
       + "       COMMAND scaffold COLUMNS.txt\n" \
-      + "       COMMAND [data] COLUMNS.txt LIBRARY.xml"
+      + "       COMMAND [data]   COLUMNS.txt LIBRARY.xml"
 
 if ARGV.empty?
   STDERR.puts USAGE
