@@ -7,7 +7,9 @@ COMMAND_SCAFFOLD = 'scaffold'.freeze
 COMMAND_DATA     = 'data'    .freeze
 ALL_COMMANDS = [COMMAND_COLUMN, COMMAND_SCAFFOLD, COMMAND_DATA]
 
-USAGE = "Usage: #{$0} [column|scaffold|[data]] LIBRARY.xml"
+USAGE = "Usage: COMMAND column LIBRARY.xml\n" \
+      + "       COMMAND scaffold COLUMNS.txt\n" \
+      + "       COMMAND [data] COLUMNS.txt LIBRARY.xml"
 
 if ARGV.empty?
   STDERR.puts USAGE
@@ -19,18 +21,17 @@ if ALL_COMMANDS.include?(ARGV[0])
   command = ARGV.shift
 end
 
-filename = ARGV.shift
-if filename.nil?
-  STDERR.puts USAGE
-  exit
-elsif ! File.exist?(filename)
-  STDERR.puts "Cannot file file '#{filename}'"
-  STDERR.puts USAGE
-  exit
-end
-
-doc = File.open(filename) do |f|
-  REXML::Document.new(f)
+def get_filename
+  filename = ARGV.shift
+  if filename.nil?
+    STDERR.puts USAGE
+    exit
+  elsif ! File.exist?(filename)
+    STDERR.puts "Cannot find file '#{filename}'"
+    STDERR.puts USAGE
+    exit
+  end
+  filename
 end
 
 module REXML::Node
@@ -55,70 +56,22 @@ module REXML::Node
   end
 end
 
-whole_dict = doc.root.find_child_by_name(:dict)
-tracks = whole_dict.find_child_by_name_and_text(:key, :Tracks)
-track_dict = tracks.find_next_sibling_by_name(:dict)
-tracks = track_dict.find_all_children_by_name(:dict)
+if command == COMMAND_DATA || command == COMMAND_SCAFFOLD
+  column_names_and_types = File.binread(get_filename).split("\n")
+end
 
-COLUMN_NAMES_AND_TYPES = [
-  'Track ID:integer',
-  'Name:string',
-  'Artist:string',
-  'Album Artist:string',
-  'Composer:string',
-  'Album:string',
-  'Genre:string',
-  'Kind:string',
-  'Size:integer',
-  'Total Time:integer',
-  'Start Time:integer',
-  'Disc Number:integer',
-  'Disc Count:integer',
-  'Track Number:integer',
-  'Track Count:integer',
-  'Year:integer',
-  'BPM:integer',
-  'Date Modified:date',
-  'Date Added:date',
-  'Bit Rate:integer',
-  'Sample Rate:integer',
-  'Comments:string',
-  'Volume Adjustment:integer',
-  'Play Count:integer',
-  'Play Date:integer',
-  'Play Date UTC:date',
-  'Skip Count:integer',
-  'Skip Date:date',
-  'Release Date:date',
-  'Rating:integer',
-  'Album Rating:integer',
-  'Album Rating Computed:true',
-  'Normalization:integer',
-  'Sort Album Artist:string',
-  'Compilation:true',
-  'Artwork Count:integer',
-  'Sort Artist:string',
-  'Sort Composer:string',
-  'Sort Album:string',
-  'Sort Name:string',
-  'Persistent ID:string',
-  'Disabled:true',
-  'Track Type:string',
-  'Protected:true',
-  'Purchased:true',
-  'Has Video:true',
-  'HD:false',
-  'Video Width:integer',
-  'Video Height:integer',
-  'Music Video:true',
-  'File Type:integer',
-  'Location:string',
-  'File Folder Count:integer',
-  'Library Folder Count:integer',
-]
+if command == COMMAND_COLUMN || command == COMMAND_DATA
+  xml_doc = File.open(get_filename) { |f| REXML::Document.new(f) }
+  whole_dict = xml_doc.root.find_child_by_name(:dict)
+  tracks = whole_dict.find_child_by_name_and_text(:key, :Tracks)
+  track_dict = tracks.find_next_sibling_by_name(:dict)
+  tracks = track_dict.find_all_children_by_name(:dict)
+end
 
-if command == COMMAND_DATA
-  column_names = COLUMN_NAMES_AND_TYPES.map { |x| x.split(':').first }
+if command == COMMAND_SCAFFOLD
+  puts column_names_and_types.map { |c| c.downcase.gsub(/\s+/, '_') }.join(' ')
+elsif command == COMMAND_DATA
+  column_names = column_names_and_types.map { |x| x.split(':').first }
   puts (%w(id) + column_names + %w(created_at updated_at)).map { |x| x.downcase.gsub(/\s+/, '_') }.join("\t")
 
   now = Time.now.strftime('%Y-%m-%d %H:%M:%S')
@@ -156,9 +109,5 @@ else
     end
   end
 
-  if command == COMMAND_COLUMN
-    puts columns.join("\n")
-  else
-    puts columns.map { |c| c.downcase.gsub(/\s+/, '_') }.join(' ')
-  end
+  puts columns.join("\n")
 end
