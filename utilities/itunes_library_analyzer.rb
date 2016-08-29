@@ -86,13 +86,24 @@ end
 if true
   columns = []
   tracks.each do |track|
-    columns |= track.find_all_children_by_name(:key).map { |e|
+    next_columns = track.find_all_children_by_name(:key).map { |e|
       name = e.text
       n = e.next_element
       type = n.name
       value = n.text
       "#{name}:#{type}"
     }
+    new_columns = next_columns - columns
+    new_columns.each do |new_column|
+      index = next_columns.index(new_column)
+      column_before = index == 0 ? nil : next_columns[index - 1]
+      unless column_before
+        columns.unshift(new_column)
+      else
+        index = columns.index(column_before)
+        columns.insert(index + 1, new_column)
+      end
+    end
   end
 end
 puts columns.join("\n")
