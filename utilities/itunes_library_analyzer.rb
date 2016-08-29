@@ -2,24 +2,30 @@
 
 require 'rexml/document'
 
-USAGE = "Usage: #{$0} [column|[data]] LIBRARY.xml"
+COMMAND_COLUMN   = 'column'  .freeze
+COMMAND_SCAFFOLD = 'scaffold'.freeze
+COMMAND_DATA     = 'data'    .freeze
+ALL_COMMANDS = [COMMAND_COLUMN, COMMAND_SCAFFOLD, COMMAND_DATA]
+
+USAGE = "Usage: #{$0} [column|scaffold|[data]] LIBRARY.xml"
 
 if ARGV.empty?
   STDERR.puts USAGE
   exit
 end
 
-is_retrieving_data = true
-if %w(column data).include?(ARGV[0])
-  is_retrieving_data = ARGV.shift == 'data'
+command = COMMAND_DATA
+if ALL_COMMANDS.include?(ARGV[0])
+  command = ARGV.shift
 end
 
-filename = ARGV[0]
+filename = ARGV.shift
 if filename.nil?
   STDERR.puts USAGE
   exit
 elsif ! File.exist?(filename)
   STDERR.puts "Cannot file file '#{filename}'"
+  STDERR.puts USAGE
   exit
 end
 
@@ -111,7 +117,7 @@ COLUMN_NAMES_AND_TYPES = [
   'Library Folder Count:integer',
 ]
 
-if is_retrieving_data
+if command == COMMAND_DATA
   column_names = COLUMN_NAMES_AND_TYPES.map { |x| x.split(':').first }
   puts (%w(id) + column_names + %w(created_at updated_at)).map { |x| x.downcase.gsub(/\s+/, '_') }.join("\t")
 
@@ -133,6 +139,7 @@ else
       name = e.text
       n = e.next_element
       type = n.name
+      type = 'boolean' if %w(true false).include?(type)
       value = n.text
       "#{name}:#{type}"
     }
@@ -148,5 +155,10 @@ else
       end
     end
   end
-  puts columns.join("\n")
+
+  if command == COMMAND_COLUMN
+    puts columns.join("\n")
+  else
+    puts columns.map { |c| c.downcase.gsub(/\s+/, '_') }.join(' ')
+  end
 end
