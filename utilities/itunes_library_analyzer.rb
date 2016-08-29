@@ -37,12 +37,14 @@ COLUMN_NAMES_AND_TYPES = [
   'Track ID:integer',
   'Name:string',
   'Artist:string',
+  'Album Artist:string',
   'Composer:string',
   'Album:string',
   'Genre:string',
   'Kind:string',
   'Size:integer',
   'Total Time:integer',
+  'Start Time:integer',
   'Disc Number:integer',
   'Disc Count:integer',
   'Track Number:integer',
@@ -53,37 +55,59 @@ COLUMN_NAMES_AND_TYPES = [
   'Date Added:date',
   'Bit Rate:integer',
   'Sample Rate:integer',
-#  'Skip Count:integer',
-#  'Skip Date:date',
-#  'Album Rating:integer',
-#  'Album Rating Computed:boolean',
-#  'Normalization:integer',
-#  'Artwork Count:integer',
-#  'Persistent ID:string',
-#  'Track Type:string',
-#  'File Type:integer',
-#  'Location:string',
-#  'File Folder Count:integer',
+  'Comments:string',
+  'Volume Adjustment:integer',
+  'Play Count:integer',
+  'Play Date:integer',
+  'Play Date UTC:date',
+  'Skip Count:integer',
+  'Skip Date:date',
+  'Release Date:date',
+  'Rating:integer',
+  'Album Rating:integer',
+  'Album Rating Computed:true',
+  'Normalization:integer',
+  'Sort Album Artist:string',
+  'Compilation:true',
+  'Artwork Count:integer',
+  'Sort Artist:string',
+  'Sort Composer:string',
+  'Sort Album:string',
+  'Sort Name:string',
+  'Persistent ID:string',
+  'Disabled:true',
+  'Track Type:string',
+  'Protected:true',
+  'Purchased:true',
+  'Has Video:true',
+  'HD:false',
+  'Video Width:integer',
+  'Video Height:integer',
+  'Music Video:true',
+  'File Type:integer',
+  'Location:string',
+  'File Folder Count:integer',
+  'Library Folder Count:integer',
 ]
 
-if false
-  puts COLUMN_NAMES_AND_TYPES.map { |x| x.downcase.gsub(/\s+/, '_') }.join(' ')
-
+if true
   column_names = COLUMN_NAMES_AND_TYPES.map { |x| x.split(':').first }
+  puts (%w(id) + column_names + %w(created_at updated_at)).map { |x| x.downcase.gsub(/\s+/, '_') }.join("\t")
+
   now = Time.now.strftime('%Y-%m-%d %H:%M:%S')
   tracks.each_with_index do |track, index|
     values = column_names.map { |name|
       element = track.find_child_by_name_and_text(:key, name)
       element && element.next_element.text
     }
+    STDERR.puts "#{values.size} columns at line #{index+1}" if values.size != column_names.size
     values.unshift index + 1
     values << now << now
-    STDERR.puts "#{values.size} columns at line #{index+1}" if values.size != 22
     puts values.join("\t")
   end
 end
 
-if true
+if false
   columns = []
   tracks.each do |track|
     next_columns = track.find_all_children_by_name(:key).map { |e|
@@ -105,8 +129,8 @@ if true
       end
     end
   end
+  puts columns.join("\n")
 end
-puts columns.join("\n")
 
 if false
   puts tracks.map { |e|
