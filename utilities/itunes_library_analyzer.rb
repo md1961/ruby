@@ -78,7 +78,16 @@ elsif command == COMMAND_DATA
   tracks.each_with_index do |track, index|
     values = column_names.map { |name|
       element = track.find_child_by_name_and_text(:key, name)
-      element && element.next_element.text
+      if element.nil?
+        nil
+      else
+        value_element = element.next_element
+        if %w(true false).include?(value_element.name)
+          value_element.name
+        else
+          value_element.text
+        end
+      end
     }
     STDERR.puts "#{values.size} columns at line #{index+1}" if values.size != column_names.size
     values.unshift index + 1
