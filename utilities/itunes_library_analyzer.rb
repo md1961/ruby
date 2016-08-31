@@ -11,9 +11,13 @@ USAGE = "Usage: COMMAND column   LIBRARY.xml\n" \
       + "       COMMAND scaffold COLUMNS.txt\n" \
       + "       COMMAND [data]   COLUMNS.txt LIBRARY.xml"
 
-if ARGV.empty?
+def print_usage_and_exit
   STDERR.puts USAGE
   exit
+end
+
+if ARGV.empty?
+  print_usage_and_exit
 end
 
 command = COMMAND_DATA
@@ -24,12 +28,10 @@ end
 def get_filename
   filename = ARGV.shift
   if filename.nil?
-    STDERR.puts USAGE
-    exit
+    print_usage_and_exit
   elsif ! File.exist?(filename)
     STDERR.puts "Cannot find file '#{filename}'"
-    STDERR.puts USAGE
-    exit
+    print_usage_and_exit
   end
   filename
 end
@@ -60,6 +62,24 @@ if command == COMMAND_DATA || command == COMMAND_SCAFFOLD
   column_names_and_types = File.binread(get_filename).split("\n")
 end
 
+=begin
+  ### Target XML format
+  <dict>
+    ...
+    <key>Tracks</key>
+    <dict>
+      <key>1847</key>
+      <dict>
+        <key>Track ID</key><integer>1847</integer>
+        <key>Name</key><string>Johnny Don't Do It</string>
+        <key>Artist</key><string>(ten) 10cc</string>
+        ...
+      </dict>
+      ...
+    </dict>
+    ...
+  </dict>
+=end
 if command == COMMAND_COLUMN || command == COMMAND_DATA
   xml_doc = File.open(get_filename) { |f| REXML::Document.new(f) }
   whole_dict = xml_doc.root.find_child_by_name(:dict)
