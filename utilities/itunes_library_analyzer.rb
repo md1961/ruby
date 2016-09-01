@@ -1,6 +1,6 @@
 #! /bin/env ruby
 
-require 'rexml/document'
+require 'nokogiri'
 
 COMMAND_COLUMN   = 'column'  .freeze
 COMMAND_SCAFFOLD = 'scaffold'.freeze
@@ -36,56 +36,35 @@ def get_filename
   filename
 end
 
-module REXML::Node
-  def find_child_by_name(name)
-    children.find { |n| n.respond_to?(:name) && n.name == name.to_s }
-  end
-
-  def find_child_by_name_and_text(name, text)
-    children.find { |n| n.respond_to?(:name) && n.name == name.to_s && n.text == text.to_s }
-  end
-
-  def find_all_children_by_name(name)
-    children.select { |n| n.respond_to?(:name) && n.name == name.to_s }
-  end
-
-  def find_next_sibling_by_name(name)
-    n = self
-    while n = n.next_sibling_node
-      return n if n.respond_to?(:name) && n.name == name.to_s
-    end
-    nil
-  end
-end
-
 if command == COMMAND_DATA || command == COMMAND_SCAFFOLD
   column_names_and_types = File.binread(get_filename).split("\n")
 end
 
 =begin
   ### Target XML format
-  <dict>
-    ...
-    <key>Tracks</key>
+  <plist>
     <dict>
-      <key>1847</key>
+      ...
+      <key>Tracks</key>
       <dict>
-        <key>Track ID</key><integer>1847</integer>
-        <key>Name</key><string>Johnny Don't Do It</string>
-        <key>Artist</key><string>(ten) 10cc</string>
-        ...
+        <key>1847</key>
+->      <dict>
+->        <key>Track ID</key><integer>1847</integer>
+->        <key>Name</key><string>Johnny Don't Do It</string>
+->        <key>Artist</key><string>(ten) 10cc</string>
+->        ...
+->      </dict>
+->      ...
       </dict>
       ...
     </dict>
-    ...
-  </dict>
+  </plist>
 =end
 if command == COMMAND_COLUMN || command == COMMAND_DATA
-  xml_doc = File.open(get_filename) { |f| REXML::Document.new(f) }
-  whole_dict = xml_doc.root.find_child_by_name(:dict)
-  tracks = whole_dict.find_child_by_name_and_text(:key, :Tracks)
-  track_dict = tracks.find_next_sibling_by_name(:dict)
-  tracks = track_dict.find_all_children_by_name(:dict)
+  xml_doc = File.open(get_filename) { |f| Nokogiri::XML::Document.parse(f) }
+  tracks_key = xml_doc   .xpath("/plist/dict/key[.='Tracks']").first
+  track_dict = tracks_key.xpath('following-sibling::dict'    ).first
+  tracks     = track_dict.xpath('dict')
 end
 
 if command == COMMAND_SCAFFOLD
@@ -97,7 +76,7 @@ elsif command == COMMAND_DATA
   now = Time.now.strftime('%Y-%m-%d %H:%M:%S')
   tracks.each_with_index do |track, index|
     values = column_names.map { |name|
-      element = track.find_child_by_name_and_text(:key, name)
+      element = track.xpath("key[.='#{name}']").first
       if element.nil?
         nil
       else
@@ -117,12 +96,12 @@ elsif command == COMMAND_DATA
 else
   columns = []
   tracks.each do |track|
-    next_columns = track.find_all_children_by_name(:key).map { |e|
-      name = e.text
-      n = e.next_element
-      type = n.name
+    next_columns = track.xpath('key').map { |element|
+      name = element.text
+      value_element = element.next_element
+      type = value_element.name
       type = 'boolean' if %w(true false).include?(type)
-      value = n.text
+      value = value_element.text
       "#{name}:#{type}"
     }
     new_columns = next_columns - columns
