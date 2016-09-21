@@ -52,8 +52,8 @@ end
 remote_repo = hash_remote_repo_to_evacuate_to.keys.first
 remote_url  = hash_remote_repo_to_evacuate_to[remote_repo]
 
-puts "Use remote repository '#{remote_repo}' (#{remote_url}) to evacuate to"
-puts "Branch '\e[33m#{EVACUATION_BRANCH}'\e[0m of both local and remote '#{remote_repo}' will be removed"
+puts "Use remote repository '\e[36m#{remote_repo}\e[0m' (#{remote_url}) to evacuate to"
+puts "Branch '\e[36m#{EVACUATION_BRANCH}\e[0m' of both local and remote '#{remote_repo}' will be removed"
 print "OK to proceed? (y/N) "
 c = STDIN.getc
 unless c == 'y'
