@@ -62,7 +62,7 @@ unless c == 'y'
 end
 
 
-COMMIT_MESSAGE = "(tmp) automated evacuation by git_evacuate.rb".freeze
+COMMIT_MESSAGE = "(tmp) automated evacuation from branch #{current_branch} by git_evacuate.rb".freeze
 
 system("git br -D #{EVACUATION_BRANCH} 2> /dev/null")
 system("git push #{remote_repo} :#{EVACUATION_BRANCH} 2> /dev/null")
