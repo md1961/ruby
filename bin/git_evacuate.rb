@@ -69,7 +69,18 @@ system("git push #{remote_repo} :#{EVACUATION_BRANCH} 2> /dev/null")
 system("git add .")
 system("git commit -m '#{COMMIT_MESSAGE}'")
 system("git checkout -b #{EVACUATION_BRANCH}")
-system("git push #{remote_repo} #{EVACUATION_BRANCH}:#{EVACUATION_BRANCH}")
+unless system("git push #{remote_repo} #{EVACUATION_BRANCH}:#{EVACUATION_BRANCH}")
+  msg = "* ERROR: git push to remote '#{remote_repo}' failed *"
+  hr  = '*' * msg.length
+  spc = '*' + ' ' * (msg.length - 2) + '*'
+  STDERR.print "\e[31m"
+  STDERR.puts  hr
+  STDERR.puts  spc
+  STDERR.puts  msg
+  STDERR.puts  spc
+  STDERR.print hr
+  STDERR.puts  "\e[0m"
+end
 system("git checkout #{current_branch}")
 system("git reset --soft HEAD^")
 system("git reset HEAD")
