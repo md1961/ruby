@@ -4,7 +4,7 @@
 # 端末表示幅を計測するためのスクリプト
 
 if ARGV.size != 1 || (n = ARGV[0].to_i) <= 0
-  $stderr.puts "#{$0}: Specify one positive integer"
+  $stderr.puts "#{$0}: Specify one positive integer close to terminal width"
   exit
 end
 
