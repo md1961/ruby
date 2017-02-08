@@ -24,4 +24,4 @@ loop do
 end
 
 filenames_to_edit = filenames.values_at(*indexes)
-system("vim -p #{filenames_to_edit.join(' ')}")
+system("vim -o #{filenames_to_edit.join(' ')}")
