@@ -11,7 +11,7 @@ end
 filenames = Dir.glob('db/migrate/*.rb').sort
 
 filenames.each.with_index(1) do |filename, index|
-  puts format('%3d: %s', index, filename)
+  puts format('%3d: %s', index, filename.sub(%r!db/migrate/\d+_!, ''))
 end
 
 indexes = []
