@@ -21,8 +21,13 @@ class Brainfuck
   end
 
   def execute
-    while execute_command
-      print "#{@byte_array} " if @debug
+    begin
+      while execute_command
+        print "#{@byte_array}(#{@pointer}) " if @debug
+      end
+    rescue => e
+      STDERR.puts "While executing '#{@code[@cursor_code]}' at #{@cursor_code}, #{@byte_array.inspect}(<- #{@pointer})"
+      raise e
     end
   end
 
@@ -45,7 +50,7 @@ class Brainfuck
       when '.'
         print @byte_array[@pointer].chr
       when ','
-        @byte_array[@pointer] = @input[@cursor_input]
+        @byte_array[@pointer] = @input[@cursor_input].ord
         @cursor_input += 1
       when '['
         if @byte_array[@pointer].zero?
@@ -78,6 +83,8 @@ if __FILE__ == $0
     <++++++++[>--------<-]>---.
   ].join
   input = ''
-  Brainfuck.new(code, input).execute
+  code = %w[,>,< [ > [ >+ >+ << -] >> [- << + >>] <<< -] >>].join
+  input = '45'
+  Brainfuck.new(code, input, debug: true).execute
   puts
 end
