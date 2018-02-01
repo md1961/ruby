@@ -18,15 +18,10 @@ NUM_SEEN_LOOKUP = create_num_seen_lookup
 
 def solve_puzzle(clues)
   heights = Array.new(4) { Array.new(4) { '1234' } }
-
   ALL_SIDES.cycle do |side|
     heights = use_clues_on(side, clues_on(side, clues), heights)
-
-    #print_heights(heights)
-
     break if solved?(heights)
   end
-
   heights.map { |row| row.map(&:to_i) }
 end
 
@@ -47,14 +42,17 @@ def clues_on(side, clues)
   end
 end
 
-  def print_heights(heights, side = nil, clues_for_side = [])
-    puts side.to_s.upcase
-    4.times do |i|
-      puts "#{clues_for_side[i]} : #{heights[i].map { |h| h.center(4) }.join(' ')}"
-    end
+def use_clues_on(side, clues_for_side, heights)
+  rotated_heights = rotate_target_side_to_left(side, heights)
+  rotated_heights.zip(clues_for_side) do |row, clue|
+    remove_possibilities_for(row, clue)
   end
+  remove_unnecessary_posibilities(rotated_heights)
+  confirm_sole_possibility(rotated_heights)
+  restore_rotation(side, rotated_heights)
+end
 
-def remove_possibility_for_row(row, clue)
+def remove_possibilities_for(row, clue)
   return if clue.zero?
   possibles = NUM_SEEN_LOOKUP[clue]
   if possibles.size == 1
@@ -70,98 +68,25 @@ def remove_possibility_for_row(row, clue)
   end
 end
 
-=begin
-2 : [1, 4, 2, 3]
-2 : [1, 4, 3, 2]
-2 : [2, 4, 1, 3]
-2 : [2, 4, 3, 1]
-2 : [3, 4, 1, 2]
-2 : [3, 4, 2, 1]
-2 : [2, 1, 4, 3]
-2 : [3, 1, 4, 2]
-2 : [3, 2, 4, 1]
-2 : [3, 1, 2, 4]
-2 : [3, 2, 1, 4]
-
-3 : [1, 2, 4, 3]
-3 : [1, 3, 4, 2]
-3 : [2, 3, 4, 1]
-3 : [1, 3, 2, 4]
-3 : [2, 1, 3, 4]
-3 : [2, 3, 1, 4]
-=end
-
-def use_clues_on(side, clues_for_side, heights)
-  rotated_heights = rotate_target_side_to_left(side, heights)
-  rotated_heights.zip(clues_for_side) do |row, clue|
-    remove_possibility_for_row(row, clue)
-=begin
-    case clue
-    when 1
-      decide_height('4', row, 0)
-    when 2
-      remove_possibility_for('4', row, 0)
-      if !row[2].index('4') && !row[3].index('4') 
-        decide_height('4', row, 1)
-      elsif row[3] == '4'
-        decide_height('3', row, 0)
-      elsif row[2] == '4' || (!row[0].index('4') && !row[1].index('4'))
-      end
-    when 3
-      remove_possibility_for('34', row, 0)
-      remove_possibility_for( '4', row, 1)
-      if row[3] == '4'
-        if row[2] == '3'
-          decide_height('2', row, 0)
-          decide_height('1', row, 1)
-        elsif !row[2].index('3')
-          decide_height('3', row, 1)
-        end
-      elsif row[2] == '4'
-        max1 = row[1].split('').max
-        remove_possibility_for((max1 .. '3').to_a.join, row, 0)
-      end
-    when 4
-      row = ('1' .. '4').to_a
-    end
-=end
-
-    #print_heights(rotated_heights, side, clues_for_side)
-
-  end
-  remove_unnecessary_posibilities(rotated_heights)
-  confirm_sole_possibility(rotated_heights)
-  restore_rotation(side, rotated_heights)
-end
-
-def decide_height(height, row, index)
-  row[index] = height
-  remove_other_possibilities_than(index, row)
-end
-
-def remove_possibility_for(height, row, index)
+def remove_possibilities_of(height, row, index)
   cell_after = row[index].delete!(height)
-
-  if cell_after && row[index].size == 0
-    raise RuntimeError, "row = #{row.inspect}, index = #{index}, height = #{height}"
-  end
-
-  if cell_after && row[index].size == 1
-    remove_other_possibilities_than(index, row)
-  end
+  raise RuntimeError, "row = #{row.inspect}, index = #{index}, height = #{height}" \
+    if cell_after && row[index].size == 0
+  remove_other_possibilities_than(index, row) if cell_after
 end
 
 def remove_other_possibilities_than(index, row)
+  return if row[index].size != 1
   row.size.times do |i|
     next if i == index
-    remove_possibility_for(row[index], row, i)
+    remove_possibilities_of(row[index], row, i)
   end
 end
 
 def remove_unnecessary_posibilities(heights)
   heights.each do |row|
     row.size.times do |index|
-      remove_other_possibilities_than(index, row) if row[index].size == 1
+      remove_other_possibilities_than(index, row)
     end
   end
 end
@@ -198,6 +123,15 @@ def restore_rotation(side, heights)
     rotate_target_side_to_left(side, heights)
   end
 end
+
+
+  def print_heights(heights, side = nil, clues_for_side = [])
+    puts side.to_s.upcase
+    4.times do |i|
+      puts "#{clues_for_side[i]} : #{heights[i].map { |h| h.center(4) }.join(' ')}"
+    end
+  end
+
 
 # TODO: Replace examples and use TDD development by writing your own tests
 # These are some of the methods available:
