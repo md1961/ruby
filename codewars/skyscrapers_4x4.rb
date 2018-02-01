@@ -4,13 +4,25 @@ EAST  = :east
 WEST  = :west
 ALL_SIDES = [NORTH, EAST, SOUTH, WEST]
 
+def num_seen(row)
+  (1 .. 3).reduce(1) { |num, index|
+    num + (row[index] > row[0, index].max ? 1 : 0)
+  }
+end
+
+def create_num_seen_lookup
+  ('1' .. '4').to_a.permutation.group_by { |row| num_seen(row) }
+end
+
+NUM_SEEN_LOOKUP = create_num_seen_lookup
+
 def solve_puzzle(clues)
   heights = Array.new(4) { Array.new(4) { '1234' } }
 
   ALL_SIDES.cycle do |side|
     heights = use_clues_on(side, clues_on(side, clues), heights)
 
-    print_heights(heights)
+    #print_heights(heights)
 
     break if solved?(heights)
   end
@@ -42,9 +54,48 @@ end
     end
   end
 
+def remove_possibility_for_row(row, clue)
+  return if clue.zero?
+  possibles = NUM_SEEN_LOOKUP[clue]
+  if possibles.size == 1
+    row.size.times { |i| row[i] = possibles.first[i] }
+  else
+    possibles = possibles.find_all { |possible|
+      possible.zip(row).all? { |p, cell| cell.index(p) }
+    }
+    combined_possibles = possibles.reduce([''] * 4) { |result, possible|
+      result.zip(possible).map { |r, p| r + p }
+    }.map { |p| p.chars.uniq.sort.join }
+    row.size.times { |i| row[i] = combined_possibles[i] }
+  end
+end
+
+=begin
+2 : [1, 4, 2, 3]
+2 : [1, 4, 3, 2]
+2 : [2, 4, 1, 3]
+2 : [2, 4, 3, 1]
+2 : [3, 4, 1, 2]
+2 : [3, 4, 2, 1]
+2 : [2, 1, 4, 3]
+2 : [3, 1, 4, 2]
+2 : [3, 2, 4, 1]
+2 : [3, 1, 2, 4]
+2 : [3, 2, 1, 4]
+
+3 : [1, 2, 4, 3]
+3 : [1, 3, 4, 2]
+3 : [2, 3, 4, 1]
+3 : [1, 3, 2, 4]
+3 : [2, 1, 3, 4]
+3 : [2, 3, 1, 4]
+=end
+
 def use_clues_on(side, clues_for_side, heights)
   rotated_heights = rotate_target_side_to_left(side, heights)
-  clues_for_side.zip(rotated_heights) do |clue, row|
+  rotated_heights.zip(clues_for_side) do |row, clue|
+    remove_possibility_for_row(row, clue)
+=begin
     case clue
     when 1
       decide_height('4', row, 0)
@@ -52,8 +103,9 @@ def use_clues_on(side, clues_for_side, heights)
       remove_possibility_for('4', row, 0)
       if !row[2].index('4') && !row[3].index('4') 
         decide_height('4', row, 1)
-      elsif row[2] == '4' || row[3] == '4'
+      elsif row[3] == '4'
         decide_height('3', row, 0)
+      elsif row[2] == '4' || (!row[0].index('4') && !row[1].index('4'))
       end
     when 3
       remove_possibility_for('34', row, 0)
@@ -72,10 +124,13 @@ def use_clues_on(side, clues_for_side, heights)
     when 4
       row = ('1' .. '4').to_a
     end
+=end
 
-    print_heights(rotated_heights, side, clues_for_side)
+    #print_heights(rotated_heights, side, clues_for_side)
 
   end
+  remove_unnecessary_posibilities(rotated_heights)
+  confirm_sole_possibility(rotated_heights)
   restore_rotation(side, rotated_heights)
 end
 
@@ -101,14 +156,24 @@ def remove_other_possibilities_than(index, row)
     next if i == index
     remove_possibility_for(row[index], row, i)
   end
-  confirm_sole_possibility(row)
 end
 
-def confirm_sole_possibility(row)
-  ('1' .. '4').each do |h|
-    if row.one? { |cell| cell.index(h) }
-      i = row.index { |cell| cell.index(h) }
-      row[i] = h
+def remove_unnecessary_posibilities(heights)
+  heights.each do |row|
+    row.size.times do |index|
+      remove_other_possibilities_than(index, row) if row[index].size == 1
+    end
+  end
+end
+
+def confirm_sole_possibility(heights)
+  heights.each do |row|
+    ('1' .. '4').each do |h|
+      if row.one? { |cell| cell.index(h) }
+        index = row.index { |cell| cell.index(h) }
+        row[index] = h
+        remove_other_possibilities_than(index, row)
+      end
     end
   end
 end
@@ -159,7 +224,6 @@ if __FILE__ == $0
       Test.assert_equals(actual, expected)
     end
 
-=begin
     it "can solve 4x4 puzzle 2" do
       clues    = [0, 0, 1, 2,
                   0, 2, 0, 0,
@@ -174,6 +238,5 @@ if __FILE__ == $0
       actual = solve_puzzle(clues)
       Test.assert_equals(actual, expected)
     end
-=end
   end
 end
