@@ -1,3 +1,11 @@
+def describe(target)
+  yield if block_given?
+end
+
+def it(behavior)
+  yield if block_given?
+end
+
 module Test
   module_function
 
