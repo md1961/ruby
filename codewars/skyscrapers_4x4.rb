@@ -1,127 +1,143 @@
-NORTH = :north
-SOUTH = :south
-EAST  = :east
-WEST  = :west
-ALL_SIDES = [NORTH, EAST, SOUTH, WEST]
-
-def num_seen(row)
-  (1 .. 3).reduce(1) { |num, index|
-    num + (row[index] > row[0, index].max ? 1 : 0)
-  }
-end
-
-def create_num_seen_lookup
-  ('1' .. '4').to_a.permutation.group_by { |row| num_seen(row) }
-end
-
-NUM_SEEN_LOOKUP = create_num_seen_lookup
-
 def solve_puzzle(clues)
-  heights = Array.new(4) { Array.new(4) { '1234' } }
-  ALL_SIDES.cycle do |side|
-    heights = use_clues_on(side, clues_on(side, clues), heights)
-    break if solved?(heights)
+  Skyscraper.new(4).solve(clues)
+end
+
+class Skyscraper
+  NORTH = :north
+  SOUTH = :south
+  EAST  = :east
+  WEST  = :west
+  ALL_SIDES = [NORTH, EAST, SOUTH, WEST]
+
+  def initialize(n_grids)
+    @n_grids = n_grids
+    @num_seen_lookup = create_num_seen_lookup
   end
-  heights.map { |row| row.map(&:to_i) }
-end
 
-def solved?(heights)
-  heights.flatten.all? { |h| h.size == 1 }
-end
-
-def clues_on(side, clues)
-  case side
-  when NORTH
-    clues[ 0, 4]        
-  when EAST 
-    clues[ 4, 4]        
-  when SOUTH
-    clues[ 8, 4].reverse
-  when WEST 
-    clues[12, 4].reverse
-  end
-end
-
-def use_clues_on(side, clues_for_side, heights)
-  rotated_heights = rotate_target_side_to_left(side, heights)
-  rotated_heights.zip(clues_for_side) do |row, clue|
-    remove_possibilities_for(row, clue)
-  end
-  remove_unnecessary_posibilities(rotated_heights)
-  confirm_sole_possibility(rotated_heights)
-  restore_rotation(side, rotated_heights)
-end
-
-def remove_possibilities_for(row, clue)
-  return if clue.zero?
-  possibles = NUM_SEEN_LOOKUP[clue]
-  if possibles.size == 1
-    row.size.times { |i| row[i] = possibles.first[i] }
-  else
-    possibles = possibles.find_all { |possible|
-      possible.zip(row).all? { |p, cell| cell.index(p) }
+  def solve(clues)
+    @heights = Array.new(@n_grids) {
+      Array.new(@n_grids) { all_heights }
     }
-    combined_possibles = possibles.reduce([''] * 4) { |result, possible|
-      result.zip(possible).map { |r, p| r + p }
-    }.map { |p| p.chars.uniq.sort.join }
-    row.size.times { |i| row[i] = combined_possibles[i] }
-  end
-end
-
-def remove_possibilities_of(height, row, index)
-  cell_after = row[index].delete!(height)
-  raise RuntimeError, "row = #{row.inspect}, index = #{index}, height = #{height}" \
-    if cell_after && row[index].size == 0
-  remove_other_possibilities_than(index, row) if cell_after
-end
-
-def remove_other_possibilities_than(index, row)
-  return if row[index].size != 1
-  row.size.times do |i|
-    next if i == index
-    remove_possibilities_of(row[index], row, i)
-  end
-end
-
-def remove_unnecessary_posibilities(heights)
-  heights.each do |row|
-    row.size.times do |index|
-      remove_other_possibilities_than(index, row)
+    ALL_SIDES.cycle do |side|
+      use_clues_on(side, clues_on(side, clues))
+      break if solved?
     end
+    @heights.map { |row| row.map(&:to_i) }
   end
-end
 
-def confirm_sole_possibility(heights)
-  heights.each do |row|
-    ('1' .. '4').each do |h|
-      if row.one? { |cell| cell.index(h) }
-        index = row.index { |cell| cell.index(h) }
-        row[index] = h
-        remove_other_possibilities_than(index, row)
+  private
+
+    def all_heights
+      (1 .. @n_grids).to_a.map(&:to_i)
+    end
+
+    def num_seen(row)
+      num_seen_on_front = 1
+      (1 ... @n_grids).reduce(num_seen_on_front) { |num, index|
+        num + (row[index] > row[0, index].max ? 1 : 0)
+      }
+    end
+
+    def create_num_seen_lookup
+      all_heights.permutation.group_by { |row| num_seen(row) }
+    end
+
+    def solved?
+      @heights.flatten.all? { |h| h.size == 1 }
+    end
+
+    def clues_on(side, clues)
+      case side
+      when NORTH
+        clues[@n_grids * 0, @n_grids]        
+      when EAST 
+        clues[@n_grids * 1, @n_grids]        
+      when SOUTH
+        clues[@n_grids * 2, @n_grids].reverse
+      when WEST 
+        clues[@n_grids * 3, @n_grids].reverse
       end
     end
-  end
-end
 
-def rotate_target_side_to_left(side, heights)
-  case side
-  when WEST
-    heights
-  when NORTH
-    heights.transpose
-  when EAST
-    heights.map(&:reverse)
-  when SOUTH
-    heights.transpose.map(&:reverse)
-  end
-end
+    def use_clues_on(side, clues_for_side)
+      rotate_target_side_to_left(side)
+      @heights.zip(clues_for_side) do |row, clue|
+        remove_possibilities_for(row, clue)
+      end
+      remove_unnecessary_posibilities
+      confirm_sole_possibility
+      restore_rotation(side)
+    end
 
-def restore_rotation(side, heights)
-  if side == SOUTH
-    heights.map(&:reverse).transpose
-  else
-    rotate_target_side_to_left(side, heights)
-  end
+    def remove_possibilities_for(row, clue)
+      return if clue.zero?
+      possibles = @num_seen_lookup[clue]
+      if possibles.size == 1
+        row.size.times { |i| row[i] = possibles.first[i] }
+      else
+        possibles = possibles.find_all { |possible|
+          possible.zip(row).all? { |p, cell| cell.index(p) }
+        }
+        combined_possibles = possibles.reduce([''] * @n_grids) { |result, possible|
+          result.zip(possible).map { |r, p| r + p }
+        }.map { |p| p.chars.uniq.sort.join }
+        row.size.times { |i| row[i] = combined_possibles[i] }
+      end
+    end
+
+    def remove_possibility_of(height, row, index)
+      cell_after = row[index].delete!(height)
+      raise RuntimeError, "row = #{row.inspect}, index = #{index}, height = #{height}" \
+        if cell_after && row[index].size == 0
+      remove_other_possibilities_than(index, row) if cell_after
+    end
+
+    def remove_other_possibilities_than(index, row)
+      return if row[index].size != 1
+      row.size.times do |i|
+        next if i == index
+        remove_possibility_of(row[index], row, i)
+      end
+    end
+
+    def remove_unnecessary_posibilities
+      @heights.each do |row|
+        row.size.times do |index|
+          remove_other_possibilities_than(index, row)
+        end
+      end
+    end
+
+    def confirm_sole_possibility
+      @heights.each do |row|
+        all_heights.each do |h|
+          if row.one? { |cell| cell.index(h) }
+            index = row.index { |cell| cell.index(h) }
+            row[index] = h
+            remove_other_possibilities_than(index, row)
+          end
+        end
+      end
+    end
+
+    def rotate_target_side_to_left(side)
+      case side
+      when NORTH
+        @heights = @heights.transpose
+      when EAST
+        @heights = @heights.map(&:reverse)
+      when SOUTH
+        @heights = @heights.transpose.map(&:reverse)
+      end
+    end
+
+    def restore_rotation(side)
+      if side == SOUTH
+        @heights = @heights.map(&:reverse).transpose
+      else
+        rotate_target_side_to_left(side)
+      end
+    end
 end
 
 
