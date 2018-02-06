@@ -35,6 +35,14 @@ class Compiler
 
   private
 
+    def operator?(h_ast)
+      h_ast && %w[+ - * /].include?(h_ast['op'])
+    end
+
+    def immediate?(h_ast)
+      h_ast && h_ast['op'] == 'imm'
+    end
+
     def reduce_constant_expression(h_ast)
       reduce_constant_expression(h_ast['a']) if h_ast.key?('a')
       reduce_constant_expression(h_ast['b']) if h_ast.key?('b')
@@ -56,14 +64,6 @@ class Compiler
         h_ast.delete('a')
         h_ast.delete('b')
       end
-    end
-
-    def operator?(h_ast)
-      h_ast && %w[+ - * /].include?(h_ast['op'])
-    end
-
-    def immediate?(h_ast)
-      h_ast && h_ast['op'] == 'imm'
     end
 
     def assembly_parse(h_ast)
@@ -238,12 +238,37 @@ class Compiler
       end
     end
   end
+end
 
-  private
 
-    def variable?(token)
-      token =~ /\A[A-Za-z]+\z/
+def simulate(instructions, argv)
+  r0, r1 = 0, 0
+  stack = []
+  instructions.each do |ins|
+    ins, n = ins.split
+    n = n&.to_i
+    case ins
+    when 'IM'
+      r0 = n
+    when 'AR'
+      r0 = argv[n]
+    when 'SW'
+      r0, r1 = r1, r0
+    when 'PU'
+      stack.push(r0)
+    when 'PO'
+      r0 = stack.pop
+    when 'AD'
+      r0 += r1
+    when 'SU'
+      r0 -= r1
+    when 'MU'
+      r0 *= r1
+    when 'DI'
+      r0 /= r1
     end
+  end
+  r0
 end
 
 
@@ -319,4 +344,11 @@ if __FILE__ == $0
   expected = [ "IM 10", "SW", "AR 0", "AD" ]
   actual = c.pass3(ast.gsub("'", '"'))
   Test.assert_equals(actual, expected)
+
+  program = '[x] x + 2 * 5'
+  expected = [ "IM 10", "SW", "AR 0", "AD" ]
+  actual = c.compile(program)
+  Test.assert_equals(actual, expected)
+
+  #puts simulate([ "IM 10", "SW", "AR 0", "AD" ], [13])
 end
