@@ -96,8 +96,8 @@ class Compiler
 
     def initialize(tokens)
       args, exp_tokens = split_tokens(tokens)
-      arg_list = ArgList.new(args)
-      @expression = Expression.new(exp_tokens, arg_list)
+      h_arg_list = make_h_arg_list(args)
+      @expression = Expression.new(exp_tokens, h_arg_list)
     end
 
     def parse
@@ -114,22 +114,15 @@ class Compiler
         [args, expressions]
       end
 
-    class ArgList
-
-      def initialize(args)
-        @arg_number = args.map.with_index { |name, number| [name, number] }.to_h
+      def make_h_arg_list(args)
+        args.map.with_index { |name, number| [name, number] }.to_h
       end
-
-      def number_for(name)
-        @arg_number[name]
-      end
-    end
 
     class Expression
 
-      def initialize(tokens, arg_list)
+      def initialize(tokens, h_arg_list)
         @tokens = tokens.map { |value| Token.new(value) }
-        Token.arg_list = arg_list
+        Token.h_arg_list = h_arg_list
       end
 
       def parse
@@ -194,8 +187,8 @@ class Compiler
 
       class Token
 
-        def self.arg_list=(value)
-          @@arg_list = value
+        def self.h_arg_list=(value)
+          @@h_arg_list = value
         end
 
         def initialize(value)
@@ -238,7 +231,7 @@ class Compiler
           if number?
             {op: 'imm', 'n': @value}
           elsif variable?
-            {op: 'arg', 'n': @@arg_list.number_for(@value)}
+            {op: 'arg', 'n': @@h_arg_list[@value]}
           end
         end
 
