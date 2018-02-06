@@ -28,6 +28,9 @@ class Compiler
 
   # Returns assembly instructions
   def pass3(ast)
+    h_ast = JSON.parse(ast)
+    @directives = []
+    assembly_parse(h_ast)
   end
 
   private
@@ -61,6 +64,19 @@ class Compiler
 
     def immediate?(h_ast)
       h_ast && h_ast['op'] == 'imm'
+    end
+
+    def assembly_parse(h_ast)
+      if operator?(h_ast)
+        assembly_parse(h_ast['b'])
+        @directives << 'SW'
+        assembly_parse(h_ast['a'])
+        @directives << {'+' => 'AD', '-' => 'SU', '*' => 'MU', '/' => 'DI'}[h_ast['op']]
+      elsif immediate?(h_ast)
+        @directives << "IM #{h_ast['n']}"
+      else
+        @directives << "AR #{h_ast['n']}"
+      end
     end
 
   class Function
@@ -294,5 +310,13 @@ if __FILE__ == $0
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
   actual = JSON.parse(c.pass2(ast.gsub("'", '"')))
+  Test.assert_equals(actual, expected)
+
+  ast = <<-JSON
+    { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
+                 'b': { 'op': 'imm', 'n': 10 } }
+  JSON
+  expected = [ "IM 10", "SW", "AR 0", "AD" ]
+  actual = c.pass3(ast.gsub("'", '"'))
   Test.assert_equals(actual, expected)
 end
