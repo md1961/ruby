@@ -4,28 +4,64 @@ class Compiler
     pass3(pass2(pass1(program)))
   end
 
+  # Turn a program string into an array of tokens.  Each token
+  # is either '[', ']', '(', ')', '+', '-', '*', '/', a variable
+  # name or a number (as a string)
   def tokenize(program)
-    # Turn a program string into an array of tokens.  Each token
-    # is either '[', ']', '(', ')', '+', '-', '*', '/', a variable
-    # name or a number (as a string)
     program.scan(%r'[-+*/()\[\]]|[A-Za-z]+|\d+').map { |token| /^\d+$/.match(token) ? token.to_i : token }
   end
 
+  # Returns an un-optimized AST
   def pass1(program)
-    # Returns an un-optimized AST
     tokens = tokenize(program)
     function = Function.new(tokens)
-    h = function.parse
-    JSON.dump(h)
+    h_ast = function.parse
+    JSON.dump(h_ast)
   end
 
+  # Returns an AST with constant expressions reduced
   def pass2(ast)
-    # Returns an AST with constant expressions reduced
+    h_ast = JSON.parse(ast)
+    reduce_constant_expression(h_ast)
+    JSON.dump(h_ast)
   end
 
+  # Returns assembly instructions
   def pass3(ast)
-    # Returns assembly instructions
   end
+
+  private
+
+    def reduce_constant_expression(h_ast)
+      reduce_constant_expression(h_ast['a']) if h_ast.key?('a')
+      reduce_constant_expression(h_ast['b']) if h_ast.key?('b')
+      if operator?(h_ast) && immediate?(h_ast['a']) && immediate?(h_ast['b'])
+        a = h_ast['a']['n']
+        b = h_ast['b']['n']
+        h_ast['n'] = \
+          case h_ast['op']
+          when '+'
+            a + b
+          when '-'
+            a - b
+          when '*'
+            a * b
+          when '/'
+            a / b
+          end
+        h_ast['op'] = 'imm'
+        h_ast.delete('a')
+        h_ast.delete('b')
+      end
+    end
+
+    def operator?(h_ast)
+      h_ast && %w[+ - * /].include?(h_ast['op'])
+    end
+
+    def immediate?(h_ast)
+      h_ast && h_ast['op'] == 'imm'
+    end
 
   class Function
 
@@ -233,5 +269,30 @@ if __FILE__ == $0
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
   actual = JSON.parse(c.pass1('[ a b ] a*a + b*b'))
+  Test.assert_equals(actual, expected)
+
+  ast = <<-JSON
+    { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
+                 'b': { 'op': '*', 'a': { 'op': 'imm', 'n': 2 },
+                                   'b': { 'op': 'imm', 'n': 5 } } }
+  JSON
+  expected_in_json = <<-JSON
+    { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
+                 'b': { 'op': 'imm', 'n': 10 } }
+  JSON
+  expected = JSON.parse(expected_in_json.gsub("'", '"'))
+  actual = JSON.parse(c.pass2(ast.gsub("'", '"')))
+  Test.assert_equals(actual, expected)
+
+  ast = <<-JSON
+    { 'op': '/', 'a': { 'op': 'imm', 'n': 12 },
+                 'b': { 'op': '-', 'a': { 'op': 'imm', 'n': 2 },
+                                   'b': { 'op': 'imm', 'n': 5 } } }
+  JSON
+  expected_in_json = <<-JSON
+    { 'op': 'imm', 'n': -4 }
+  JSON
+  expected = JSON.parse(expected_in_json.gsub("'", '"'))
+  actual = JSON.parse(c.pass2(ast.gsub("'", '"')))
   Test.assert_equals(actual, expected)
 end
