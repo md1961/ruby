@@ -66,12 +66,22 @@ class Compiler
       end
     end
 
+    ASSEMBLY_OP_LOOKUP = {'+' => 'AD', '-' => 'SU', '*' => 'MU', '/' => 'DI'}
+
     def assembly_parse(h_ast)
       if operator?(h_ast)
-        assembly_parse(h_ast['b'])
-        @directives << 'SW'
-        assembly_parse(h_ast['a'])
-        @directives << {'+' => 'AD', '-' => 'SU', '*' => 'MU', '/' => 'DI'}[h_ast['op']]
+        if operator?(h_ast['a'])
+          assembly_parse(h_ast['a'])
+          @directives << 'PU'
+          assembly_parse(h_ast['b'])
+          @directives << 'SW'
+          @directives << 'PO'
+        else
+          assembly_parse(h_ast['b'])
+          @directives << 'SW'
+          assembly_parse(h_ast['a'])
+        end
+        @directives << ASSEMBLY_OP_LOOKUP[h_ast['op']]
       elsif immediate?(h_ast)
         @directives << "IM #{h_ast['n']}"
       else
@@ -350,5 +360,7 @@ if __FILE__ == $0
   actual = c.compile(program)
   Test.assert_equals(actual, expected)
 
-  #puts simulate([ "IM 10", "SW", "AR 0", "AD" ], [13])
+  asm = c.compile('[ a b ] a*a + b*b')
+  p asm
+  puts simulate(asm, [3, 5])
 end
