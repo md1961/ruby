@@ -128,13 +128,6 @@ class Compiler
       def parse
         stack = []
         while !@tokens.empty? do
-
-          if false
-            puts stack.map(&:to_s).join(',')
-            puts @tokens.join(',')
-            puts
-          end
-
           token = @tokens.shift
           if token.operand? && stack[-1]&.high_operator?
             stack.push(token)
@@ -244,6 +237,8 @@ class Compiler
 end
 
 
+require 'pry'
+
 def simulate(instructions, argv)
   r0, r1 = 0, 0
   stack = []
@@ -268,14 +263,13 @@ def simulate(instructions, argv)
     when 'MU'
       r0 *= r1
     when 'DI'
-      r0 /= r1
+      r0 /= r1.to_f
     end
   end
   r0
 end
 
-
-require 'pry'
+'"{\"op\":\"/\",\"a\":{\"op\":\"-\",\"a\":{\"op\":\"+\",\"a\":{\"op\":\"*\",\"a\":{\"op\":\"*\",\"a\":{\"op\":\"imm\",\"n\":2},\"b\":{\"op\":\"imm\",\"n\":3}},\"b\":{\"op\":\"arg\",\"n\":0}},\"b\":{\"op\":\"*\",\"a\":{\"op\":\"imm\",\"n\":5},\"b\":{\"op\":\"arg\",\"n\":1}}},\"b\":{\"op\":\"*\",\"a\":{\"op\":\"imm\",\"n\":3},\"b\":{\"op\":\"arg\",\"n\":2}}},\"b\":{\"op\":\"+\",\"a\":{\"op\":\"+\",\"a\":{\"op\":\"imm\",\"n\":1},\"b\":{\"op\":\"imm\",\"n\":3}},\"b\":{\"op\":\"*\",\"a\":{\"op\":\"imm\",\"n\":2},\"b\":{\"op\":\"imm\",\"n\":2}}}}"'
 
 if __FILE__ == $0
   require 'json'
@@ -353,7 +347,12 @@ if __FILE__ == $0
   actual = c.compile(program)
   Test.assert_equals(actual, expected)
 
-  asm = c.compile('[ a b ] a*a + b*b')
+  program = "[ x y z ] ( 2*3*x + 5*y - 3*z ) / (1 + 3 + 2*2)"
+  j = c.pass1(program)
+  puts JSON.pretty_generate(JSON.parse(j))
+  j = c.pass2(j)
+  puts JSON.pretty_generate(JSON.parse(j))
+  asm = c.pass3(j)
   p asm
-  puts simulate(asm, [3, 5])
+  puts simulate(asm, [1,2,3])
 end
