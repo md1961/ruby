@@ -74,14 +74,19 @@ class Compiler
         stack = []
         while !@tokens.empty? do
 
-          puts stack.map(&:to_s).join(',')
-          puts @tokens.join(',')
-          puts
+          if false
+            puts stack.map(&:to_s).join(',')
+            puts @tokens.join(',')
+            puts
+          end
 
           token = @tokens.shift
-          if @tokens.empty? || (token.operand? && stack[-1].high_operator?)
+          if token.operand? && stack[-1]&.high_operator?
             stack.push(token)
             operate_last_in(stack)
+          elsif token.low_operator?
+            operate_last_in(stack)
+            stack.push(token)
           elsif token.right_paren?
             while !stack[-2].left_paren? do
               operate_last_in(stack)
@@ -93,6 +98,7 @@ class Compiler
             stack.push(token)
           end
         end
+        operate_last_in(stack)
         stack.pop.repr
       end
 
@@ -196,6 +202,20 @@ if __FILE__ == $0
   require_relative 'test'
 
   c = Compiler.new
+
+  #puts JSON.pretty_generate(JSON.parse(c.pass1("[a b] ((a + b) * 5) / (a - b)")))
+  #exit
+
+
+  expected_in_json = <<-JSON
+    { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
+                 'b': { 'op': '*', 'a': { 'op': 'imm', 'n': 2 },
+                                   'b': { 'op': 'imm', 'n': 5 } } }
+  JSON
+  expected = JSON.parse(expected_in_json.gsub("'", '"'))
+  actual = JSON.parse(c.pass1('[ x ] x + 2*5'))
+  Test.assert_equals(actual, expected)
+
   expected_in_json = <<-JSON
     { 'op': '/', 'a': { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
                                    'b': { 'op': 'arg', 'n': 1 } },
@@ -204,5 +224,14 @@ if __FILE__ == $0
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
   actual = JSON.parse(c.pass1('[ x y ] ( x + y ) / 2'))
   Test.assert_equals(actual, expected)
-  #puts c.pass1('[ a b ] a*a + b*b')
+
+  expected_in_json = <<-JSON
+    { 'op': '+', 'a': { 'op': '*', 'a': { 'op': 'arg', 'n': 0 },
+                                   'b': { 'op': 'arg', 'n': 0 } },
+                 'b': { 'op': '*', 'a': { 'op': 'arg', 'n': 1 },
+                                   'b': { 'op': 'arg', 'n': 1 } } }
+  JSON
+  expected = JSON.parse(expected_in_json.gsub("'", '"'))
+  actual = JSON.parse(c.pass1('[ a b ] a*a + b*b'))
+  Test.assert_equals(actual, expected)
 end
