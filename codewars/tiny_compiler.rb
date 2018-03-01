@@ -288,7 +288,7 @@ if __FILE__ == $0
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
   actual = c.pass1('[ x ] x + 2*5')
-  Test.assert_equals(actual, expected)
+  Test.assert_equals(JSON.parse(JSON.dump(actual)), expected)
 
   expected_in_json = <<-JSON
     { 'op': '/', 'a': { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
@@ -297,7 +297,7 @@ if __FILE__ == $0
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
   actual = c.pass1('[ x y ] ( x + y ) / 2')
-  Test.assert_equals(actual, expected)
+  Test.assert_equals(JSON.parse(JSON.dump(actual)), expected)
 
   expected_in_json = <<-JSON
     { 'op': '+', 'a': { 'op': '*', 'a': { 'op': 'arg', 'n': 0 },
@@ -307,7 +307,7 @@ if __FILE__ == $0
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
   actual = c.pass1('[ a b ] a*a + b*b')
-  Test.assert_equals(actual, expected)
+  Test.assert_equals(JSON.parse(JSON.dump(actual)), expected)
 
   ast = <<-JSON
     { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
@@ -319,8 +319,8 @@ if __FILE__ == $0
                  'b': { 'op': 'imm', 'n': 10 } }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = c.pass2(JSON.parse(ast.gsub("'", '"')))
-  Test.assert_equals(actual, expected)
+  actual = c.pass2(JSON.parse(ast.gsub("'", '"'), symbolize_names: true))
+  Test.assert_equals(JSON.parse(JSON.dump(actual)), expected)
 
   ast = <<-JSON
     { 'op': '/', 'a': { 'op': 'imm', 'n': 12 },
@@ -331,15 +331,15 @@ if __FILE__ == $0
     { 'op': 'imm', 'n': -4 }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = c.pass2(JSON.parse(ast.gsub("'", '"')))
-  Test.assert_equals(actual, expected)
+  actual = c.pass2(JSON.parse(ast.gsub("'", '"'), symbolize_names: true))
+  Test.assert_equals(JSON.parse(JSON.dump(actual)), expected)
 
   ast = <<-JSON
     { 'op': '+', 'a': { 'op': 'arg', 'n': 0 },
                  'b': { 'op': 'imm', 'n': 10 } }
   JSON
   expected = [ "IM 10", "SW", "AR 0", "AD" ]
-  actual = c.pass3(ast.gsub("'", '"'))
+  actual = c.pass3(JSON.parse(ast.gsub("'", '"'), symbolize_names: true))
   Test.assert_equals(actual, expected)
 
   program = '[x] x + 2 * 5'
@@ -349,11 +349,7 @@ if __FILE__ == $0
 
   program = "[ x y z ] ( 2*3*x + 5*y - 3*z ) / (1 + 3 + 2*2)"
   h = c.pass1(program)
-  puts JSON.pretty_generate(h)
   h = c.pass2(h)
-  puts JSON.pretty_generate(h)
-  p h
   asm = c.pass3(h)
-  p asm
-  puts simulate(asm, [1,2,3])
+  Test.assert_equals(simulate(asm, [1,2,3]), 0.875)
 end
