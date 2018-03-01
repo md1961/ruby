@@ -20,8 +20,9 @@ class Compiler
 
   # Returns an AST with constant expressions reduced
   def pass2(ast)
-    reduce_constant_expression(ast)
-    ast
+    ast_copied = Marshal.load(Marshal.dump(ast))
+    reduce_constant_expression(ast_copied)
+    ast_copied
   end
 
   # Returns assembly instructions
@@ -319,8 +320,11 @@ if __FILE__ == $0
                  'b': { 'op': 'imm', 'n': 10 } }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = c.pass2(JSON.parse(ast.gsub("'", '"'), symbolize_names: true))
+  h_ast = JSON.parse(ast.gsub("'", '"'), symbolize_names: true)
+  h_ast_orig = Marshal.load(Marshal.dump(h_ast))
+  actual = c.pass2(h_ast)
   Test.assert_equals(JSON.parse(JSON.dump(actual)), expected)
+  Test.assert_equals(h_ast, h_ast_orig)
 
   ast = <<-JSON
     { 'op': '/', 'a': { 'op': 'imm', 'n': 12 },
