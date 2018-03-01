@@ -15,42 +15,40 @@ class Compiler
   def pass1(program)
     tokens = tokenize(program)
     function = Function.new(tokens)
-    h_ast = function.parse
-    JSON.dump(h_ast)
+    function.parse
   end
 
   # Returns an AST with constant expressions reduced
   def pass2(ast)
-    h_ast = JSON.parse(ast)
-    reduce_constant_expression(h_ast)
-    JSON.dump(h_ast)
+    reduce_constant_expression(ast)
+    ast
   end
 
   # Returns assembly instructions
   def pass3(ast)
-    h_ast = JSON.parse(ast)
     @directives = []
-    assembly_parse(h_ast)
+    assembly_parse(ast)
+    @directives
   end
 
   private
 
     def operator?(h_ast)
-      h_ast && %w[+ - * /].include?(h_ast['op'])
+      h_ast && %w[+ - * /].include?(h_ast[:op])
     end
 
     def immediate?(h_ast)
-      h_ast && h_ast['op'] == 'imm'
+      h_ast && h_ast[:op] == 'imm'
     end
 
     def reduce_constant_expression(h_ast)
-      reduce_constant_expression(h_ast['a']) if h_ast.key?('a')
-      reduce_constant_expression(h_ast['b']) if h_ast.key?('b')
-      if operator?(h_ast) && immediate?(h_ast['a']) && immediate?(h_ast['b'])
-        a = h_ast['a']['n']
-        b = h_ast['b']['n']
-        h_ast['n'] = \
-          case h_ast['op']
+      reduce_constant_expression(h_ast[:a]) if h_ast.key?(:a)
+      reduce_constant_expression(h_ast[:b]) if h_ast.key?(:b)
+      if operator?(h_ast) && immediate?(h_ast[:a]) && immediate?(h_ast[:b])
+        a = h_ast[:a][:n]
+        b = h_ast[:b][:n]
+        h_ast[:n] = \
+          case h_ast[:op]
           when '+'
             a + b
           when '-'
@@ -58,11 +56,11 @@ class Compiler
           when '*'
             a * b
           when '/'
-            a / b
+            a.to_f / b
           end
-        h_ast['op'] = 'imm'
-        h_ast.delete('a')
-        h_ast.delete('b')
+        h_ast[:op] = 'imm'
+        h_ast.delete(:a)
+        h_ast.delete(:b)
       end
     end
 
@@ -70,22 +68,22 @@ class Compiler
 
     def assembly_parse(h_ast)
       if operator?(h_ast)
-        if operator?(h_ast['a'])
-          assembly_parse(h_ast['a'])
+        if operator?(h_ast[:a])
+          assembly_parse(h_ast[:a])
           @directives << 'PU'
-          assembly_parse(h_ast['b'])
+          assembly_parse(h_ast[:b])
           @directives << 'SW'
           @directives << 'PO'
         else
-          assembly_parse(h_ast['b'])
+          assembly_parse(h_ast[:b])
           @directives << 'SW'
-          assembly_parse(h_ast['a'])
+          assembly_parse(h_ast[:a])
         end
-        @directives << ASSEMBLY_OP_LOOKUP[h_ast['op']]
+        @directives << ASSEMBLY_OP_LOOKUP[h_ast[:op]]
       elsif immediate?(h_ast)
-        @directives << "IM #{h_ast['n']}"
+        @directives << "IM #{h_ast[:n]}"
       else
-        @directives << "AR #{h_ast['n']}"
+        @directives << "AR #{h_ast[:n]}"
       end
     end
 
@@ -164,7 +162,7 @@ class Compiler
       class Operation
 
         def initialize(operator, operand0, operand1)
-          @operator = operator
+          @operator = operator.repr
           @operand0 = operand0.repr
           @operand1 = operand1.repr
         end
@@ -221,7 +219,9 @@ class Compiler
         end
 
         def repr
-          if number?
+          if operator?
+            @value
+          elsif number?
             {op: 'imm', 'n': @value}
           elsif variable?
             {op: 'arg', 'n': @@h_arg_list[@value]}
@@ -287,7 +287,7 @@ if __FILE__ == $0
                                    'b': { 'op': 'imm', 'n': 5 } } }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = JSON.parse(c.pass1('[ x ] x + 2*5'))
+  actual = c.pass1('[ x ] x + 2*5')
   Test.assert_equals(actual, expected)
 
   expected_in_json = <<-JSON
@@ -296,7 +296,7 @@ if __FILE__ == $0
                  'b': { 'op': 'imm', 'n': 2 } }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = JSON.parse(c.pass1('[ x y ] ( x + y ) / 2'))
+  actual = c.pass1('[ x y ] ( x + y ) / 2')
   Test.assert_equals(actual, expected)
 
   expected_in_json = <<-JSON
@@ -306,7 +306,7 @@ if __FILE__ == $0
                                    'b': { 'op': 'arg', 'n': 1 } } }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = JSON.parse(c.pass1('[ a b ] a*a + b*b'))
+  actual = c.pass1('[ a b ] a*a + b*b')
   Test.assert_equals(actual, expected)
 
   ast = <<-JSON
@@ -319,7 +319,7 @@ if __FILE__ == $0
                  'b': { 'op': 'imm', 'n': 10 } }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = JSON.parse(c.pass2(ast.gsub("'", '"')))
+  actual = c.pass2(JSON.parse(ast.gsub("'", '"')))
   Test.assert_equals(actual, expected)
 
   ast = <<-JSON
@@ -331,7 +331,7 @@ if __FILE__ == $0
     { 'op': 'imm', 'n': -4 }
   JSON
   expected = JSON.parse(expected_in_json.gsub("'", '"'))
-  actual = JSON.parse(c.pass2(ast.gsub("'", '"')))
+  actual = c.pass2(JSON.parse(ast.gsub("'", '"')))
   Test.assert_equals(actual, expected)
 
   ast = <<-JSON
@@ -348,11 +348,12 @@ if __FILE__ == $0
   Test.assert_equals(actual, expected)
 
   program = "[ x y z ] ( 2*3*x + 5*y - 3*z ) / (1 + 3 + 2*2)"
-  j = c.pass1(program)
-  puts JSON.pretty_generate(JSON.parse(j))
-  j = c.pass2(j)
-  puts JSON.pretty_generate(JSON.parse(j))
-  asm = c.pass3(j)
+  h = c.pass1(program)
+  puts JSON.pretty_generate(h)
+  h = c.pass2(h)
+  puts JSON.pretty_generate(h)
+  p h
+  asm = c.pass3(h)
   p asm
   puts simulate(asm, [1,2,3])
 end
