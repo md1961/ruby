@@ -8,6 +8,7 @@ end
 if ARGV[0] =~ /\A-([1-9])\z/
   file_num = Integer(Regexp.last_match(1))
 elsif ARGV[0]
+  STDERR.puts "Unknown flag #{ARGV[0]}"
   STDERR.puts "Usage: #{File.basename($0)} [-[op] [-#]] (pass -[op] to vim)"
   exit
 end
@@ -21,7 +22,11 @@ filenames = \
   }.flat_map { |filename|
     filename.end_with?('/') ? Dir.glob("#{filename}*") : filename
   }
-filenames = [filenames[file_num - 1]] if file_num && file_num <= filenames.size
+if file_num && file_num > filenames.size
+  STDERR.puts "File number (#{file_num}) out of range"
+  exit
+end
+filenames = [filenames[file_num - 1]] if file_num
 
 if vim_option || file_num
   system("vim #{vim_option} #{filenames.join(' ')}")
