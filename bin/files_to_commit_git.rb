@@ -1,13 +1,21 @@
 #! /bin/env ruby
 
+DEFAULT_VIM_OPTION = '-o' 
+
 vim_option = nil
-file_num = nil
 if ARGV[0] == '-o' || ARGV[0] == '-p'
   vim_option = ARGV.shift
 end
-if ARGV[0] =~ /\A-([1-9])\z/
-  file_num = Integer(Regexp.last_match(1))
-elsif ARGV[0]
+
+file_nums = []
+while ARGV[0] =~ /\A-([1-9])\z/ do
+  file_nums << Integer(Regexp.last_match(1))
+  ARGV.shift
+end
+file_nums.uniq!
+vim_option = DEFAULT_VIM_OPTION if file_nums.size >= 2 && !vim_option
+
+if ARGV[0]
   STDERR.puts "Unknown flag #{ARGV[0]}"
   STDERR.puts "Usage: #{File.basename($0)} [-[op] [-#]] (pass -[op] to vim)"
   exit
@@ -22,13 +30,18 @@ filenames = \
   }.flat_map { |filename|
     filename.end_with?('/') ? Dir.glob("#{filename}*") : filename
   }
-if file_num && file_num > filenames.size
-  STDERR.puts "File number (#{file_num}) out of range"
-  exit
-end
-filenames = [filenames[file_num - 1]] if file_num
 
-if vim_option || file_num
+file_nums.each do |file_num|
+  if file_num > filenames.size
+    STDERR.puts "File number (#{file_num}) out of range"
+    exit
+  end
+end
+
+file_nums.map! { |n| n - 1 }
+filenames = filenames.values_at(*file_nums) if file_nums.size > 0
+
+if vim_option || file_nums.size > 0
   system("vim #{vim_option} #{filenames.join(' ')}")
 else
   puts filenames.join("\n")
