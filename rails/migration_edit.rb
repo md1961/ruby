@@ -33,4 +33,5 @@ if indexes.empty?
 end
 
 filenames_to_edit = filenames.values_at(*indexes)
+filenames_to_edit.compact! << filenames.last if filenames_to_edit.any?(&:nil?)
 system("vim -o #{filenames_to_edit.join(' ')}")
