@@ -44,5 +44,7 @@ filenames = filenames.values_at(*file_nums) if file_nums.size > 0
 if vim_option || file_nums.size > 0
   system("vim #{vim_option} #{filenames.join(' ')}")
 else
-  puts filenames.join("\n")
+  filenames.each.with_index(1) do |filename, index|
+    puts "%2d: %s\n" % [index, filename]
+  end
 end
