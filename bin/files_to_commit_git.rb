@@ -1,5 +1,7 @@
 #! /bin/env ruby
 
+FILE_EXTENSIONS_TO_EXCLUDE = %w[.sqlite3]
+
 DEFAULT_VIM_OPTION = '-o' 
 
 vim_option = nil
@@ -29,6 +31,8 @@ filenames = \
     line.sub(/\A\s*(?:modified:|new file:)?\s*/, '')
   }.flat_map { |filename|
     filename.end_with?('/') ? Dir.glob("#{filename}*") : filename
+  }.reject { |filename|
+    FILE_EXTENSIONS_TO_EXCLUDE.any? { |ext| filename.end_with?(ext) }
   }
 
 file_nums.each do |file_num|
