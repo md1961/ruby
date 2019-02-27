@@ -23,12 +23,9 @@ if ARGV[0]
   exit
 end
 
-INDENTS = [' ' * 8, "\t"]
-
-line_with_file = `git status`.split("\n").select { |line| line =~ /\A#{INDENTS.join('|')}/ }
 filenames = \
-  line_with_file.map { |line|
-    line.sub(/\A\s*(?:modified:|new file:)?\s*/, '')
+  `git status --porcelain`.split("\n").map { |line|
+    line.strip.split.last
   }.flat_map { |filename|
     filename.end_with?('/') ? Dir.glob("#{filename}*") : filename
   }.reject { |filename|
