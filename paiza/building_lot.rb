@@ -153,37 +153,30 @@ class Lot
     def y0_x0_dy_dx_and_dir_for(building)
       case building.ent_direction
       when :north
-        dir = if !placeable_on?(:south, building) \
-                  && (placeable_on?(:west, building) || placeable_on?(:east, building))
-                :y
-              else
-                :x
-              end
-        [@height - building.height, 0, -1, 1, dir]
+        [@height - building.height, 0, -1,  1, change_side?(building) ? :y : :x]
       when :south
-        dir = if !placeable_on?(:north, building) \
-                  && (placeable_on?(:west, building) || placeable_on?(:east, building))
-                :y
-              else
-                :x
-              end
-        [0, 0, 1, 1, dir]
+        [0, 0,                          1,  1, change_side?(building) ? :y : :x]
       when :west
-        dir = if !placeable_on?(:east, building) \
-                  && (placeable_on?(:north, building) || placeable_on?(:south, building))
-                :x
-              else
-                :y
-              end
-        [0, @width - building.width, 1, -1, dir]
+        [0, @width - building.width,    1, -1, change_side?(building) ? :x : :y]
       else
-        dir = if !placeable_on?(:west, building) \
-                  && (placeable_on?(:north, building) || placeable_on?(:south, building))
-                :x
-              else
-                :y
-              end
-        [0, 0, 1, 1, dir]
+        [0, 0,                          1,  1, change_side?(building) ? :x : :y]
+      end
+    end
+
+    def change_side?(building)
+      case building.ent_direction
+      when :north
+        !placeable_on?(:south, building) \
+          && (placeable_on?(:west , building) || placeable_on?(:east , building))
+      when :south
+        !placeable_on?(:north, building) \
+          && (placeable_on?(:west , building) || placeable_on?(:east , building))
+      when :west
+        !placeable_on?(:east, building) \
+          && (placeable_on?(:north, building) || placeable_on?(:south, building))
+      else
+        !placeable_on?(:west, building) \
+          && (placeable_on?(:north, building) || placeable_on?(:south, building))
       end
     end
 
