@@ -3,6 +3,18 @@ require 'pry'
 
 class Allocator
 
+  def self.build_from(input)
+    f = StringIO.new(input.gsub(/^\s*/, ''))
+
+    height, width, n_buildings = f.gets.split.map(&:to_i)
+    Allocator.new(Lot.new(height, width)).tap { |allocator|
+      n_buildings.times do |i|
+        args = f.gets.split.map(&:to_i)
+        allocator.add(Building.new(i + 1, *args))
+      end
+    }
+  end
+
   def initialize(lot)
     @lot = lot
     @buildings = []
@@ -310,16 +322,8 @@ end
 if __FILE__ == $0
   $stdin = DATA
 
-  height, width, n_buildings = gets.split.map(&:to_i)
-  allocator = Allocator.new(Lot.new(height, width))
-
-  n_buildings.times do |i|
-    args = gets.split.map(&:to_i)
-    allocator.add(Building.new(i + 1, *args))
-  end
-
+  allocator = Allocator.build_from($stdin.read)
   allocator.allocate
-
   puts allocator
 end
 

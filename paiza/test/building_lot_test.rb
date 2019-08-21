@@ -67,22 +67,8 @@ class BuildingLotTest < Test::Unit::TestCase
   private
 
     def do_test(input, expected)
-      $stdin = StringIO.new(trim(input))
-
-      height, width, n_buildings = gets.split.map(&:to_i)
-      allocator = Allocator.new(Lot.new(height, width))
-
-      n_buildings.times do |i|
-        args = gets.split.map(&:to_i)
-        allocator.add(Building.new(i + 1, *args))
-      end
-
+      allocator = Allocator.build_from(input)
       allocator.allocate
-
-      assert_equal(trim(expected), allocator.to_s)
-    end
-
-    def trim(str)
-      str.gsub(/^\s*/, '').chomp
+      assert_equal(expected.gsub(/^\s*/, '').chomp, allocator.to_s)
     end
 end
