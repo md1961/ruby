@@ -116,11 +116,8 @@ class Lot
       return 0 if cell == :CHECKED
       return 0 if cell.is_a?(Array) && cell.include?(:CHECKED)
       return 0 if !cell.is_a?(Array) && cell > 0
-      if cell == 0
-        @cells[y][x] = :CHECKED
-        return 0
-      end
       num0 = cell.is_a?(Array) ? cell.size : 0
+      @cells[y][x] = :CHECKED if cell == 0
       cell << :CHECKED if cell.is_a?(Array)
       [[-1, 0], [1, 0], [0, -1], [0, 1]].reduce(num0) { |num, (dy, dx)|
         num + num_fronts_connected_at(y + dy, x + dx)
