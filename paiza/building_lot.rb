@@ -15,6 +15,31 @@ class Allocator
     }
   end
 
+  def self.make_random_input(
+        height_range, width_range, n_buildings_range, building_height_range, building_width_range
+      )
+    height          = rand(height_range)
+    width           = rand(width_range)
+    n_buildings     = rand(n_buildings_range)
+    strs = ["#{height} #{width} #{n_buildings}"]
+    n_buildings.times do
+      building_height = rand(building_height_range)
+      building_width  = rand(building_width_range)
+      y_x_ent_candidates = []
+      2.upto(building_height - 1) do |y|
+        y_x_ent_candidates << [y, 1]
+        y_x_ent_candidates << [y, building_width]
+      end
+      2.upto(building_width - 1) do |x|
+        y_x_ent_candidates << [1, x]
+        y_x_ent_candidates << [building_height, x]
+      end
+      y_ent, x_ent = y_x_ent_candidates.sample
+      strs << "#{building_height} #{building_width} #{y_ent} #{x_ent}"
+    end
+    strs.join("\n") + "\n"
+  end
+
   def initialize(lot)
     @lot = lot
     @buildings = []
@@ -322,7 +347,11 @@ end
 if __FILE__ == $0
   $stdin = DATA
 
-  allocator = Allocator.build_from($stdin.read)
+  input = Allocator.make_random_input(10..20, 10..20, 5..10, 3..7, 3..7)
+  puts input
+  puts
+
+  allocator = Allocator.build_from(input)
   allocator.allocate
   puts allocator
 end
