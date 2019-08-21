@@ -122,16 +122,18 @@ class Lot
       }
     end
 
+    CHECK_MARK = :CHECKED
+
     def checked?(y, x)
-      Array(@cells[y][x]).include?(:CHECKED)
+      Array(@cells[y][x]).include?(CHECK_MARK)
     end
 
     def mark_check_at(y, x)
       cell = @cells[y][x]
       if cell == 0
-        @cells[y][x] = :CHECKED
+        @cells[y][x] = CHECK_MARK
       elsif cell.is_a?(Array)
-        cell << :CHECKED
+        cell << CHECK_MARK
       end
     end
 
@@ -139,9 +141,9 @@ class Lot
       0.upto(@height - 1) do |y|
         0.upto(@width - 1) do |x|
           cell = @cells[y][x]
-          if cell.is_a?(Array) && cell.include?(:CHECKED)
-            @cells[y][x].delete(:CHECKED)
-          elsif cell == :CHECKED
+          if cell.is_a?(Array) && cell.include?(CHECK_MARK)
+            @cells[y][x].delete(CHECK_MARK)
+          elsif cell == CHECK_MARK
             @cells[y][x] = 0
           end
         end
@@ -273,13 +275,12 @@ end
 
 
 __END__
-6 7 2
+6 7 3
 2 4 2 3
-2 5 2 4
+2 5 2 3
+3 2 2 1
 
 2 3 1 2
-
-3 2 2 1
 
 5 7 4
 3 5 3 3
