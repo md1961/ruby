@@ -341,6 +341,17 @@ class Building
       [y0 + @y_ent - 1, x0 + @width]
     end
   end
+
+  def to_s
+    id = @id
+    id = ('A'.ord + id - 10).chr if id >= 10
+    cells = Array.new(@height) { [' '] + [@id] * @width + [' '] }
+    cells.unshift([' '] * (@width + 2))
+    cells.push(   [' '] * (@width + 2))
+    y_front, x_front = coord_front_when_placed_on(1, 1)
+    cells[y_front][x_front] = '+'
+    cells.map { |row| row.join(' ') }.join("\n")
+  end
 end
 
 
