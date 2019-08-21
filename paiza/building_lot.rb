@@ -159,6 +159,26 @@ class Lot
       nil
     end
 
+    def max_empty_edge_length_on(edge)
+      cells = case edge
+              when :north
+                @cells[0]
+              when :south
+                @cells[-1]
+              when :west
+                @cells.map { |row| row[0] }
+              when :east
+                @cells.map { |row| row[-1] }
+              else
+                raise "Illegal edge '#{edge}'"
+              end
+      max_empty_length_in(cells)
+    end
+
+    def max_empty_length_in(cells)
+      cells.chunk { |cell| cell.zero? }.find_all { |x| x[0] }.map { |x| x[1].size }.max || 0
+    end
+
     def placeable?(building, y0, x0)
       y1 = y0 + building.height - 1
       x1 = x0 + building.width  - 1
@@ -270,7 +290,9 @@ if __FILE__ == $0
 
   puts allocator
 
-  puts allocator.instance_variable_get('@lot').send(:all_fronts_connected?)
+  %i[north south west east].each do |edge|
+    p allocator.instance_variable_get('@lot').send(:max_empty_edge_length_on, edge)
+  end
 end
 
 
