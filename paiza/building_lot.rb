@@ -59,8 +59,8 @@ class Allocator
     end
   end
 
-  def to_s
-    @lot.to_s
+  def to_s(pretty = false)
+    @lot.to_s(pretty)
   end
 
   private
@@ -108,13 +108,21 @@ class Lot
     false
   end
 
-  def to_s
-    @cells.map { |row|
-      row.map { |cell|
-        cell.is_a?(Array) ? (cell.size > 1 ? '#' : '+') \
-          : cell.zero? ? '.' : cell >= 10 ? ('A'.ord + cell - 10).chr : cell
-      }.join(' ')
-    }.join("\n")
+  def to_s(pretty = false)
+    if pretty
+      @cells.map { |row|
+        row.map { |cell|
+          cell.is_a?(Array) ? (cell.size > 1 ? '#' : '+') \
+            : cell.zero? ? '.' : cell >= 10 ? ('A'.ord + cell - 10).chr : cell
+        }.join(' ')
+      }.join("\n")
+    else
+      @cells.map { |row|
+        row.map { |cell|
+          cell.is_a?(Array) ? 0 : cell
+        }.join(' ')
+      }.join("\n")
+    end
   end
 
   private
@@ -361,13 +369,24 @@ end
 if __FILE__ == $0
   $stdin = DATA
 
-  input = Allocator.make_random_input(10..20, 10..20, 5..10, 3..7, 3..7)
-  puts input
-  puts
+  reads_stdin = ARGV.empty?
+
+  if reads_stdin
+    input = $stdin.read
+  else
+    input = Allocator.make_random_input(50..50, 50..50, 15..20, 7..15, 7..15)
+    puts input
+    puts
+  end
 
   allocator = Allocator.build_from(input)
   allocator.allocate
-  puts allocator
+
+  if reads_stdin
+    puts allocator
+    puts
+  end
+  puts allocator.to_s(:pretty)
   puts
 
   allocator.buildings_not_used.each do |building|
