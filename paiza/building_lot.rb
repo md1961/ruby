@@ -41,16 +41,7 @@ class Lot
   end
 
   def place(building)
-    y0, x0, dy, dx, dir = case building.ent_direction
-                          when :north
-                            [@height - building.height, 0, -1, 1, :x]
-                          when :south
-                            [0, 0, 1, 1, :x]
-                          when :west
-                            [0, @width - building.width, 1, -1, :y]
-                          else
-                            [0, 0, 1, 1, :y]
-                          end
+    y0, x0, dy, dx, dir = y0_x0_dy_dx_and_dir_for(building)
     y, x = y0, x0
     while true
       if placeable?(building, y, x)
@@ -159,6 +150,54 @@ class Lot
       nil
     end
 
+    def y0_x0_dy_dx_and_dir_for(building)
+      case building.ent_direction
+      when :north
+        dir = if !placeable_on?(:south, building) \
+                  && (placeable_on?(:west, building) || placeable_on?(:east, building))
+                :y
+              else
+                :x
+              end
+        [@height - building.height, 0, -1, 1, dir]
+      when :south
+        dir = if !placeable_on?(:north, building) \
+                  && (placeable_on?(:west, building) || placeable_on?(:east, building))
+                :y
+              else
+                :x
+              end
+        [0, 0, 1, 1, dir]
+      when :west
+        dir = if !placeable_on?(:east, building) \
+                  && (placeable_on?(:north, building) || placeable_on?(:south, building))
+                :x
+              else
+                :y
+              end
+        [0, @width - building.width, 1, -1, dir]
+      else
+        dir = if !placeable_on?(:west, building) \
+                  && (placeable_on?(:north, building) || placeable_on?(:south, building))
+                :x
+              else
+                :y
+              end
+        [0, 0, 1, 1, dir]
+      end
+    end
+
+    def placeable_on?(edge, building)
+      case edge
+      when :north, :south
+        max_empty_edge_length_on(edge) >= building.width
+      when :west, :east
+        max_empty_edge_length_on(edge) >= building.height
+      else
+        raise "Illegal edge '#{edge}'"
+      end
+    end
+
     def max_empty_edge_length_on(edge)
       cells = case edge
               when :north
@@ -176,7 +215,7 @@ class Lot
     end
 
     def max_empty_length_in(cells)
-      cells.chunk { |cell| cell.zero? }.find_all { |x| x[0] }.map { |x| x[1].size }.max || 0
+      cells.chunk { |cell| cell == 0 }.find_all { |x| x[0] }.map { |x| x[1].size }.max || 0
     end
 
     def placeable?(building, y0, x0)
@@ -289,10 +328,6 @@ if __FILE__ == $0
   allocator.allocate
 
   puts allocator
-
-  %i[north south west east].each do |edge|
-    p allocator.instance_variable_get('@lot').send(:max_empty_edge_length_on, edge)
-  end
 end
 
 
