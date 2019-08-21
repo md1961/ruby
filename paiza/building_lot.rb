@@ -112,16 +112,27 @@ class Lot
 
     def num_fronts_connected_at(y, x)
       return 0 if out_of_bounds?(y, x)
+      return 0 if checked?(y, x)
       cell = @cells[y][x]
-      return 0 if cell == :CHECKED
-      return 0 if cell.is_a?(Array) && cell.include?(:CHECKED)
       return 0 if !cell.is_a?(Array) && cell > 0
       num0 = cell.is_a?(Array) ? cell.size : 0
-      @cells[y][x] = :CHECKED if cell == 0
-      cell << :CHECKED if cell.is_a?(Array)
+      mark_check_at(y, x)
       [[-1, 0], [1, 0], [0, -1], [0, 1]].reduce(num0) { |num, (dy, dx)|
         num + num_fronts_connected_at(y + dy, x + dx)
       }
+    end
+
+    def checked?(y, x)
+      Array(@cells[y][x]).include?(:CHECKED)
+    end
+
+    def mark_check_at(y, x)
+      cell = @cells[y][x]
+      if cell == 0
+        @cells[y][x] = :CHECKED
+      elsif cell.is_a?(Array)
+        cell << :CHECKED
+      end
     end
 
     def clear_all_checked_marks
@@ -130,7 +141,6 @@ class Lot
           cell = @cells[y][x]
           if cell.is_a?(Array) && cell.include?(:CHECKED)
             @cells[y][x].delete(:CHECKED)
-            @cells[y][x] = 0 if cell.empty?
           elsif cell == :CHECKED
             @cells[y][x] = 0
           end
