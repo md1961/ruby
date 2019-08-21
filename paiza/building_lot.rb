@@ -2,6 +2,7 @@ require 'pry'
 
 
 class Allocator
+  attr_reader :buildings_not_used
 
   def self.build_from(input)
     f = StringIO.new(input.gsub(/^\s*/, ''))
@@ -51,8 +52,10 @@ class Allocator
 
   def allocate
     @buildings.sort_by! { |b| -b.score }
+    @buildings_not_used = []
     @buildings.each do |building|
-      @lot.place(building)
+      is_placed = @lot.place(building)
+      @buildings_not_used << building unless is_placed
     end
   end
 
@@ -365,6 +368,11 @@ if __FILE__ == $0
   allocator = Allocator.build_from(input)
   allocator.allocate
   puts allocator
+  puts
+
+  allocator.buildings_not_used.each do |building|
+    puts building
+  end
 end
 
 
