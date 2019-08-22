@@ -1,3 +1,5 @@
+require 'set'
+
 require 'pry'
 
 
@@ -98,61 +100,43 @@ class Lot
     end
 
     def all_fronts_connected?
-      num_buildings == num_fronts_connected_to_first_front
-    end
-
-    def num_buildings
-      @cells.flat_map { |row|
-        row.map { |cell| cell.building_id }
-      }.uniq.size - 1
-    end
-
-#=begin
-    def num_fronts_connected_to_first_front
-      y0, x0 = coord_of_first_front
-      return 0 unless y0
-      num_fronts_connected_at(y0, x0).tap {
-        clear_all_checked_marks
-      }
-    end
-
-    def num_fronts_connected_at(y, x)
-      return 0 if out_of_bounds?(y, x)
-      return 0 if checked?(y, x)
-      cell = @cells[y][x]
-      return 0 if cell.built?
-      num0 = cell.num_entrances
-      mark_check_at(y, x)
-      [[-1, 0], [1, 0], [0, -1], [0, 1]].reduce(num0) { |num, (dy, dx)|
-        num + num_fronts_connected_at(y + dy, x + dx)
-      }
-    end
-
-    def coord_of_first_front
-      0.upto(@height - 1) do |y|
-        0.upto(@width - 1) do |x|
-          return [y, x] if @cells[y][x].entrance?
-        end
+      @cells.flatten.each do |cell|
+        cell.unmark
       end
-      nil
+      Cell.clear_passway_connections
+
+      @mark_id = 0
+      prev_row = nil
+      @cells.each do |row|
+        mark_passway_in(row)
+        connect_passway(prev_row, row)
+        prev_row = row
+      end
+
+      entrances = @cells.flatten.find_all { |cell| cell.entrance? }
+      entrances.each_cons(2) do |ent0, ent1|
+        return false unless ent0.connected_with?(ent1)
+      end
+      true
     end
-#=end
 
-    CHECK_MARK = :CHECKED
-
-    def checked?(y, x)
-      @cells[y][x].checked?
-    end
-
-    def mark_check_at(y, x)
-      @cells[y][x].check
-    end
-
-    def clear_all_checked_marks
-      0.upto(@height - 1) do |y|
-        0.upto(@width - 1) do |x|
-          @cells[y][x].uncheck
+    def mark_passway_in(row)
+      in_passway = false
+      row.each do |cell|
+        if cell.built?
+          in_passway = false
+          next
         end
+        @mark_id += 1 unless in_passway
+        in_passway = true
+        cell.mark(@mark_id)
+      end
+    end
+
+    def connect_passway(prev_row, row)
+      return unless prev_row
+      prev_row.zip(row) do |cell0, cell1|
+        cell0.connect_with(cell1)
       end
     end
 
@@ -214,7 +198,7 @@ class Lot
     end
 
     def max_empty_length_in(cells)
-      cells.chunk { |cell| !cell.built? }.find_all { |x| x[0] }.map { |x| x[1].size }.max || 0
+      cells.chunk { |cell| cell.buildable? }.find_all { |x| x[0] }.map { |x| x[1].size }.max || 0
     end
 
     def placeable?(building, y0, x0)
@@ -225,12 +209,12 @@ class Lot
       y0.upto(y1) do |y|
         x0.upto(x1) do |x|
           cell = @cells[y][x]
-          return false if cell.built? || cell.entrance?
+          return false unless cell.buildable?
         end
       end
       y_front, x_front = building.coord_front_when_placed_on(y0, x0)
       return false if out_of_bounds?(y_front, x_front)
-      @cells[y_front][x_front].buildable?
+      !@cells[y_front][x_front].built?
     end
 
     def do_place(building, y0, x0)
@@ -247,7 +231,7 @@ class Lot
     end
 
     def undo_place(building, y0, x0)
-      return if !@cells[y0][x0].built?
+      return unless @cells[y0][x0].built?
       y1 = y0 + building.height - 1
       x1 = x0 + building.width  - 1
       y0.upto(y1) do |y|
@@ -260,11 +244,16 @@ class Lot
     end
 
   class Cell
-    attr_reader :building_id
+    attr_reader :building_id, :mark_id
+
+    def self.clear_passway_connections
+      @@connection_sets = []
+    end
 
     def initialize
       @building_id = 0
       @entrances = []
+      @mark_id = nil
       @is_checked = false
     end
 
@@ -273,19 +262,11 @@ class Lot
     end
 
     def entrance?
-      num_entrances > 0
+      @entrances.size > 0
     end
 
     def buildable?
-      @building_id.zero?
-    end
-
-    def checked?
-      @is_checked
-    end
-
-    def num_entrances
-      @entrances.size
+      !built? && !entrance?
     end
 
     def build(building)
@@ -304,17 +285,39 @@ class Lot
       @entrances.delete(building.id)
     end
 
-    def check
-      @is_checked = true
+    def marked?
+      mark_id
     end
 
-    def uncheck
-      @is_checked = false
+    def mark(id)
+      @mark_id = id
+    end
+
+    def unmark
+      @mark_id = nil
+    end
+
+    def connected_with?(other)
+      mark_id == other.mark_id \
+        || @@connection_sets.any? { |set| set.include?(mark_id) && set.include?(other.mark_id) }
+    end
+
+    def connect_with(other)
+      return unless marked? && other.marked?
+
+      connection_set = @@connection_sets.find { |set|
+        set.include?(mark_id) || set.include?(other.mark_id)
+      }
+      if connection_set
+        connection_set << mark_id << other.mark_id
+      else
+        @@connection_sets << Set.new([mark_id, other.mark_id])
+      end
     end
 
     def to_s(pretty = false)
       if pretty
-        num_entrances >= 2 ? '#' : num_entrances == 1 ? '+' \
+        @entrances.size >= 2 ? '#' : @entrances.size == 1 ? '+' \
           : @building_id.zero? ? '.' \
           : @building_id >= 10 ? ('A'.ord + @building_id - 10).chr \
           : @building_id.to_s
@@ -423,12 +426,13 @@ if __FILE__ == $0
   if reads_stdin
     input = $stdin.read
   else
-    1.times do
+    1.times do |i|
 
-    #input = RandomInputMaker.make(50, 50, 15..20, 7..15, 7..15)
-    input = RandomInputMaker.make(100, 100, 30..40, 7..25, 7..25)
+    input = RandomInputMaker.make(50, 50, 15..20, 7..15, 7..15)
+    #input = RandomInputMaker.make(100, 100, 30..40, 7..25, 7..25)
 
 
+    puts "[No. #{i + 1}]"
     puts input
     puts
 
