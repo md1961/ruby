@@ -52,7 +52,7 @@ class Lot
   def initialize(height, width)
     @height = height
     @width  = width
-    @cells = Array.new(height) { [0] * width }
+    @cells = Array.new(height) { Array.new(width) { Cell.new } }
   end
 
   def place(building)
@@ -84,20 +84,11 @@ class Lot
   end
 
   def to_s(pretty = false)
-    if pretty
-      @cells.map { |row|
-        row.map { |cell|
-          cell.is_a?(Array) ? (cell.size > 1 ? '#' : '+') \
-            : cell.zero? ? '.' : cell >= 10 ? ('A'.ord + cell - 10).chr : cell
-        }.join(' ')
-      }.join("\n")
-    else
-      @cells.map { |row|
-        row.map { |cell|
-          cell.is_a?(Array) ? 0 : cell
-        }.join(' ')
-      }.join("\n")
-    end
+    @cells.map { |row|
+      row.map { |cell|
+        cell.to_s(pretty)
+      }.join(' ')
+    }.join("\n")
   end
 
   private
@@ -112,10 +103,11 @@ class Lot
 
     def num_buildings
       @cells.flat_map { |row|
-        row.map { |cell| cell.is_a?(Array) ? 0 : cell }
+        row.map { |cell| cell.building_id }
       }.uniq.size - 1
     end
 
+#=begin
     def num_fronts_connected_to_first_front
       y0, x0 = coord_of_first_front
       return 0 unless y0
@@ -128,49 +120,40 @@ class Lot
       return 0 if out_of_bounds?(y, x)
       return 0 if checked?(y, x)
       cell = @cells[y][x]
-      return 0 if !cell.is_a?(Array) && cell > 0
-      num0 = cell.is_a?(Array) ? cell.size : 0
+      return 0 if cell.built?
+      num0 = cell.num_entrances
       mark_check_at(y, x)
       [[-1, 0], [1, 0], [0, -1], [0, 1]].reduce(num0) { |num, (dy, dx)|
         num + num_fronts_connected_at(y + dy, x + dx)
       }
     end
 
+    def coord_of_first_front
+      0.upto(@height - 1) do |y|
+        0.upto(@width - 1) do |x|
+          return [y, x] if @cells[y][x].entrance?
+        end
+      end
+      nil
+    end
+#=end
+
     CHECK_MARK = :CHECKED
 
     def checked?(y, x)
-      Array(@cells[y][x]).include?(CHECK_MARK)
+      @cells[y][x].checked?
     end
 
     def mark_check_at(y, x)
-      cell = @cells[y][x]
-      if cell == 0
-        @cells[y][x] = CHECK_MARK
-      elsif cell.is_a?(Array)
-        cell << CHECK_MARK
-      end
+      @cells[y][x].check
     end
 
     def clear_all_checked_marks
       0.upto(@height - 1) do |y|
         0.upto(@width - 1) do |x|
-          cell = @cells[y][x]
-          if cell.is_a?(Array) && cell.include?(CHECK_MARK)
-            @cells[y][x].delete(CHECK_MARK)
-          elsif cell == CHECK_MARK
-            @cells[y][x] = 0
-          end
+          @cells[y][x].uncheck
         end
       end
-    end
-
-    def coord_of_first_front
-      0.upto(@height - 1) do |y|
-        0.upto(@width - 1) do |x|
-          return [y, x] if @cells[y][x].is_a?(Array)
-        end
-      end
-      nil
     end
 
     def y0_x0_dy_dx_and_dir_for(building)
@@ -231,7 +214,7 @@ class Lot
     end
 
     def max_empty_length_in(cells)
-      cells.chunk { |cell| cell == 0 }.find_all { |x| x[0] }.map { |x| x[1].size }.max || 0
+      cells.chunk { |cell| !cell.built? }.find_all { |x| x[0] }.map { |x| x[1].size }.max || 0
     end
 
     def placeable?(building, y0, x0)
@@ -242,13 +225,12 @@ class Lot
       y0.upto(y1) do |y|
         x0.upto(x1) do |x|
           cell = @cells[y][x]
-          return false if cell.is_a?(Array) || cell > 0
+          return false if cell.built? || cell.entrance?
         end
       end
       y_front, x_front = building.coord_front_when_placed_on(y0, x0)
       return false if out_of_bounds?(y_front, x_front)
-      cell_front = @cells[y_front][x_front]
-      cell_front.is_a?(Array) || cell_front == 0
+      @cells[y_front][x_front].buildable?
     end
 
     def do_place(building, y0, x0)
@@ -257,31 +239,90 @@ class Lot
       x1 = x0 + building.width  - 1
       y0.upto(y1) do |y|
         x0.upto(x1) do |x|
-          @cells[y][x] = building.id
+          @cells[y][x].build(building)
         end
       end
       y_front, x_front = building.coord_front_when_placed_on(y0, x0)
-      cell_front = @cells[y_front][x_front]
-      if cell_front == 0
-        @cells[y_front][x_front] = [building.id]
-      else
-        cell_front << building.id
-      end
+      @cells[y_front][x_front].add_entrance_for(building)
     end
 
     def undo_place(building, y0, x0)
-      return if @cells[y0][x0] != building.id
+      return if !@cells[y0][x0].built?
       y1 = y0 + building.height - 1
       x1 = x0 + building.width  - 1
       y0.upto(y1) do |y|
         x0.upto(x1) do |x|
-          @cells[y][x] = 0
+          @cells[y][x].unbuild
         end
       end
       y_front, x_front = building.coord_front_when_placed_on(y0, x0)
-      @cells[y_front][x_front].delete(building.id)
-      @cells[y_front][x_front] = 0 if @cells[y_front][x_front].empty?
+      @cells[y_front][x_front].remove_entrance_for(building)
     end
+
+  class Cell
+    attr_reader :building_id
+
+    def initialize
+      @building_id = 0
+      @entrances = []
+      @is_checked = false
+    end
+
+    def built?
+      @building_id > 0
+    end
+
+    def entrance?
+      num_entrances > 0
+    end
+
+    def buildable?
+      @building_id.zero?
+    end
+
+    def checked?
+      @is_checked
+    end
+
+    def num_entrances
+      @entrances.size
+    end
+
+    def build(building)
+      @building_id = building.id
+    end
+
+    def unbuild
+      @building_id = 0
+    end
+
+    def add_entrance_for(building)
+      @entrances << building.id
+    end
+
+    def remove_entrance_for(building)
+      @entrances.delete(building.id)
+    end
+
+    def check
+      @is_checked = true
+    end
+
+    def uncheck
+      @is_checked = false
+    end
+
+    def to_s(pretty = false)
+      if pretty
+        num_entrances >= 2 ? '#' : num_entrances == 1 ? '+' \
+          : @building_id.zero? ? '.' \
+          : @building_id >= 10 ? ('A'.ord + @building_id - 10).chr \
+          : @building_id.to_s
+      else
+        @building_id.to_s
+      end
+    end
+  end
 end
 
 
