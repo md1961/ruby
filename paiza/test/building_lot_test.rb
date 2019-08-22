@@ -9,14 +9,14 @@ class BuildingLotTest < Test::Unit::TestCase
   def test_case_01
     input = <<-END
       5 5 2
-      2 5 2 2
+      2 5 2 3
       2 5 1 3
     END
 
     expected = <<-END
       1 1 1 1 1
       1 1 1 1 1
-      . + + . .
+      . . # . .
       2 2 2 2 2
       2 2 2 2 2
     END
