@@ -16,31 +16,6 @@ class Allocator
     }
   end
 
-  def self.make_random_input(
-        height_range, width_range, n_buildings_range, building_height_range, building_width_range
-      )
-    height          = rand(height_range)
-    width           = rand(width_range)
-    n_buildings     = rand(n_buildings_range)
-    strs = ["#{height} #{width} #{n_buildings}"]
-    n_buildings.times do
-      building_height = rand(building_height_range)
-      building_width  = rand(building_width_range)
-      y_x_ent_candidates = []
-      2.upto(building_height - 1) do |y|
-        y_x_ent_candidates << [y, 1]
-        y_x_ent_candidates << [y, building_width]
-      end
-      2.upto(building_width - 1) do |x|
-        y_x_ent_candidates << [1, x]
-        y_x_ent_candidates << [building_height, x]
-      end
-      y_ent, x_ent = y_x_ent_candidates.sample
-      strs << "#{building_height} #{building_width} #{y_ent} #{x_ent}"
-    end
-    strs.join("\n") + "\n"
-  end
-
   def initialize(lot)
     @lot = lot
     @buildings = []
@@ -366,6 +341,39 @@ class Building
 end
 
 
+module RandomInputMaker
+  module_function
+
+  def make(height_range, width_range, n_buildings_range, building_height_range, building_width_range)
+    height      = determine_value(height_range)
+    width       = determine_value(width_range)
+    n_buildings = determine_value(n_buildings_range)
+    strs = ["#{height} #{width} #{n_buildings}"]
+    n_buildings.times do
+      building_height = determine_value(building_height_range)
+      building_width  = determine_value(building_width_range)
+      y_x_ent_candidates = []
+      2.upto(building_height - 1) do |y|
+        y_x_ent_candidates << [y, 1]
+        y_x_ent_candidates << [y, building_width]
+      end
+      2.upto(building_width - 1) do |x|
+        y_x_ent_candidates << [1, x]
+        y_x_ent_candidates << [building_height, x]
+      end
+      y_ent, x_ent = y_x_ent_candidates.sample
+      strs << "#{building_height} #{building_width} #{y_ent} #{x_ent}"
+    end
+    strs.join("\n") + "\n"
+  end
+
+    def determine_value(range)
+      return range unless range.is_a?(Range)
+      rand(range)
+    end
+end
+
+
 if __FILE__ == $0
   $stdin = DATA
 
@@ -374,7 +382,7 @@ if __FILE__ == $0
   if reads_stdin
     input = $stdin.read
   else
-    input = Allocator.make_random_input(50..50, 50..50, 15..20, 7..15, 7..15)
+    input = RandomInputMaker.make(50, 50, 15..20, 7..15, 7..15)
     puts input
     puts
   end
