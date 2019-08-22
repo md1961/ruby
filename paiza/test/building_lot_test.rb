@@ -69,6 +69,6 @@ class BuildingLotTest < Test::Unit::TestCase
     def do_test(input, expected)
       allocator = Allocator.build_from(input)
       allocator.allocate
-      assert_equal(expected.gsub(/^\s*/, '').chomp, allocator.to_s)
+      assert_equal(expected.gsub(/^\s*/, '').chomp, allocator.to_s(:pretty))
     end
 end
