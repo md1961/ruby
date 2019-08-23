@@ -426,26 +426,8 @@ if __FILE__ == $0
   if reads_stdin
     input = $stdin.read
   else
-    1.times do |i|
-
-    input = RandomInputMaker.make(50, 50, 15..20, 7..15, 7..15)
-    #input = RandomInputMaker.make(100, 100, 30..40, 7..25, 7..25)
-
-
-    puts "[No. #{i + 1}]"
-    puts input
-    puts
-
-    allocator = Allocator.build_from(input)
-    begin
-      allocator.allocate
-    rescue => e
-      puts allocator.to_s(:pretty)
-      #raise e
-    end
-
-    end
-
+    #input = RandomInputMaker.make(50, 50, 15..20, 7..15, 7..15)
+    input = RandomInputMaker.make(100, 100, 30..40, 7..25, 7..25)
 
     puts input
     puts
