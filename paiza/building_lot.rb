@@ -89,7 +89,7 @@ class Lot
     @cells.map { |row|
       row.map { |cell|
         cell.to_s(pretty)
-      }.join(' ')
+      }.join(pretty ? '' : ' ')
     }.join("\n")
   end
 
@@ -380,7 +380,7 @@ class Building
     cells.push(   [' '] * (@width + 2))
     y_front, x_front = coord_front_when_placed_on(1, 1)
     cells[y_front][x_front] = '+'
-    cells.map { |row| row.join(' ') }.join("\n")
+    cells.map { |row| row.join }.join("\n")
   end
 end
 

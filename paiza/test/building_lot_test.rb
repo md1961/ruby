@@ -14,11 +14,11 @@ class BuildingLotTest < Test::Unit::TestCase
     END
 
     expected = <<-END
-      1 1 1 1 1
-      1 1 1 1 1
-      . . # . .
-      2 2 2 2 2
-      2 2 2 2 2
+      11111
+      11111
+      ..#..
+      22222
+      22222
     END
 
     do_test(input, expected)
@@ -34,11 +34,11 @@ class BuildingLotTest < Test::Unit::TestCase
     END
 
     expected = <<-END
-      1 1 1 1 1 . .
-      1 1 1 1 1 . .
-      1 1 1 1 1 . .
-      . . + . . . .
-      . . . . . . .
+      11111..
+      11111..
+      11111..
+      ..+....
+      .......
     END
 
     do_test(input, expected)
@@ -53,12 +53,12 @@ class BuildingLotTest < Test::Unit::TestCase
     END
 
     expected = <<-END
-      2 2 2 2 2 . .
-      2 2 2 2 2 3 3
-      . . + . + 3 3
-      1 1 1 1 . 3 3
-      1 1 1 1 . . .
-      . . + . . . .
+      22222..
+      2222233
+      ..+.+33
+      1111.33
+      1111...
+      ..+....
     END
 
     do_test(input, expected)
