@@ -53,6 +53,8 @@ end
 ->        <key>Name</key><string>Johnny Don't Do It</string>
 ->        <key>Artist</key><string>(ten) 10cc</string>
 ->        ...
+->        <key>Rating</key><integer>60</integer>      <!-- 60 means 3 stars -->
+->        ...
 ->      </dict>
 ->      ...
       </dict>
@@ -119,3 +121,24 @@ else
 
   puts columns.join("\n")
 end
+=begin
+	<key>Playlists</key>
+	<array>
+		<dict>
+			<key>Name</key><string>ライブラリ</string>
+			<key>Description</key><string></string>
+			<key>Master</key><true/>
+			<key>Playlist ID</key><integer>64</integer>
+			<key>Playlist Persistent ID</key><string>0000000000000005</string>
+			<key>Visible</key><false/>
+			<key>All Items</key><true/>
+			<key>Playlist Items</key>
+			<array>
+				<dict>
+					<key>Track ID</key><integer>6508</integer>
+				</dict>
+				<dict>
+					<key>Track ID</key><integer>6510</integer>
+				</dict>
+                ...
+=end
